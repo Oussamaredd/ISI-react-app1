@@ -1,0 +1,27 @@
+.ticket-list {
+  list-style: none;
+  padding: 0;
+}
+
+.ticket-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+
+.ticket-item strong {
+  color: #fff;
+}
+
+.ticket-item button {
+  background-color: #e63946;
+}
+
+.ticket-item button:hover {
+  background-color: #a62834;
+}

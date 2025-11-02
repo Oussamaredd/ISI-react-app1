@@ -1,0 +1,25 @@
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.create-form input {
+  width: 80%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #222;
+  color: #eee;
+  font-size: 1rem;
+}
+
+.create-form input:focus {
+  outline: none;
+  border-color: #2f80ed;
+}
+
+.create-form button {
+  width: 50%;
+}
