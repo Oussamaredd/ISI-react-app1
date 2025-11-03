@@ -11,10 +11,18 @@ function AppContent() {
   return (
     <div>
       <nav>
-        <button onClick={() => setCurrentPage("list")}
-          disabled={currentPage === "list"}>Tickets List</button>
-        <button onClick={() => setCurrentPage("create")}
-          disabled={currentPage === "create"}>Create Ticket</button>
+        <button
+          onClick={() => setCurrentPage("list")}
+          disabled={currentPage === "list"}
+        >
+          Tickets List
+        </button>
+        <button
+          onClick={() => setCurrentPage("create")}
+          disabled={currentPage === "create"}
+        >
+          Create Ticket
+        </button>
       </nav>
 
       <AppRoutes />

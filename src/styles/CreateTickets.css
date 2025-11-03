@@ -1,25 +1,21 @@
+.create-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+}
+
 .create-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  align-items: center;
+  gap: 15px;
 }
 
 .create-form input {
-  width: 80%;
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #444;
-  background: #222;
-  color: #eee;
-  font-size: 1rem;
-}
-
-.create-form input:focus {
-  outline: none;
-  border-color: #2f80ed;
-}
-
-.create-form button {
-  width: 50%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #fff;
+  background-color: #1e1e1e;
+  color: #fff;
 }

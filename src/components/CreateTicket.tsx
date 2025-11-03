@@ -12,13 +12,17 @@ export default function CreateTicket() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !price) return;
+
+    // Call context's addTicket, which now sends data to backend
     addTicket({ title, price: parseFloat(price) });
+
+    // Clear form fields
     setTitle("");
     setPrice("");
   };
 
   return (
-    <form onSubmit={handleSubmit}   className="create-form">
+    <form onSubmit={handleSubmit} className="create-form">
       <input
         type="text"
         placeholder="Ticket name"

@@ -10,10 +10,11 @@ export default function AppRoutes() {
   const { currentPage } = context;
 
   switch (currentPage) {
+    case "list":
+      return <TicketListPage />;
     case "create":
       return <CreateTickets />;
-    case "list":
     default:
-      return <TicketListPage />;
+      return null;
   }
 }

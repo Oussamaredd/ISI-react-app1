@@ -9,7 +9,6 @@ export default function TicketList() {
 
   return (
     <div>
-      
       {tickets.length === 0 ? (
         <p>No tickets yet.</p>
       ) : (

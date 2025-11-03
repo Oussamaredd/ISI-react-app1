@@ -1,4 +1,4 @@
-import React, { createContext, useState, ReactNode } from "react";
+import React, { createContext, useState, ReactNode, useEffect } from "react";
 
 type Ticket = {
   id: number;
@@ -20,13 +20,58 @@ export const TicketsProvider = ({ children }: { children: ReactNode }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [currentPage, setCurrentPage] = useState<"list" | "create">("list");
 
-  const addTicket = (ticket: Omit<Ticket, "id">) => {
-    setTickets((prev) => [...prev, { id: Date.now(), ...ticket }]);
-    setCurrentPage("list"); // switch back to list after creation
+  const API_URL = "http://localhost:5000/api/tickets";
+
+  // Fetch tickets from backend
+const fetchTickets = async () => {
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+
+    // Ensure price is a number
+    const ticketsWithNumbers = data.map((t: any) => ({
+      id: t.id,
+      title: t.name,       // map backend field to frontend field
+      price: Number(t.price),
+    }));
+
+    setTickets(ticketsWithNumbers);
+  } catch (err) {
+    console.error("Failed to fetch tickets:", err);
+  }
+};
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  // Add ticket to backend
+  const addTicket = async (ticket: Omit<Ticket, "id">) => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: ticket.title, price: ticket.price }),
+      });
+      const data = await res.json();
+
+      // Map backend response to your frontend Ticket type
+      setTickets((prev) => [...prev, { id: data.id, title: data.name, price: Number(data.price) }]);
+      
+      setCurrentPage("list"); // switch back to list after creation
+    } catch (err) {
+      console.error("Failed to add ticket:", err);
+    }
   };
 
-  const deleteTicket = (id: number) => {
-    setTickets((prev) => prev.filter((t) => t.id !== id));
+  // Delete ticket from backend
+  const deleteTicket = async (id: number) => {
+    try {
+      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      setTickets((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error("Failed to delete ticket:", err);
+    }
   };
 
   return (
