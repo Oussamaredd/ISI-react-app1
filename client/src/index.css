@@ -1,0 +1,45 @@
+/* Global dark theme */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #121212;
+  color: #f5f5f5;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* Center container for all pages */
+.container {
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 800px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Shared button style */
+button {
+  background-color: #2f80ed;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  margin: 0.3rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: #1c60c2;
+}
+
+button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+}

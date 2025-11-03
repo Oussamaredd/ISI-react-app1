@@ -1,0 +1,21 @@
+.create-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.create-form input {
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #fff;
+  background-color: #1e1e1e;
+  color: #fff;
+}
