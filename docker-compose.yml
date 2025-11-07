@@ -1,0 +1,44 @@
+
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:15
+    container_name: ticket_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ticketdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  # Backend API
+  backend:
+    build: ./server
+    container_name: ticket_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: ticketdb
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      - db
+
+  # Frontend React app
+  frontend:
+    build: ./client
+    container_name: ticket_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
