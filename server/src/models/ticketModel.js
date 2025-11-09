@@ -2,12 +2,14 @@ import { pool } from "../config/db.js";
 
 // Get all tickets
 export async function getTickets() {
+  console.log("Connected to DB:", process.env.DB_HOST, process.env.DB_NAME);
   const result = await pool.query("SELECT * FROM tickets ORDER BY id ASC");
   return result.rows;
 }
 
 // Create a new ticket
 export async function createTicket(name, price) {
+  console.log("Connected to DB:", process.env.DB_HOST, process.env.DB_NAME);
   const result = await pool.query(
     "INSERT INTO tickets (name, price) VALUES ($1, $2) RETURNING *",
     [name, price]
