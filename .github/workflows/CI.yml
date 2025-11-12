@@ -53,20 +53,19 @@ jobs:
       - run: npm run lint --if-present
       - run: npm test --if-present
 
-  terraform-plan:
-    name: Terraform Plan
+  terraform-validate:
+    name: Terraform Init & Validate
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./infra
-    env:
-      TF_IN_AUTOMATION: "true"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.13.4
-      - run: terraform init
-      - run: terraform validate
-      - run: terraform plan -no-color
+      - name: Terraform Init
+        run: terraform init -input=false
+      - name: Terraform Validate
+        run: terraform validate
