@@ -6,66 +6,87 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+
   frontend:
-    name: Frontend (Lint, Build, Test)
+    name: Frontend CI
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./client
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.20
-          cache: npm
-          cache-dependency-path: client/package-lock.json
-      - run: npm ci
-      - run: npm run lint --if-present
-      - run: npm run build
-      - run: npm test --if-present
-      - uses: actions/upload-artifact@v4
-        with:
-          name: client-dist
-          path: client/dist
+          node-version: 22.2
+
+      - name: Install frontend dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: client
+        run: npm run lint --if-present
+
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
+
+      - name: Test frontend (Vitest)
+        working-directory: client
+        run: npm test -- --coverage
+
 
   backend:
-    name: Backend (Lint, Test)
+    name: Backend CI
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./server
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.20
-          cache: npm
-          cache-dependency-path: server/package-lock.json
-      - run: npm ci
-      - run: npm run lint --if-present
-      - run: npm test --if-present
+          node-version: 22.2
 
-  terraform-validate:
-    name: Terraform Init & Validate
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Lint backend
+        working-directory: server
+        run: npm run lint --if-present
+
+      - name: Test backend (Jest)
+        working-directory: server
+        run: npm test -- --coverage
+
+
+  terraform_validate:
+    name: Terraform Validate
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./infra
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init + validate
+        working-directory: infra
+        run: |
+          terraform init -input=false
+          terraform validate
+
+
+  sonar:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
         with:
-          terraform_version: 1.13.4
-      - name: Terraform Init
-        run: terraform init -input=false
-      - name: Terraform Validate
-        run: terraform validate
+          fetch-depth: 0
+
+      - name: Install Sonar Scanner
+        run: npm install -g sonar-scanner
+
+      - name: Run SonarQube Analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: sonar-scanner
