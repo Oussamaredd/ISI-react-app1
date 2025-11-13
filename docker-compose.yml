@@ -41,7 +41,7 @@ services:
       - backend
 
   sonarqube:
-    image: sonarqube:10.5.1-community
+    image: sonarqube:latest
     container_name: sonarqube
     restart: unless-stopped
     ports:
@@ -52,9 +52,11 @@ services:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_extensions:/opt/sonarqube/extensions
       - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_temp:/opt/sonarqube/temp
 
 volumes:
   db_data:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:
+  sonarqube_temp:
