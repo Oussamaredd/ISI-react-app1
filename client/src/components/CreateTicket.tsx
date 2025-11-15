@@ -14,7 +14,7 @@ export default function CreateTicket() {
     if (!title || !price) return;
 
     // Call context's addTicket, which now sends data to backend
-    addTicket({ title, price: parseFloat(price) });
+    addTicket({ title, price: Number.parseFloat(price) });
 
     // Clear form fields
     setTitle("");

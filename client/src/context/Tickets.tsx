@@ -1,4 +1,4 @@
-import React, { createContext, useState, ReactNode, useEffect } from "react";
+import React, { createContext, useState, ReactNode, useEffect, useMemo } from "react";
 
 type Ticket = {
   id: number;
@@ -74,10 +74,20 @@ const fetchTickets = async () => {
     }
   };
 
+   // 🔥 Memoize the context value
+  const value = useMemo(
+    () => ({
+      tickets,
+      addTicket,
+      deleteTicket,
+      currentPage,
+      setCurrentPage,
+    }),
+    [tickets, currentPage] // Only changes when these values change
+  );
+
   return (
-    <TicketsContext.Provider
-      value={{ tickets, addTicket, deleteTicket, currentPage, setCurrentPage }}
-    >
+    <TicketsContext.Provider value={value}>
       {children}
     </TicketsContext.Provider>
   );

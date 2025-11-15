@@ -24,7 +24,7 @@ body {
 
 /* Shared button style */
 button {
-  background-color: #2f80ed;
+  background-color: #1a73e8;
   border: none;
   border-radius: 8px;
   color: white;
@@ -36,7 +36,7 @@ button {
 }
 
 button:hover {
-  background-color: #1c60c2;
+  background-color: #1559b2;
 }
 
 button:disabled {
