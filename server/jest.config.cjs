@@ -1,6 +1,6 @@
 module.exports = {
-  testEnvironment: "node",
+  testEnvironment: 'node',
   collectCoverage: true,
-  coverageReporters: ["lcov", "text"],
-  coverageDirectory: "coverage",
+  coverageReporters: ['lcov', 'text'],
+  coverageDirectory: 'coverage',
 };
