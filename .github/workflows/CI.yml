@@ -33,7 +33,12 @@ jobs:
       - name: Test frontend (Vitest)
         working-directory: client
         run: npm test -- --coverage
-
+      
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: client/coverage
 
   backend:
     name: Backend CI
@@ -57,6 +62,12 @@ jobs:
         working-directory: server
         run: npm test -- --coverage
 
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: server/coverage
+
   sonar:
     name: SonarQube Analysis
     runs-on: self-hosted
@@ -66,7 +77,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      # ⬇️ Download coverage from previous jobs
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: client/coverage
 
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: server/coverage
+
+      # Debug step: list downloaded files
+      - name: List coverage files
+        run: |
+          echo FRONTEND:
+          dir client\coverage
+          echo BACKEND:
+          dir server\coverage
+          
       - name: Install Node
         uses: actions/setup-node@v4
         with:
