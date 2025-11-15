@@ -76,12 +76,12 @@ jobs:
         run: npm install -g sonar-scanner
 
       - name: Run SonarQube Analysis
+        shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          sonar-scanner \
-            -Dsonar.projectKey=react-app1 \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN
+          sonar-scanner `
+          -Dsonar.projectKey=react_app1 `
+          -Dsonar.host.url=$env:SONAR_HOST_URL `
+          -Dsonar.login=$env:SONAR_TOKEN
