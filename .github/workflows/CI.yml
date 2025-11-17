@@ -118,3 +118,5 @@ jobs:
           -Dsonar.sources=. ^
           -Dsonar.host.url=%SONAR_HOST_URL% ^
           -Dsonar.token=%SONAR_TOKEN%
+          -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info ^
+          -Dsonar.coverage.exclusions=**/*setup*.ts,**/*setup*.js ^

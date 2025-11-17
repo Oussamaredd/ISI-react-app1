@@ -22,6 +22,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
+      // Exclude all test/setup files from instrumentation
+      exclude: [
+        '**/tests/**',      // All test files
+        '**/setup*.ts',     // Specifically setup files
+        '**/node_modules/**',
+        '**/*.config.*',    // Configs
+      ],
+      include: ['src/**/*.{ts,tsx}'],
     }
   }
 })

@@ -14,6 +14,3 @@ globalThis.fetch = vi.fn(() =>
     json: () => Promise.resolve([]),
   } as Response)
 );
-
-// this forces SonarQube to treat this file as a module and not a script
-export const __vitest_setup__ = true;
