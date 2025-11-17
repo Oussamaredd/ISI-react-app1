@@ -24,10 +24,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'html', 'lcov'],
       // Exclude all test/setup files from instrumentation
       exclude: [
-        '**/tests/**',      // All test files
-        '**/setup*.ts',     // Specifically setup files
+        'src/tests/**',
+        '**/*.d.ts',
         '**/node_modules/**',
-        '**/*.config.*',    // Configs
+        '**/*.config.*',
       ],
       include: ['src/**/*.{ts,tsx}'],
     }
