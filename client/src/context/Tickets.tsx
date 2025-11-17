@@ -6,7 +6,7 @@ type Ticket = {
   price: number;
 };
 
-type TicketsContextType = {
+export type TicketsContextType = {
   tickets: Ticket[];
   addTicket: (ticket: Omit<Ticket, "id">) => void;
   deleteTicket: (id: number) => void;
