@@ -1,6 +1,8 @@
+// client/src/tests/TicketsContext.test.tsx
 import { renderHook, act } from "@testing-library/react";
-import { useContext } from "react";
-import { TicketsProvider, TicketsContext } from "../context/Tickets";
+import { TicketsProvider, useTickets } from "../context/Tickets";
+import { describe, it, expect } from "vitest";
+
 
 describe("TicketsContext", () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -8,19 +10,12 @@ describe("TicketsContext", () => {
   );
 
   it("should change currentPage when calling setCurrentPage", () => {
-    const { result } = renderHook(() => useContext(TicketsContext), { wrapper });
-
-    // 🔥 SonarLint-approved null check
-    if (!result.current) {
-      throw new Error("Context not available");
-    }
-
-    const ctx = result.current;
+    const { result } = renderHook(() => useTickets(), { wrapper });
 
     act(() => {
-      ctx.setCurrentPage("create");
+      result.current.setCurrentPage("create");
     });
 
-    expect(ctx.currentPage).toBe("create");
+    expect(result.current.currentPage).toBe("create");
   });
 });

@@ -1,4 +1,4 @@
-import React, { createContext, useState, ReactNode, useEffect, useMemo } from "react";
+import React, { createContext, useState, ReactNode, useEffect, useMemo, useContext } from "react";
 
 type Ticket = {
   id: number;
@@ -15,6 +15,15 @@ export type TicketsContextType = {
 };
 
 export const TicketsContext = createContext<TicketsContextType | null>(null);
+
+// Add this custom hook at the bottom of src/context/Tickets.tsx
+export const useTickets = (): TicketsContextType => {
+  const context = useContext(TicketsContext);
+  if (!context) {
+    throw new Error("useTickets must be used within a TicketsProvider");
+  }
+  return context;
+};
 
 export const TicketsProvider = ({ children }: { children: ReactNode }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
