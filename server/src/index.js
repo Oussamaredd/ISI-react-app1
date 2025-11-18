@@ -3,6 +3,7 @@ import cors from "cors";
 import ticketRoutes from "./routes/ticketRoutes.js";
 import { pool } from "./config/db.js";
 import register from "./metrics/defaultMetrics.js";
+import logger from "./logger/logger.js";
 
 const app = express();
 app.use(cors());
@@ -32,6 +33,10 @@ app.get("/metrics", async (req, res) => {
   res.set("Content-Type", register.contentType);
   res.send(await register.metrics());
 });
+
+// --- Logger Test Endpoint ---
+logger.info("🚀 Backend server starting...");
+logger.info("Test log from API /api/tickets");
 
 // --- Start Server ---
 const startServer = async () => {
