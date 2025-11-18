@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import ticketRoutes from "./routes/ticketRoutes.js";
 import { pool } from "./config/db.js";
+import register from "./metrics/defaultMetrics.js";
 
 const app = express();
 app.use(cors());
@@ -25,6 +26,12 @@ const ensureTicketsTable = async () => {
     console.error("❌ Error creating tickets table:", err);
   }
 };
+
+// --- Metrics Endpoint ---
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.send(await register.metrics());
+});
 
 // --- Start Server ---
 const startServer = async () => {

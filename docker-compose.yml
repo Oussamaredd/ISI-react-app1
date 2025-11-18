@@ -53,6 +53,28 @@ services:
       - sonarqube_extensions:/opt/sonarqube/extensions
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_temp:/opt/sonarqube/temp
+  
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./server/src/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3030:3000"   # avoid port 3000 conflicts
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus    
+
 
 volumes:
   db_data:
@@ -60,3 +82,5 @@ volumes:
   sonarqube_extensions:
   sonarqube_logs:
   sonarqube_temp:
+  prometheus-data:
+  grafana-storage:
