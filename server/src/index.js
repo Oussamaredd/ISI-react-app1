@@ -4,10 +4,13 @@ import ticketRoutes from "./routes/ticketRoutes.js";
 import { pool } from "./config/db.js";
 import register from "./metrics/defaultMetrics.js";
 import logger from "./logger/logger.js";
+import alertRoute from "./alerts/alertRoute.js";
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); //middleware optional
 
 // Routes
 app.use("/api/tickets", ticketRoutes);
@@ -37,6 +40,9 @@ app.get("/metrics", async (req, res) => {
 // --- Logger Test Endpoint ---
 logger.info("🚀 Backend server starting...");
 logger.info("Test log from API /api/tickets");
+
+// --- Telegram Alert Test ---
+app.use("/alert", alertRoute);
 
 // --- Start Server ---
 const startServer = async () => {

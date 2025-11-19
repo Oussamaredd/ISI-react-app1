@@ -21,12 +21,16 @@ services:
     restart: always
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: ticketdb
       DB_HOST: db
       DB_PORT: 5432
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     depends_on:
       - db
 
@@ -104,9 +108,9 @@ services:
     ports:
       - "5601:5601"
     environment:
-    - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     volumes:
-    - ./elk/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - ./elk/kibana.yml:/usr/share/kibana/config/kibana.yml
     depends_on:
       - elasticsearch
 
