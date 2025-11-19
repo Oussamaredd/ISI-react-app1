@@ -91,7 +91,7 @@ services:
     image: docker.elastic.co/logstash/logstash:8.12.0
     container_name: logstash
     volumes:
-      - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     ports:
       - "5044:5044"  
       - "5001:5001"   
@@ -105,6 +105,8 @@ services:
       - "5601:5601"
     environment:
     - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    volumes:
+    - ./elk/kibana.yml:/usr/share/kibana/config/kibana.yml
     depends_on:
       - elasticsearch
 
