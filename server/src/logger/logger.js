@@ -16,7 +16,7 @@ socket.on("error", (err) => {
   console.error("❌ Logstash connection error:", err.message);
 });
 
-// Create a proper writable stream for Winston
+// Create a proper writable stream instance for Winston
 const logstashStream = new Writable({
   write(chunk, encoding, callback) {
     try {
@@ -38,5 +38,22 @@ const logger = winston.createLogger({
     new winston.transports.Stream({ stream: logstashStream }),
   ],
 });
+
+function connect() {
+  socket.connect(LOGSTASH_PORT, LOGSTASH_HOST, () => {
+    console.log("🔌 Connected to Logstash");
+  });
+}
+
+socket.on("close", () => {
+  console.log("⚠️ Logstash connection closed. Reconnecting in 2s...");
+  setTimeout(connect, 2000);
+});
+
+socket.on("error", (err) => {
+  console.error("❌ Logstash connection error:", err.message);
+});
+
+connect();
 
 export default logger;

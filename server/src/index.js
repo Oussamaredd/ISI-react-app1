@@ -1,3 +1,4 @@
+// server/src/index.js
 import express from "express";
 import cors from "cors";
 import ticketRoutes from "./routes/ticketRoutes.js";
