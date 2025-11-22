@@ -1,3 +1,4 @@
+// client/src/pages/CreateTickets.tsx
 import React from "react";
 import CreateTicket from "../components/CreateTicket";
 import "../styles/CreateTickets.css";

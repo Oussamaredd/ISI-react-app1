@@ -1,3 +1,4 @@
+// client/src/pages/TicketList.tsx
 import React from "react";
 import TicketList from "../components/TicketList";
 import "../styles/TicketList.css";

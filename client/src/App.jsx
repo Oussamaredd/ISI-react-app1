@@ -1,3 +1,4 @@
+// client/src/App.jsx
 import React, { useContext } from "react";
 import { TicketsProvider, TicketsContext } from "./context/Tickets";
 import AppRoutes from "./routes/AppRoutes";

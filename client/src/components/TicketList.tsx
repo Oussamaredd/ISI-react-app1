@@ -1,3 +1,4 @@
+// client/src/components/TicketList.tsx
 import React, { useContext } from "react";
 import { TicketsContext } from "../context/Tickets";
 
