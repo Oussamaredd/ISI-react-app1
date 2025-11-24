@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand --coverage"
+    "start:local": "cross-env ENV_FILE=.env.local node src/index.js",
+    "start:docker": "cross-env ENV_FILE=.env node src/index.js",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand --coverage"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^30.2.0",
+    "cross-env": "^10.1.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "supertest": "^7.1.4"
