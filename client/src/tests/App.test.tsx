@@ -2,8 +2,10 @@
 import { render, screen } from "@testing-library/react";
 import App from "../App";
 
-test("renders navigation buttons", () => {
+test("renders navigation buttons", async () => {
   render(<App />);
-  expect(screen.getByText(/tickets list/i)).toBeInTheDocument();
-  expect(screen.getByText(/create ticket/i)).toBeInTheDocument();
+
+  // Wait for the app to finish loading and show the main nav
+  expect(await screen.findByText(/tickets list/i)).toBeInTheDocument();
+  expect(await screen.findByText(/create ticket/i)).toBeInTheDocument();
 });
