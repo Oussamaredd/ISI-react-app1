@@ -3,6 +3,7 @@ import React, { useContext } from "react";
 import CreateTickets from "../pages/CreateTickets";
 import TicketListPage from "../pages/TicketList";
 import { TicketsContext } from "../context/Tickets";
+import TreatTicketPage from "../pages/TreatTicketPage";
 
 export default function AppRoutes() {
   const context = useContext(TicketsContext);
@@ -15,6 +16,8 @@ export default function AppRoutes() {
       return <TicketListPage />;
     case "create":
       return <CreateTickets />;
+    case "treat":
+      return <TreatTicketPage />;
     default:
       return null;
   }

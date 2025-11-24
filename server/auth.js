@@ -9,12 +9,16 @@ passport.use(new GoogleStrategy(
     callbackURL: "http://localhost:5000/auth/google/callback"
   },
   (accessToken, refreshToken, profile, done) => {
+    const email =
+      profile.emails && profile.emails.length > 0
+        ? profile.emails[0].value
+        : null;
     // Here you could check in DB if user exists or create them
     const user = {
-      id: profile.id,
-      name: profile.displayName,
-      email: profile.emails?.[0]?.value
-    };
+        id: profile.id,
+        displayName: profile.displayName, // keep raw name here
+        email,                            // normalized email
+      };
     return done(null, user);
   }
 ));

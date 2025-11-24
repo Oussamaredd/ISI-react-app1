@@ -6,7 +6,7 @@ export default function TicketList() {
   const context = useContext(TicketsContext);
   if (!context) return null;
 
-  const { tickets, deleteTicket } = context;
+  const { tickets, deleteTicket, setTreatedTicketId, setCurrentPage } = context;
 
   return (
     <div>
@@ -17,6 +17,10 @@ export default function TicketList() {
           {tickets.map((ticket) => (
             <li key={ticket.id}>
               <strong>{ticket.title}</strong> — ${ticket.price.toFixed(2)}{" "}
+              — <em>Status: {ticket.status}</em>{" "}
+              {ticket.status === "OPEN" && (
+              <button onClick={() => {setTreatedTicketId(ticket.id); setCurrentPage("treat");}}>Treat</button>
+              )}{" "}
               <button onClick={() => deleteTicket(ticket.id)}>Delete</button>
             </li>
           ))}

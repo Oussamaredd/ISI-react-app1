@@ -41,7 +41,7 @@ function AppContent() {
   if (!user) {
     return (
       <div style={{ textAlign: "center", marginTop: "4rem" }}>
-        <h2>Welcome to ISI Ticket Manager</h2>
+        <h2>AUTHENTIFICATION PROCESS</h2>
         <p>Please log in with your Google account to continue.</p>
         <LoginButton />
       </div>
