@@ -1,7 +1,7 @@
 // server/auth.js
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-// eazeaze
+// Configure the Google strategy for use by Passport.
 passport.use(new GoogleStrategy(
   {
     clientID: process.env.GOOGLE_CLIENT_ID,
