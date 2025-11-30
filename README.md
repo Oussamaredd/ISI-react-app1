@@ -7,3 +7,4 @@ Provisioned with terraform and containerized with docker.
 Application deployed via a CI/CD pipeline using github actions and analyzed with a sonarqube self hosted runner.
 Monitored with promotheus & grafana to generate application performance, ELK Stack(elasticsearch, logstash, kibana) that cache backend logs, uses telegram bots to generate failure alerts.
 
+
