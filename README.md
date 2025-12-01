@@ -8,3 +8,4 @@ Application deployed via a CI/CD pipeline using github actions and analyzed with
 Monitored with promotheus & grafana to generate application performance, ELK Stack(elasticsearch, logstash, kibana) that cache backend logs, uses telegram bots to generate failure alerts.
 
 
+
