@@ -1,5 +1,5 @@
 import express from "express";
-import { sendTelegramAlert } from "./telegramAlert.js";
+import { sendTelegramAlert } from "./sendTelegramAlert.js";
 
 const router = express.Router();
 

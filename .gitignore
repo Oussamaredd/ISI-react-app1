@@ -29,3 +29,8 @@ dist-ssr
 */.env
 server/.env
 client/.env
+
+# Terraform state
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*

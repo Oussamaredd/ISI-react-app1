@@ -1,5 +1,5 @@
 server.host: "0.0.0.0"
 
-xpack.encryptedSavedObjects.encryptionKey: "23cfe9bd98c91cac80c0a3f53c0c074ecd06a25bb22fa3d3f10d55cdf7d8e0d6"
-xpack.reporting.encryptionKey: "8e8ffba8de6270397eb292002e02a0556a8eda94a232e353d0cd6e59fe84919f"
-xpack.security.encryptionKey: "b5f0976b140b9404949e29417a7ea2c32e17b539f8209d0bf5dbc3b78b0eafe7"
+xpack.encryptedSavedObjects.encryptionKey: "CHANGE_ME_CHANGE_ME_CHANGE_ME_CHANGE_ME_32CHARS_MINIMUM_1"
+xpack.reporting.encryptionKey: "CHANGE_ME_CHANGE_ME_CHANGE_ME_CHANGE_ME_32CHARS_MINIMUM_2"
+xpack.security.encryptionKey: "CHANGE_ME_CHANGE_ME_CHANGE_ME_CHANGE_ME_32CHARS_MINIMUM_3"

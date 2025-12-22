@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.2
+          node-version: 20
 
       - name: Install frontend dependencies
         working-directory: client
@@ -48,7 +48,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.2
+          node-version: 20
 
       - name: Install backend dependencies
         working-directory: server
@@ -102,7 +102,7 @@ jobs:
       - name: Install Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22.2
+          node-version: 20
 
       - name: Install Sonar Scanner
         run: npm install -g sonar-scanner

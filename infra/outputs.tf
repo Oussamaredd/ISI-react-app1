@@ -9,6 +9,7 @@ output "backend_url" {
 }
 
 output "database_url" {
-  value = "postgres://postgres:postgres@localhost:5432/ticketdb"
+  value       = "postgres://${var.db_user}:${var.db_password}@${var.db_host}:${var.db_port}/${var.db_name}"
   description = "Connection string for PostgreSQL database"
+  sensitive   = true
 }

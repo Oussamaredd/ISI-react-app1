@@ -1,10 +1,17 @@
 import fetch from "node-fetch";
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
 export async function sendTelegramAlert(message) {
+  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
   try {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+      console.warn(
+        "Telegram alert skipped (missing TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID)"
+      );
+      return;
+    }
+
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
     await fetch(url, {
@@ -16,8 +23,8 @@ export async function sendTelegramAlert(message) {
       }),
     });
 
-    console.log("📩 Telegram alert sent:", message);
+    console.log("Telegram alert sent:", message);
   } catch (err) {
-    console.error("❌ Error sending Telegram alert:", err.message);
+    console.error("ƒ?O Error sending Telegram alert:", err.message);
   }
 }

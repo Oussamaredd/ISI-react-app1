@@ -1,7 +1,7 @@
 import pkg from "pg";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ path: process.env.ENV_FILE || ".env" });
 
 const { Pool } = pkg;
 // PostgreSQL Connection String configuration

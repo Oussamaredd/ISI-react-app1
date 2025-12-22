@@ -19,7 +19,7 @@ export function requireRole(role) {
     if (!user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-    const roles = user.roles || [];
+    const roles = user.roles || (user.role ? [user.role] : []);
     if (!roles.includes(role)) {
         return res.status(403).json({ error: "Forbidden" });
     }

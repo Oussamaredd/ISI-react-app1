@@ -1,36 +1,29 @@
 // server/src/logger/logger.js
 import winston from "winston";
-// ❌ don't import logstash by default
-// import "winston-logstash";
 
 const logger = winston.createLogger({
   level: "info",
   format: winston.format.json(),
-  transports: [
-    // Always log to console
-    new winston.transports.Console(),
-  ],
+  transports: [new winston.transports.Console()],
 });
 
-// Optional: enable logstash ONLY if env flag is set AND package is installed
 if (process.env.ENABLE_LOGSTASH === "true") {
   try {
-    // uncomment this line ONLY if you have the package installed
-    // import "winston-logstash";
+    const mod = await import("winston-logstash");
+    const LogstashTransport =
+      mod?.LogstashTransport || mod?.default?.LogstashTransport;
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const LogstashTransport = require("winston-logstash").LogstashTransport;
+    if (!LogstashTransport) {
+      throw new Error("winston-logstash LogstashTransport not found");
+    }
 
-    logger.add(
-      new LogstashTransport({
-        port: 5000,
-        host: "logstash",
-      })
-    );
+    const host = process.env.LOGSTASH_HOST || "logstash";
+    const port = Number(process.env.LOGSTASH_PORT || 5001);
 
-    logger.info("Logstash transport enabled");
+    logger.add(new LogstashTransport({ host, port }));
+    logger.info("Logstash transport enabled", { host, port });
   } catch (err) {
-    logger.error("Failed to enable Logstash transport", { error: err.message });
+    logger.error("Failed to enable Logstash transport", { error: err?.message });
   }
 }
 
