@@ -1,4 +1,4 @@
-## ISI React App 1 (Portfolio Full-Stack Monorepo)
+## ISI React App 1
 
 Ticket management demo with Google login, Postgres persistence, basic monitoring (Prometheus/Grafana), and optional ELK + Telegram alerts.
 
