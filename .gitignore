@@ -34,3 +34,10 @@ client/.env
 infra/.terraform/
 infra/*.tfstate
 infra/*.tfstate.*
+
+# Coverage reports
+coverage/
+**/coverage/
+*.lcov
+client/coverage/
+server/coverage/
