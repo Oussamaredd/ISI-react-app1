@@ -29,7 +29,7 @@ app.use(
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       if (corsOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked for origin: ${origin}`));
+      return cb(null, false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
