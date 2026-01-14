@@ -1,4 +1,5 @@
 // server/src/index.js
+import dotenv from 'dotenv';
 import express from "express";
 import session from "express-session";
 import passport from "passport";
@@ -12,6 +13,7 @@ import "../auth.js"; // Import Passport config
 import authRoutes from "./routes/auth.js";
 import { attachCurrentUser, requireAuth } from "./middleware/auth.js";
 import hotelRoutes from "./routes/hotelRoutes.js";
+dotenv.config({ path: '../.env' });
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
