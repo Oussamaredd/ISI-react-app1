@@ -2,9 +2,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
-const callbackURL =
-  process.env.GOOGLE_CALLBACK_URL ||
-  "http://localhost:5000/auth/google/callback";
+const callbackURL = process.env.GOOGLE_CALLBACK_URL;
 // Configure the Google strategy for use by Passport.
 passport.use(new GoogleStrategy(
   {

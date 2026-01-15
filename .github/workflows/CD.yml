@@ -2,7 +2,7 @@ name: CD
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -14,9 +14,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy-frontend:
-    name: Deploy Frontend to GitHub Pages
+  build-and-deploy:
+    name: Build and Deploy Frontend
     runs-on: ubuntu-latest
+    environment:
+      VITE_BASE: /isi-react-app1/
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,25 +27,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./client
-        run: npm ci
+        run: npm ci --workspace=client
+
+      - name: Type check client
+        run: npm run typecheck --workspace=client
+
+      - name: Lint client
+        run: npm run lint:client
+
+      - name: Test client
+        run: npm run test:client --workspace=client
 
       - name: Build frontend
-        working-directory: ./client
-        env:
-          VITE_BASE: /ISI-react-app1/
-        run: npm run build
+        run: npm run build --workspace=client
 
-      - name: Configure Pages
+      - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./client/dist
+          path: client/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

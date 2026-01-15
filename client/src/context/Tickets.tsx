@@ -28,6 +28,7 @@ export type Hotel = {
 export type Page = "list" | "create" | "treat";
 
 export type TicketsContextType = {
+  user: any;
   tickets: Ticket[];
   hotels: Hotel[];
   addTicket: (ticket: Omit<Ticket, "id" | "status" | "hotelId">) => Promise<void>;
@@ -50,12 +51,11 @@ export const useTickets = () => {
 };
 
 // ---- API constants ----
-const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL;
 const TICKETS_URL = `${API_BASE}/api/tickets`;
 const HOTELS_URL = `${API_BASE}/api/hotels`;
 
-export const TicketsProvider = ({ children }: { children: ReactNode }) => {
+export const TicketsProvider = ({ children, user }: { children: ReactNode; user: any }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [currentPage, setCurrentPage] = useState<Page>("list");

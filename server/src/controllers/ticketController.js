@@ -4,7 +4,8 @@ import {
   createTicket,
   updateTicket,
   deleteTicket,
-  assignHotelToTicketModel, // new model function we add
+  assignHotelToTicket,
+  getTicketById
 } from "../models/ticketModel.js";
 
 export async function getAllTickets(req, res) {

@@ -26,9 +26,19 @@ dist-ssr
 
 # Environment files
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.docker
 */.env
+*/.env.local
+*/.env.docker
 server/.env
+server/.env.local
+server/.env.docker
 client/.env
+client/.env.local
 
 # Terraform state
 infra/.terraform/

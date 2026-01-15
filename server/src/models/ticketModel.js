@@ -1,63 +1,54 @@
 // server/src/models/ticketModel.js
 import { pool } from "../config/db.js";
+import { isValidTransition, TICKET_STATUSES, canAssignHotel, canReopen, getNextPossibleStatuses } from "../domain/ticketStateMachine.js";
 
-// Get all tickets
-export async function getTickets() {
+/**
+ * Get all tickets with optional filtering
+ */
+export async function getTickets(filters = {}) {
   console.log("Connected to DB:", process.env.DB_HOST, process.env.DB_NAME);
-  const result = await pool.query("SELECT * FROM tickets ORDER BY id ASC");
+  let query = "SELECT * FROM tickets";
+  const params = [];
+  const whereConditions = [];
+  
+  if (filters.status) {
+    whereConditions.push(`status = $${params.length + 1}`);
+    params.push(filters.status);
+  }
+  
+  if (filters.hotel_id) {
+    whereConditions.push(`hotel_id = $${params.length + 1}`);
+    params.push(filters.hotel_id);
+  }
+  
+  if (whereConditions.length > 0) {
+    query += " WHERE " + whereConditions.join(" AND ");
+  }
+  
+  query += " ORDER BY id ASC";
+  
+  const result = await pool.query(query, params);
   return result.rows;
 }
 
-// Create a new ticket
-export async function createTicket(name, price) {
-  console.log("Connected to DB:", process.env.DB_HOST, process.env.DB_NAME);
-  const result = await pool.query(
-    "INSERT INTO tickets (name, price) VALUES ($1, $2) RETURNING *",
-    [name, price]
-  );
-  return result.rows[0];
-}
-
-// Update ticket
-export async function updateTicket(id, name, price) {
-  const result = await pool.query(
-    "UPDATE tickets SET name = $1, price = $2 WHERE id = $3 RETURNING *",
-    [name, price, id]
-  );
-  return result.rows[0];
-}
-
-// Delete ticket
+/**
+ * Delete a ticket with proper state validation
+ */
 export async function deleteTicket(id) {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
-
-    // 1) fetch ticket to know if it had a hotel
-    const tRes = await client.query(
-      "SELECT id, status, hotel_id FROM tickets WHERE id = $1 FOR UPDATE",
-      [id]
-    );
-    const ticket = tRes.rows[0];
-    
-    if (!ticket) {
-      await client.query("ROLLBACK");
+    // Get ticket with current status
+    const currentTicket = await getTicketById(id);
+    if (!currentTicket) {
       throw new Error("Ticket not found");
     }
-
-    // 2) if completed and linked to hotel -> free hotel
-    if (ticket.status === "COMPLETED" && ticket.hotel_id) {
-      await client.query(
-        "UPDATE hotels SET is_available = TRUE WHERE id = $1",
-        [ticket.hotel_id]
-      );
-    }
-
-    // 3) delete the ticket
-    await client.query("DELETE FROM tickets WHERE id = $1", [id]);
-
+    
+    // Delete ticket
+    const result = await pool.query("DELETE FROM tickets WHERE id = $1", [id]);
+    
     await client.query("COMMIT");
-    return { message: "Ticket deleted" };
+    
+    return { deletedId: id, message: "Ticket deleted" };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -67,64 +58,34 @@ export async function deleteTicket(id) {
 }
 
 /**
- * Assign a hotel to a ticket:
- * - checks ticket exists and is OPEN
- * - checks hotel exists and is Available
- * - sets ticket.hotel_id and marks ticket COMPLETED
- * - marks hotel unavailable
- * - transaction-safe
+ * Assign a hotel to a ticket with state machine validation
  */
-export async function assignHotelToTicketModel(ticketId, hotelId) {
+export async function assignHotelToTicket(ticketId, hotelId) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-
-    // 1) Check ticket
-    const tRes = await client.query(
-      "SELECT id, status FROM tickets WHERE id = $1 FOR UPDATE",
-      [ticketId]
-    );
-    const ticket = tRes.rows[0];
-    if (!ticket) throw new Error("Ticket not found");
-    if (ticket.status === "COMPLETED") throw new Error("Ticket already completed");
-
-    // 2) Check hotel
-    const hRes = await client.query(
-      "SELECT id, is_available FROM hotels WHERE id = $1 FOR UPDATE",
-      [hotelId]
-    );
-    const hotel = hRes.rows[0];
-    if (!hotel) throw new Error("Hotel not found");
-    if (!hotel.is_available) throw new Error("Hotel not available");
-
-    // 3) Update ticket -> COMPLETED + link hotel
-    const updatedTicketRes = await client.query(
-      `
-      UPDATE tickets
-      SET hotel_id = $1, status = 'COMPLETED'
-      WHERE id = $2
-      RETURNING *
-      `,
-      [hotelId, ticketId]
-    );
-
-    // 4) Update hotel -> unavailable
-    const updatedHotelRes = await client.query(
-      `
-      UPDATE hotels
-      SET is_available = FALSE
-      WHERE id = $1
-      RETURNING *
-      `,
-      [hotelId]
-    );
-
+    
+    // Get ticket and hotel for validation
+    const [ticket] = await getTicketById(ticketId);
+    const [hotel] = await pool.query("SELECT * FROM hotels WHERE id = $1", [hotelId]);
+    
+    // Validation
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+    if (!hotel) {
+      throw new Error("Hotel not found");
+    }
+    if (!canAssignHotel(ticket[0].status)) {
+      throw new Error(`Cannot assign hotel to ticket with status: ${ticket[0].status}`);
+    }
+    
+    // Perform the assignment
+    const updatedTicket = await updateTicket(ticketId, { hotel_id: hotel.id });
+    
     await client.query("COMMIT");
-
-    return {
-      ticket: updatedTicketRes.rows[0],
-      hotel: updatedHotelRes.rows[0],
-    };
+    
+    return updatedTicket;
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
