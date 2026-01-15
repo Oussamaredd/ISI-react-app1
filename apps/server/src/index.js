@@ -18,7 +18,7 @@ import { globalErrorHandler, notFoundHandler } from "./utils/errorHandler.js";
 import { healthCheck, readinessCheck, livenessCheck } from "./auth/health.js";
 import { requestLoggingMiddleware } from "./utils/logger.js";
 import apiDocsRoutes from "./routes/apiDocsRoutes.js";
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: '../../.env' });
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
