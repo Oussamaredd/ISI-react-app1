@@ -37,3 +37,10 @@ CREATE INDEX IF NOT EXISTS idx_hotels_available ON hotels(is_available);
 CREATE INDEX IF NOT EXISTS idx_tickets_hotel_id ON tickets(hotel_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- Additional indexes for dashboard and search performance
+CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tickets_updated_at ON tickets(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tickets_status_updated ON tickets(status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tickets_name_search ON tickets USING gin(to_tsvector('english', name));
+CREATE INDEX IF NOT EXISTS idx_tickets_name_simple ON tickets(name);

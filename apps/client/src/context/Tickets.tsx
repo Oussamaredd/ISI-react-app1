@@ -25,19 +25,10 @@ export type Hotel = {
   isAvailable: boolean;
 };
 
-export type Page = "list" | "create" | "treat";
-
 export type TicketsContextType = {
   user: any;
   tickets: Ticket[];
   hotels: Hotel[];
-  addTicket: (ticket: Omit<Ticket, "id" | "status" | "hotelId">) => Promise<void>;
-  deleteTicket: (id: number) => Promise<void>;
-  assignTicketToHotel: (ticketId: number, hotelId: number) => Promise<void>;
-  currentPage: Page;
-  setCurrentPage: (page: Page) => void;
-  treatedTicketId: number | null;
-  setTreatedTicketId: (id: number | null) => void;
   refreshTickets: () => Promise<void>;
   refreshHotels: () => Promise<void>;
 };
@@ -58,8 +49,6 @@ const HOTELS_URL = `${API_BASE}/api/hotels`;
 export const TicketsProvider = ({ children, user }: { children: ReactNode; user: any }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [currentPage, setCurrentPage] = useState<Page>("list");
-  const [treatedTicketId, setTreatedTicketId] = useState<number | null>(null);
 
   const loadTickets = useCallback(async () => {
     try {
@@ -118,39 +107,8 @@ export const TicketsProvider = ({ children, user }: { children: ReactNode; user:
     loadHotels();
   }, [loadTickets, loadHotels]);
 
-  const addTicket = useCallback(
-    async (ticket: Omit<Ticket, "id" | "status" | "hotelId">) => {
-      try {
-        const res = await fetch(TICKETS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ name: ticket.title, price: ticket.price }),
-        });
-        if (res.status === 401) {
-          setTickets([]);
-          setCurrentPage("list");
-          return;
-        }
-        if (!res.ok) throw new Error(`add ticket ${res.status}`);
-        const data = await res.json();
-        setTickets((prev) => [
-          ...prev,
-          {
-            id: Number(data.id),
-            title: data.name ?? ticket.title,
-            price: Number(data.price ?? ticket.price),
-            status: (data.status ?? "OPEN") as TicketStatus,
-            hotelId: data.hotel_id ?? null,
-          },
-        ]);
-        setCurrentPage("list");
-      } catch (e) {
-        console.error("Failed to add ticket:", e);
-      }
-    },
-    []
-  );
+  // Note: Most operations are now handled by React Query hooks
+  // Keeping minimal context for backward compatibility during migration
 
   const deleteTicket = useCallback(async (id: number) => {
     try {
@@ -180,7 +138,6 @@ export const TicketsProvider = ({ children, user }: { children: ReactNode; user:
         });
         if (res.status === 401) {
           setTickets([]);
-          setHotels([]);
           return;
         }
         if (!res.ok) throw new Error(`assign failed ${res.status}`);
@@ -198,24 +155,12 @@ export const TicketsProvider = ({ children, user }: { children: ReactNode; user:
     () => ({
       tickets,
       hotels,
-      addTicket,
-      deleteTicket,
-      assignTicketToHotel,
-      currentPage,
-      setCurrentPage,
-      treatedTicketId,
-      setTreatedTicketId,
       refreshTickets: loadTickets,
       refreshHotels: loadHotels,
     }),
     [
       tickets,
       hotels,
-      addTicket,
-      deleteTicket,
-      assignTicketToHotel,
-      currentPage,
-      treatedTicketId,
       loadTickets,
       loadHotels,
     ]

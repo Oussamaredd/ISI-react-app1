@@ -12,7 +12,7 @@ import { isValidTransition, canAssignHotel, canReopen, TICKET_STATUSES } from '.
  */
 export class TicketService {
   /**
-   * Get all tickets with filtering and business rule validation
+   * Get all tickets with filtering, search, and business rule validation
    */
   async getTickets(filters = {}, userContext = {}) {
     try {
@@ -26,6 +26,23 @@ export class TicketService {
       return this._transformTicketData(tickets, userContext);
     } catch (error) {
       throw new ServiceError(`Failed to retrieve tickets: ${error.message}`, 'GET_TICKETS_ERROR');
+    }
+  }
+
+  /**
+   * Get total count of tickets with filtering (for pagination)
+   */
+  async getTicketsCount(filters = {}, userContext = {}) {
+    try {
+      // Apply user-based filtering based on role
+      const enhancedFilters = this._applyUserPermissions(filters, userContext);
+      
+      // Get ticket count from data layer
+      const count = await getTicketsCount(enhancedFilters);
+      
+      return count;
+    } catch (error) {
+      throw new ServiceError(`Failed to get ticket count: ${error.message}`, 'GET_TICKETS_COUNT_ERROR');
     }
   }
 

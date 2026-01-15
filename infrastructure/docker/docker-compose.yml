@@ -15,7 +15,9 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ../../apps/server/src/database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - type: bind
+        source: ../../apps/server/src/database/schema.sql
+        target: /docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -146,7 +148,7 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - ../../apps/server/src/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - ../../apps/server/src/prometheus.yaml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"

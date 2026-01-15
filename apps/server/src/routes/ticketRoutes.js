@@ -30,13 +30,14 @@ function handleServiceError(error, res) {
   });
 }
 
-// GET /api/tickets - Get all tickets with filtering
+// GET /api/tickets - Get all tickets with filtering, search, and pagination
 router.get("/", async (req, res) => {
   try {
     const filters = {
       status: req.query.status,
       hotel_id: req.query.hotel_id,
       assigneeId: req.query.assignee_id,
+      q: req.query.q, // Search query
       limit: req.query.limit ? parseInt(req.query.limit) : undefined,
       offset: req.query.offset ? parseInt(req.query.offset) : undefined
     };
@@ -44,13 +45,28 @@ router.get("/", async (req, res) => {
     const userContext = getUserContext(req);
     const result = await ticketService.getTickets(filters, userContext);
     
+    // Calculate pagination info
+    const limit = filters.limit || 20;
+    const offset = filters.offset || 0;
+    const hasMore = result.length >= limit;
+    
+    // Get total count for pagination
+    let total = result.length;
+    if (hasMore) {
+      // If there are more results, we need to get the actual total
+      const countResult = await ticketService.getTicketsCount(filters, userContext);
+      total = countResult;
+    }
+    
     res.json({
       tickets: result,
-      total: result.length,
+      total,
       pagination: {
-        limit: filters.limit || 20,
-        offset: filters.offset || 0,
-        hasMore: filters.limit ? result.length >= filters.limit : false
+        limit,
+        offset,
+        hasMore,
+        currentPage: Math.floor(offset / limit) + 1,
+        totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -114,7 +130,7 @@ router.post("/:id/assign-hotel", async (req, res) => {
     }
     
     const userContext = getUserContext(req);
-    const ticket = await ticketService.assignHotel(req.params.id, hotelId, userContext);
+    const ticket = await assignHotelToTicket(req.params.id, hotelId, userContext.userId);
     res.json(ticket);
   } catch (error) {
     handleServiceError(error, res);

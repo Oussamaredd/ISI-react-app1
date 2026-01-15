@@ -1,4 +1,35 @@
-## ISI React App 1
+# Project Documentation
+
+This directory contains all project documentation organized by category.
+
+## 📚 Documentation Structure
+
+### 🚀 Getting Started
+- [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md) - Environment configuration guide
+- [`DOCKER_SETUP.md`](DOCKER_SETUP.md) - Docker deployment instructions
+- [`ENV.md`](ENV.md) - Environment variables reference
+
+### 🏗️ Architecture & Features  
+- [`features/`](features/) - Feature-specific documentation
+  - [Dashboard](features/Dashboard.md) - Dashboard component docs
+  - [AdvancedTicketList](features/AdvancedTicketList.md) - Advanced ticket list features
+
+### 🔧 Infrastructure & Monitoring
+- [`ELK.md`](ELK.md) - ELK stack integration
+- [`../infrastructure/`](../infrastructure/) - Infrastructure as code
+
+### 📊 Project Status
+- [`IMPLEMENTATION_COMPLETE.md`](IMPLEMENTATION_COMPLETE.md) - Implementation status
+- [`AUDIT_REPORT.md`](AUDIT_REPORT.md) - Security audit results
+- [`DOD_CHECKLIST.md`](DOD_CHECKLIST.md) - Definition of done checklist
+
+### 📖 API Documentation
+- [`../apps/server/src/api/openapi/`](../apps/server/src/api/openapi/) - OpenAPI specifications
+- [Contract Documentation](../apps/server/src/api/openapi/contract.md) - API contract
+
+---
+
+## 🎯 ISI React App 1
 
 Ticket management demo with Google login, Postgres persistence, basic monitoring (Prometheus/Grafana), and optional ELK + Telegram alerts.
 
@@ -50,7 +81,17 @@ Backend: `http://localhost:5000`
 - Do **not** commit `.env*` files with secrets; use the provided examples instead.
 - Terraform state (`infra/terraform.tfstate*`) should not be committed.
 
-## Environment setup (secrets moved out of git)
+## 📋 Quick Links
+
+- **Project Root**: [↩️ Back to root](../)
+- **Client App**: [🎯 Client source](../apps/client/src/)
+- **Server App**: [⚙️ Server source](../apps/server/src/)
+- **Infrastructure**: [🏗️ Infrastructure](../infrastructure/)
+- **Environments**: [🔧 Environment configs](../environments/)
+
+---
+
+## 🔐 Environment setup (secrets moved out of git)
 1) Server env: copy `server/.env.example` to `server/.env`, then fill in values for Google OAuth, Telegram, and a random `SESSION_SECRET`. Defaults target a local PostgreSQL on `localhost`; `docker compose` overrides `DB_HOST` to `db` for the container automatically.
 2) Client env: copy `client/.env.example` to `client/.env` and set `VITE_API_BASE_URL` if the backend is not on `http://localhost:5000`.
 3) Docker: `docker-compose` reads the database credentials from your shell/.env values; ensure `DB_PASSWORD`/`POSTGRES_PASSWORD` match between the backend and database.

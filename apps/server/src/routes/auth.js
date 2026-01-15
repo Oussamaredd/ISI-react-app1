@@ -27,17 +27,18 @@ router.get(
       // Save user info in session
       req.session.user = { id: googleId, name, email };
 
-      // Upsert user into database
-      await pool.query(
-        `
-        INSERT INTO users (google_id, email, name)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (google_id)
-        DO UPDATE SET email = EXCLUDED.email,
-                      name = EXCLUDED.name
-        `,
-        [googleId, email, name]
-      );
+      // Import models here to avoid circular dependency
+      const { UserModel } = await import('../models/userModel.js');
+
+      // Check if user exists, create if not
+      let user = await UserModel.findByGoogleId(googleId);
+      
+      if (!user) {
+        user = await UserModel.create({ google_id: googleId, email, name });
+      } else {
+        // Update last login
+        await UserModel.updateLastLogin(user.id);
+      }
 
       const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
       res.redirect(`${clientOrigin}/`);
