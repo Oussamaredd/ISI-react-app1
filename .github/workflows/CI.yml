@@ -18,27 +18,23 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install frontend dependencies
-        working-directory: client
+      - name: Install dependencies
         run: npm ci
 
       - name: Lint frontend
-        working-directory: client
-        run: npm run lint --if-present
+        run: npm run lint --workspace=react-app1-app
 
       - name: Build frontend
-        working-directory: client
-        run: npm run build
+        run: npm run build --workspace=react-app1-app
 
       - name: Test frontend (Vitest)
-        working-directory: client
-        run: npm test -- --coverage
+        run: npm run test --workspace=react-app1-app -- --coverage
       
       - name: Upload frontend coverage
         uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
-          path: client/coverage
+          path: app/coverage
 
   backend:
     name: Backend CI
@@ -50,23 +46,20 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install backend dependencies
-        working-directory: server
+      - name: Install dependencies
         run: npm ci
 
       - name: Lint backend
-        working-directory: server
-        run: npm run lint --if-present
+        run: npm run lint --workspace=react-app1-api
 
-      - name: Test backend (Jest)
-        working-directory: server
-        run: npm test -- --coverage
+      - name: Test backend (Vitest)
+        run: npm run test --workspace=react-app1-api -- --coverage
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: server/coverage
+          path: api/coverage
 
   sonar:
     name: SonarQube Analysis
@@ -83,21 +76,21 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
-          path: client/coverage
+          path: app/coverage
 
       - name: Download backend coverage
         uses: actions/download-artifact@v4
         with:
           name: backend-coverage
-          path: server/coverage
+          path: api/coverage
 
       # Debug step: list downloaded files
       - name: List coverage files
         run: |
           echo FRONTEND:
-          dir client\coverage
+          dir app\coverage
           echo BACKEND:
-          dir server\coverage
+          dir api\coverage
           
       - name: Install Node
         uses: actions/setup-node@v4

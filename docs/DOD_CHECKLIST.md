@@ -226,11 +226,11 @@ docker compose ps
 # Health checks
 echo "🏥 Checking health..."
 curl -f http://localhost:3000 || exit 1
-curl -f http://localhost:5000/health || exit 1
+curl -f http://localhost:3001/api/health || exit 1
 
 # Demo verification
 echo "🎮 Verifying demo..."
-curl -f http://localhost:5000/api/tickets
+curl -f http://localhost:3001/api/tickets
 curl -f http://localhost:9090/targets
 
 echo "✅ Portfolio ready!"

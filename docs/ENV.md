@@ -2,59 +2,40 @@
 
 This document describes all environment variables used by the application.
 
-## Server Environment Variables
+## API (NestJS) Environment Variables
 
-### Required
-- `SESSION_SECRET` - Express session encryption secret
-- `GOOGLE_CLIENT_ID` - Google OAuth client ID
-- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+Required:
+- `API_PORT` – API listen port (default: 3001)
+- `DATABASE_URL` – Postgres connection string (`postgres://user:pass@host:port/db`)
+- `SESSION_SECRET` – session/CSRF secret
+- `JWT_SECRET` – JWT signing secret
+- `JWT_EXPIRES_IN` – token lifetime (e.g., `7d`)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` – OAuth credentials (if Google login enabled)
+- `CORS_ORIGINS` – comma-separated origins (e.g., `http://localhost:5173`)
 
-### Database
-- `DB_USER` - PostgreSQL username (default: postgres)
-- `DB_PASSWORD` - PostgreSQL password
-- `DB_HOST` - Database host (default: localhost)
-- `DB_NAME` - Database name (default: ticketdb)
-- `DB_PORT` - Database port (default: 5432)
-
-### Server Configuration
-- `PORT` - Server port (default: 5000)
-- `NODE_ENV` - Environment (development/production)
-
-### Client & CORS
-- `CLIENT_ORIGIN` - Frontend URL (required for CORS)
-- `CORS_ORIGINS` - Comma-separated list of allowed origins
-- `GOOGLE_CALLBACK_URL` - OAuth callback URL
-
-### Optional Services
-- `TELEGRAM_BOT_TOKEN` - Bot token for alerts
-- `TELEGRAM_CHAT_ID` - Chat ID for notifications
-- `ENABLE_LOGSTASH` - Enable ELK integration (true/false)
-- `LOGSTASH_HOST` - Logstash host (default: logstash)
-- `LOGSTASH_PORT` - Logstash port (default: 5001)
-- `ELASTIC_URL` - Elasticsearch URL (default: http://elasticsearch:9200)
-
-## Client Environment Variables
+## Frontend (Vite) Environment Variables
 
 ### Required
 - `VITE_API_BASE_URL` - Backend API URL
 
 ### Optional
 - `VITE_BASE` - Base path for GitHub Pages deployment
+- `VITE_DEV_PORT` - Override dev server port
 
-## Docker Compose Variables
+## Docker Compose Variables (infrastructure/)
 
-### Database
-- `POSTGRES_USER` - PostgreSQL username
-- `POSTGRES_PASSWORD` - PostgreSQL password
-- `POSTGRES_DB` - PostgreSQL database name
+- `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` - PostgreSQL credentials for the DB container
+- `DATABASE_URL` - passed to the API container (use `db` host inside compose)
+- `API_PORT` - published API port (defaults to 3001)
 
 ## Setup Instructions
 
 1. Copy template files:
 ```bash
 cp .env.example .env
-cp server/.env.example server/.env.local
-cp client/.env.example client/.env.local
+cp app/.env.example app/.env.local
+cp api/.env.example api/.env
+cp database/.env.example database/.env.local
 ```
 
 2. Replace placeholder values with actual credentials
@@ -64,14 +45,14 @@ cp client/.env.example client/.env.local
 ## Development vs Production
 
 ### Local Development
-- DB_HOST: localhost
-- CLIENT_ORIGIN: http://localhost:5173
-- VITE_API_BASE_URL: http://localhost:5000
+- DATABASE_URL: postgres://postgres:postgres@localhost:5432/tickets
+- CORS_ORIGINS: http://localhost:5173
+- VITE_API_BASE_URL: http://localhost:3001
 
 ### Docker Development
-- DB_HOST: db (container name)
-- CLIENT_ORIGIN: http://localhost:3000
-- VITE_API_BASE_URL: http://localhost:5000
+- DATABASE_URL: postgres://postgres:postgres@db:5432/tickets
+- CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+- VITE_API_BASE_URL: http://localhost:3001
 
 ### Production
 - Use actual domain names

@@ -21,7 +21,7 @@ openssl rand -base64 16
 ### 3. Google OAuth Credentials
 1. Visit [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Create a new OAuth 2.0 Client ID
-3. Add authorized redirect URI: `http://localhost:5000/auth/google/callback`
+3. Add authorized redirect URI: `http://localhost:3001/auth/google/callback`
 4. Copy Client ID and Client Secret
 
 ### 4. Telegram Bot Token (Optional)
@@ -30,27 +30,22 @@ openssl rand -base64 16
 
 ## Environment Setup Steps
 
-### Local Development
+### Local Development (monorepo workspaces)
 ```bash
-# 1. Root environment
-cp .env.example .env
-# Edit .env with your generated secrets
+# 1) Frontend (Vite app)
+cp app/.env.example app/.env.local
 
-# 2. Server environment  
-cp server/.env.example server/.env.local
-# Edit server/.env.local with your credentials
+# 2) API (NestJS)
+cp api/.env.example api/.env
 
-# 3. Client environment
-cp client/.env.example client/.env.local
-# Edit client/.env.local if needed
+# 3) Database package (if you override defaults)
+cp database/.env.example database/.env.local
 ```
 
-### Docker Compose
+### Docker / Infrastructure
 ```bash
-# Copy and configure root environment
-cp .env.example .env
-# Edit .env with your secrets
-docker compose up --build
+# Compose reads .env.docker at repo root
+npm run docker:dev --workspace=react-app1-infrastructure
 ```
 
 ## Environment Variables Reference
@@ -58,12 +53,14 @@ docker compose up --build
 ### Server Variables
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `API_PORT` | ✅ | API port (default 3001) |
+| `DATABASE_URL` | ✅ | Postgres connection string |
 | `SESSION_SECRET` | ✅ | Session encryption secret |
+| `JWT_SECRET` | ✅ | JWT signing secret |
+| `JWT_EXPIRES_IN` | ✅ | Token lifetime (e.g., 7d) |
 | `GOOGLE_CLIENT_ID` | ✅ | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | ✅ | Google OAuth client secret |
-| `DB_PASSWORD` | ✅ | Database password |
-| `TELEGRAM_BOT_TOKEN` | ❌ | Telegram bot token for alerts |
-| `TELEGRAM_CHAT_ID` | ❌ | Telegram chat ID for alerts |
+| `CORS_ORIGINS` | ✅ | Comma-separated origins |
 
 ### Client Variables
 | Variable | Required | Description |
@@ -94,12 +91,12 @@ For production deployments, use your cloud provider's secret management:
 After setting up environment variables:
 
 ```bash
-# Verify server starts
-cd server && npm start
+# Verify API
+npm run build --workspace=react-app1-api && npm run start --workspace=react-app1-api
 
-# Verify frontend builds
-cd client && npm run build
+# Verify frontend
+npm run build --workspace=react-app1-app && npm run preview --workspace=react-app1-app -- --host
 
-# Verify Docker services
-docker compose up -d
+# Verify Docker stack
+npm run docker:dev --workspace=react-app1-infrastructure
 ```

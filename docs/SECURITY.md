@@ -5,12 +5,13 @@
 Rotate these credentials regularly (recommended every 90 days):
 
 ### Authentication
-- [ ] `SESSION_SECRET` - Express session encryption
+- [ ] `SESSION_SECRET` - Session encryption
+- [ ] `JWT_SECRET` - JWT signing key
 - [ ] `GOOGLE_CLIENT_ID` - Google OAuth client ID  
 - [ ] `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
 
 ### Database
-- [ ] `DB_PASSWORD` - PostgreSQL user password
+- [ ] `DATABASE_URL` - Postgres connection string (rotate password inside)
 
 ### Optional Services
 - [ ] `TELEGRAM_BOT_TOKEN` - Alert bot token
@@ -35,8 +36,9 @@ openssl rand -base64 16
 1. Copy environment templates:
 ```bash
 cp .env.example .env
-cp server/.env.example server/.env.local  
-cp client/.env.example client/.env.local
+cp api/.env.example api/.env
+cp app/.env.example app/.env.local
+cp database/.env.example database/.env.local
 ```
 
 2. Replace placeholder values with generated secrets

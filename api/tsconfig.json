@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "ES2022",
+    "target": "ES2022",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "importHelpers": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "baseUrl": "src",
+    "paths": {
+      "#database": ["external/database.ts"]
+    },
+    "skipLibCheck": true,
+    "allowJs": true
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
+}

@@ -58,17 +58,10 @@ jobs:
         run: npm run lint
 
       - name: Run type checking
-        run: npm run type-check
+        run: npm run typecheck
 
-      - name: Run unit tests
-        run: npm run test:unit
-        env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://postgres:test@localhost:5432/ticketapp_test
-          REDIS_URL: redis://localhost:6379
-
-      - name: Run integration tests
-        run: npm run test:integration
+      - name: Run tests
+        run: npm run test
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://postgres:test@localhost:5432/ticketapp_test
@@ -76,13 +69,6 @@ jobs:
 
       - name: Security audit
         run: npm audit --audit-level moderate
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
 
   # Build Application
   build:
@@ -113,9 +99,9 @@ jobs:
         with:
           name: build-artifacts
           path: |
-            dist/
-            apps/client/dist/
-            apps/server/dist/
+            app/dist/
+            api/dist/
+            database/dist/
           retention-days: 1
 
   # Security Scanning

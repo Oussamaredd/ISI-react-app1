@@ -34,20 +34,23 @@ dist-ssr
 */.env
 */.env.local
 */.env.docker
-server/.env
-server/.env.local
-server/.env.docker
-client/.env
-client/.env.local
+api/.env
+api/.env.local
+api/.env.docker
+app/.env
+app/.env.local
+database/.env
+database/.env.local
+infrastructure/.env
 
 # Terraform state
-infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.*
+infrastructure/.terraform/
+infrastructure/*.tfstate
+infrastructure/*.tfstate.*
 
 # Coverage reports
 coverage/
 **/coverage/
 *.lcov
-client/coverage/
-server/coverage/
+app/coverage/
+api/coverage/

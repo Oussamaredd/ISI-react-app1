@@ -1,167 +1,45 @@
-# 🐳 Docker Setup - Fixed Issues & Solutions
+# Docker Setup
 
-## ✅ **Issues Identified & Fixed**
-
-### 1. **Volume Mount Path Error**
-**Problem**: `error mounting "/run/desktop/mnt/host/c/Users/sofca/source/repos/react-app1/infra/init.sql" to rootfs at "/docker-entrypoint-initdb.d/init.sql": create mountpoint for /docker-entrypoint-initdb.d/init.sql mount: cannot create subdirectories in "/var/lib/docker/rootfs/overlayfs/..." / docker-entrypoint-initdb.d/init.sql": not a directory`
-
-**Root Cause**: Docker was trying to mount a file path that conflicted with existing mount structure
-
-**Solution**: 
-- Updated volume mounts to use explicit bind syntax
-- Used proper relative paths from infrastructure directory
-- Fixed both dev and production compose files
-
-### 2. **No Service Selected Error**
-**Problem**: `no service selected` when running Docker commands
-
-**Root Cause**: All services had `profiles: ["core"]` but command didn't specify profile
-
-**Solution**: Updated all npm scripts to include `--profile core` flag
-
-### 3. **Missing Monitoring Files**
-**Problem**: Referenced `logstash.conf` and `prometheus.yaml` files didn't exist in expected locations
-
-**Solution**: 
-- Created `apps/server/src/monitoring/logstash.conf`
-- Fixed path to existing `apps/server/src/prometheus.yaml`
-- Updated Docker compose volume mounts
-
-## ✅ **Correct Docker Commands**
-
-### **From Project Root:**
+## Commands (run from repo root)
 ```bash
-# Development (core services only)
-npm run docker:dev
-
-# Production (core services only) 
-npm run docker:prod
-
-# With observability stack
-docker-compose -f infrastructure/docker/docker-compose.yml --profile core --profile obs up -d
-
-# Full quality stack
-docker-compose -f infrastructure/docker/docker-compose.yml --profile core --profile obs --profile quality up -d
+npm run docker:dev  --workspace=react-app1-infrastructure   # start stack
+npm run docker:down --workspace=react-app1-infrastructure   # stop stack
+npm run health     --workspace=react-app1-infrastructure    # quick health script
 ```
 
-### **Direct Docker Commands:**
+Direct compose:
 ```bash
-# Development
-docker-compose -f infrastructure/docker/docker-compose.dev.yml --profile core up -d
-
-# Production
-docker-compose -f infrastructure/docker/docker-compose.yml --profile core up -d
+docker compose -f infrastructure/docker-compose.yml up -d
+docker compose -f infrastructure/docker-compose.yml down
 ```
 
-## 🐳 **Updated Docker Configurations**
+## What comes up
+1) **PostgreSQL** on 5432 (container `db`), seeded via `database/migrations/legacy/001_initial_schema.sql` if mounted.  
+2) **API** on 3001 (container `backend`), built from `api/`, reads `API_PORT` and `DATABASE_URL`.  
+3) **Frontend** on 3000 (host) → 80 (container), built from `app/`.  
+4) **Optional observability**: Elasticsearch/Logstash/Kibana (profile `obs`) and Prometheus/Grafana (profile `quality`).
 
-### **Development (docker-compose.dev.yml):**
-```yaml
-services:
-  db:
-    profiles: ["core"]
-    image: postgres:15-alpine
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      - type: bind
-        source: ../../apps/server/src/database/schema.sql
-        target: /docker-entrypoint-initdb.d/init.sql
-    # ... rest of config
-  
-  backend:
-    profiles: ["core"]
-    build: 
-      context: ../../apps/server
-    env_file:
-      - ../../.env.docker
-    # ... rest of config
+## Environment for Docker
+Create or edit `.env.docker`:
+```
+API_PORT=3001
+DATABASE_URL=postgres://postgres:postgres@db:5432/tickets
+SESSION_SECRET=changeme-session
+JWT_SECRET=changeme-jwt
+JWT_EXPIRES_IN=7d
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=ticketdb
 ```
 
-### **Production (docker-compose.yml):**
-```yaml
-services:
-  db:
-    profiles: ["core"]
-    volumes:
-      - type: bind
-        source: ../../apps/server/src/database/schema.sql
-        target: /docker-entrypoint-initdb.d/init.sql
-    # ... rest of config
-  
-  backend:
-    profiles: ["core"]
-    build: 
-      context: ../../apps/server
-    # ... rest of config
-```
-
-## 📋 **What Will Start With `npm run docker:dev`:**
-
-1. **PostgreSQL Database** (port 5432)
-   - Initialized with schema.sql
-   - Data persisted in `db_data` volume
-   - Health checks enabled
-
-2. **Backend Server** (port 5000)
-   - Built from `apps/server`
-   - Connected to database
-   - Health checks enabled
-   - Environment variables from `.env.docker`
-
-3. **Frontend Application** (port 3000)
-   - Built from `apps/client`
-   - Connected to backend
-   - Health checks enabled
-
-4. **Network Isolation**
-   - All services in `ticket-management-network`
-   - Proper inter-service communication
-
-## 🚀 **Testing the Fix**
-
-Run these commands to verify everything works:
-
+## Quick troubleshooting
 ```bash
-# From project root
-npm run docker:dev
-
-# Check services status
-docker-compose -f infrastructure/docker/docker-compose.dev.yml --profile core ps
-
-# View logs
-npm run docker:logs
+docker compose -f infrastructure/docker-compose.yml ps
+docker compose -f infrastructure/docker-compose.yml logs -f backend
+docker compose -f infrastructure/docker-compose.yml logs -f db
 ```
-
-## 🔧 **If You Still Get Errors:**
-
-1. **Clean first**:
-   ```bash
-   npm run docker:clean
-   npm run docker:dev
-   ```
-
-2. **Check file permissions**:
-   ```bash
-   ls -la apps/server/src/database/schema.sql
-   ```
-
-3. **Verify environment file**:
-   ```bash
-   ls -la .env.docker
-   ```
-
-4. **Rebuild if needed**:
-   ```bash
-   npm run docker:build
-   npm run docker:dev
-   ```
-
-## ✅ **Summary**
-
-- ✅ Fixed volume mount paths
-- ✅ Added profile selection to commands
-- ✅ Created missing monitoring config
-- ✅ Updated all npm scripts
-- ✅ Proper file structure paths
-
-**🎉 Your Docker setup should now work correctly!**
+- If DB fails, confirm `database/migrations/legacy/001_initial_schema.sql` exists.
+- For a clean restart: `docker compose -f infrastructure/docker-compose.yml down -v && npm run docker:dev --workspace=react-app1-infrastructure`.

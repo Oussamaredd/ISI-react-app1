@@ -1,0 +1,621 @@
+import React, { useState, useEffect } from 'react';
+
+const theme = {
+  colors: {
+    background: {
+      primary: '#0a0a0a',
+      secondary: '#111111',
+      tertiary: '#1a1a1a',
+      accent: '#1f2937',
+      text: {
+        primary: '#ffffff',
+        secondary: '#b4b4b4',
+        muted: '#6b7280',
+        accent: '#60a5fa'
+      }
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      secondary: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      accent: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+    },
+    glass: {
+      background: 'rgba(255, 255, 255, 0.08)',
+      border: 'rgba(255, 255, 255, 0.12)',
+      backdrop: 'blur(20px)',
+      backgroundHeavy: 'rgba(255, 255, 255, 0.12)',
+      borderHeavy: 'rgba(255, 255, 255, 0.18)'
+    }
+  },
+  spacing: {
+    xs: '0.5rem',
+    sm: '0.75rem',
+    md: '1rem',
+    lg: '1.5rem',
+    xl: '2rem',
+    '2xl': '3rem',
+    '3xl': '4rem'
+  },
+  borderRadius: {
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+    xl: '24px',
+    '2xl': '32px',
+    full: '9999px'
+  },
+  shadows: {
+    sm: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    md: '0 4px 16px rgba(0, 0, 0, 0.15)',
+    lg: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    xl: '0 16px 64px rgba(0, 0, 0, 0.3)',
+    glow: '0 0 20px rgba(102, 126, 234, 0.4)',
+    accent: '0 4px 20px rgba(64, 158, 255, 0.3)'
+  },
+  typography: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontSize: {
+      xs: '0.75rem',
+      sm: '0.875rem',
+      base: '1rem',
+      lg: '1.125rem',
+      xl: '1.25rem',
+      '2xl': '1.5rem',
+      '3xl': '1.875rem',
+      '4xl': '2.25rem',
+      '5xl': '3rem'
+    },
+    fontWeight: {
+      light: '300',
+      normal: '400',
+      medium: '500',
+      semibold: '600',
+      bold: '700',
+      extrabold: '800'
+    }
+  }
+};
+
+export default function LandingPage() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: theme.colors.background.primary,
+      color: theme.colors.text.primary,
+      fontFamily: theme.typography.fontFamily
+    }}>
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        * {
+          scrollbar-width: 8px;
+          scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+        
+        *::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        *::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        
+        *::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      `}</style>
+
+      {/* Navigation */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        width: '100%',
+        zIndex: 1000,
+        background: theme.glass.background,
+        backdropFilter: theme.glass.backdrop,
+        borderBottom: `1px solid ${theme.glass.border}`
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: theme.gradients.primary,
+              borderRadius: theme.borderRadius.md,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: theme.typography.fontWeight.bold,
+              color: theme.colors.text.primary,
+              fontSize: theme.typography.fontSize.base,
+              boxShadow: theme.shadows.accent,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '60px',
+                height: '60px',
+                background: 'conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+                borderRadius: '50%',
+                animation: 'spin 3s linear infinite'
+              }} />
+              <span style={{ position: 'relative', zIndex: 1 }}>T</span>
+            </div>
+            <span style={{ 
+              fontSize: theme.typography.fontSize.lg, 
+              fontWeight: theme.typography.fontWeight.extrabold,
+              letterSpacing: '-0.5px',
+              marginLeft: theme.spacing.sm 
+            }}>
+              NeuralFlow
+            </span>
+          </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <a
+              href="?auth=true"
+              style={{
+                padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                background: theme.glass.background,
+                border: `1px solid ${theme.glass.border}`,
+                borderRadius: theme.borderRadius.lg,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                textDecoration: 'none',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                fontSize: theme.typography.fontSize.base
+              }}
+            >
+              Get Started
+            </a>
+            
+            <a
+              href="/demo"
+              style={{
+                padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
+                background: 'transparent',
+                border: `1px solid ${theme.glass.border}`,
+                borderRadius: theme.borderRadius.lg,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.secondary,
+                textDecoration: 'none',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                fontSize: theme.typography.fontSize.base
+              }}
+            >
+              Demo
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: `${theme.spacing['3xl']} ${theme.spacing.lg}`,
+        position: 'relative',
+        zIndex: 2
+      }}>
+        <div style={{
+          textAlign: 'center',
+          maxWidth: '1000px',
+          zIndex: 10,
+          position: 'relative',
+          opacity: isLoaded ? 1 : 0,
+          transform: isLoaded ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.95)',
+          transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}>
+          <div style={{
+            display: 'inline-block',
+            padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+            background: theme.glass.background,
+            backdropFilter: theme.glass.backdrop,
+            border: `1px solid ${theme.glass.border}`,
+            borderRadius: theme.borderRadius.full,
+            fontSize: theme.typography.fontSize.sm,
+            fontWeight: theme.typography.fontWeight.medium,
+            color: theme.colors.text.secondary,
+            marginBottom: theme.spacing.xl,
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <span style={{ position: 'relative', zIndex: 1 }}>
+              🔥 Trusted by 10,000+ enterprises
+            </span>
+            <span style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: theme.gradients.primary,
+              transform: 'translateX(-100%)',
+              transition: 'transform 0.6s ease'
+            }} />
+          </div>
+          
+          <h1 style={{
+            fontSize: 'clamp(3rem, 8vw, 5rem)',
+            fontWeight: theme.typography.fontWeight.extrabold,
+            lineHeight: 1.1,
+            marginBottom: theme.spacing.lg,
+            background: `linear-gradient(135deg, ${theme.colors.text.primary} 0%, ${theme.colors.text.accent} 50%, ${theme.colors.text.secondary} 100%)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            letterSpacing: '-2px',
+            textShadow: `0 0 30px rgba(102, 126, 234, 0.5)`
+          }}>
+            <span style={{
+              position: 'relative',
+              color: theme.colors.text.primary
+            }}>
+              The Next Generation
+              <br />
+              of AI-Powered
+              <span style={{ color: theme.colors.text.accent }}>Development</span>
+            </span>
+          </h1>
+          
+          <p style={{
+            fontSize: 'clamp(1.125rem, 2.5vw, 1.25rem)',
+            color: theme.colors.text.secondary,
+            marginBottom: theme.spacing['2xl'],
+            lineHeight: 1.7,
+            maxWidth: '700px',
+            margin: '0 auto',
+            opacity: 0.9
+          }}>
+            Transform your development workflow with intelligent automation, 
+            real-time collaboration, and enterprise-grade security. 
+            <span style={{ color: theme.colors.text.accent, fontWeight: theme.typography.fontWeight.semibold }}> Built for the future.</span>
+          </p>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: theme.spacing.md,
+            alignItems: 'center',
+            marginBottom: theme.spacing['2xl']
+          }}>
+            <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
+              <a
+                href="?auth=true"
+                style={{
+                  padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+                  background: theme.gradients.primary,
+                  borderRadius: theme.borderRadius.lg,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  fontSize: theme.typography.fontSize.lg,
+                  color: theme.colors.text.primary,
+                  textDecoration: 'none',
+                  transition: 'all 0.3s ease',
+                  display: 'inline-block',
+                  boxShadow: theme.shadows.xl,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                <span style={{ position: 'relative', zIndex: 1 }}>
+                  🚀 Launch NeuralFlow
+                </span>
+                <span style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: theme.gradients.accent,
+                  transform: 'translateX(-100%)',
+                  transition: 'transform 0.4s ease'
+                }} />
+              </a>
+              
+              <a
+                href="/demo"
+                style={{
+                  padding: `${theme.spacing.lg} ${theme.spacing.xl}`,
+                  background: theme.glass.background,
+                  border: `2px solid ${theme.glass.borderHeavy}`,
+                  borderRadius: theme.borderRadius.lg,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  fontSize: theme.typography.fontSize.lg,
+                  color: theme.colors.text.primary,
+                  textDecoration: 'none',
+                  transition: 'all 0.3s ease',
+                  display: 'inline-block',
+                  position: 'relative'
+                }}
+              >
+                🎮 Try Live Demo
+              </a>
+            </div>
+            
+            <div style={{
+              fontSize: theme.typography.fontSize.sm,
+              color: theme.colors.text.muted,
+              marginTop: theme.spacing.sm
+            }}>
+              <span style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: theme.spacing.xs,
+                marginRight: theme.spacing.xs
+              }}>
+                <svg style={{ width: '16px', height: '16px' }} fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                No credit card required • Setup in 60 seconds
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section style={{ 
+        padding: `${theme.spacing['3xl']} ${theme.spacing.lg}`,
+        background: theme.colors.background.secondary
+      }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: theme.spacing['3xl'] }}>
+            <h2 style={{
+              fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+              fontWeight: theme.typography.fontWeight.extrabold,
+              marginBottom: theme.spacing.lg,
+              background: `linear-gradient(135deg, ${theme.colors.text.primary} 0%, ${theme.colors.text.accent} 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textShadow: `0 0 20px rgba(102, 126, 234, 0.3)`
+            }}>
+              Enterprise-Ready Features
+            </h2>
+            <p style={{
+              fontSize: theme.typography.fontSize.lg,
+              color: theme.colors.text.secondary,
+              maxWidth: '700px',
+              margin: '0 auto',
+              opacity: 0.9
+            }}>
+              Everything you need to scale your development operations
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: theme.spacing.xl
+          }}>
+            {[
+              { icon: '⚡', title: 'AI-Powered Analytics', description: 'Advanced machine learning insights with predictive analytics and automated reporting.', gradient: theme.gradients.primary },
+              { icon: '🛡', title: 'Enterprise Security', description: 'Military-grade encryption with zero-trust architecture and compliance frameworks.', gradient: theme.gradients.secondary },
+              { icon: '🔗', title: 'Seamless Integration', description: 'Connect with 1000+ enterprise tools through our comprehensive API ecosystem.', gradient: theme.gradients.accent },
+              { icon: '🎯', title: 'Smart Automation', description: 'Intelligent workflow orchestration with rule-based automation and decision trees.', gradient: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)' }
+            ].map((feature, index) => (
+              <div
+                key={index}
+                style={{
+                  padding: theme.spacing['2xl'],
+                  borderRadius: theme.borderRadius.xl,
+                  background: theme.glass.background,
+                  backdropFilter: theme.glass.backdrop,
+                  border: `1px solid ${theme.glass.border}`,
+                  transition: 'all 0.4s ease',
+                  textAlign: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transform: isLoaded ? 'translateY(0)' : 'translateY(50px)',
+                  opacity: isLoaded ? 1 : 0,
+                  transitionDelay: `${index * 100}ms`
+                }}
+                onMouseEnter={(e) => {
+                  if (e && e.currentTarget) {
+                    e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
+                    e.currentTarget.style.borderColor = theme.glass.borderHeavy;
+                    e.currentTarget.style.boxShadow = theme.shadows.xl;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (e && e.currentTarget) {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                    e.currentTarget.style.borderColor = theme.glass.border;
+                    e.currentTarget.style.boxShadow = theme.shadows.lg;
+                  }
+                }}
+              >
+                <div style={{
+                  fontSize: '3rem',
+                  marginBottom: theme.spacing.lg,
+                  filter: 'drop-shadow(0 0 10px rgba(102, 126, 234, 0.5))'
+                }}>
+                  {feature.icon}
+                </div>
+                <h3 style={{ 
+                  fontSize: theme.typography.fontSize.xl, 
+                  fontWeight: theme.typography.fontWeight.bold, 
+                  marginBottom: theme.spacing.md, 
+                  color: theme.colors.text.primary,
+                  textShadow: '0 0 10px rgba(102, 126, 234, 0.5)'
+                }}>
+                  {feature.title}
+                </h3>
+                <p style={{ 
+                  color: theme.colors.text.secondary, 
+                  lineHeight: 1.6, 
+                  fontSize: theme.typography.fontSize.base,
+                  maxWidth: '400px',
+                  margin: '0 auto'
+                }}>
+                  {feature.description}
+                </p>
+                
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: feature.gradient,
+                  opacity: 0,
+                  transition: 'opacity 0.4s ease'
+                }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section style={{
+        padding: `${theme.spacing['3xl']} ${theme.spacing.lg}`,
+        background: theme.colors.background.tertiary
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: theme.spacing.xl,
+            textAlign: 'center'
+          }}>
+            {[
+              { number: '99.99%', label: 'Uptime', color: theme.colors.text.accent },
+              { number: '50M+', label: 'API Calls', color: theme.colors.text.accent },
+              { number: '10K+', label: 'Teams', color: theme.colors.text.accent },
+              { number: '<100ms', label: 'Latency', color: theme.colors.text.accent }
+            ].map((stat, index) => (
+              <div
+                key={index}
+                style={{
+                  padding: theme.spacing.xl,
+                  background: theme.glass.background,
+                  backdropFilter: theme.glass.backdrop,
+                  border: `1px solid ${theme.glass.border}`,
+                  borderRadius: theme.borderRadius.xl,
+                  transition: 'all 0.4s ease',
+                  transform: isLoaded ? 'translateY(0)' : 'translateY(30px)',
+                  opacity: isLoaded ? 1 : 0,
+                  transitionDelay: `${index * 150}ms`
+                }}
+              >
+                <div style={{
+                  fontSize: 'clamp(2rem, 4vw, 2.5rem)',
+                  fontWeight: theme.typography.fontWeight.extrabold,
+                  color: stat.color || theme.colors.text.primary,
+                  marginBottom: theme.spacing.sm,
+                  textShadow: `0 0 15px ${stat.color}`
+                }}>
+                  {stat.number}
+                </div>
+                <div style={{ 
+                  color: theme.colors.text.muted, 
+                  fontSize: theme.typography.fontSize.sm,
+                  fontWeight: theme.typography.fontWeight.medium
+                }}>
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{
+        padding: `${theme.spacing['2xl']} ${theme.spacing.lg}`,
+        borderTop: `1px solid ${theme.glass.border}`,
+        background: theme.colors.background.secondary
+      }}>
+        <div style={{ 
+          maxWidth: '1400px', 
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: theme.spacing.lg
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: theme.gradients.primary,
+              borderRadius: theme.borderRadius.md,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: theme.typography.fontWeight.bold,
+              color: theme.colors.text.primary,
+              fontSize: theme.typography.fontSize.base,
+              boxShadow: theme.shadows.accent,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '60px',
+                height: '60px',
+                background: 'conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+                borderRadius: '50%',
+                animation: 'spin 3s linear infinite'
+              }} />
+              <span style={{ position: 'relative', zIndex: 1 }}>N</span>
+            </div>
+            <span style={{ color: theme.colors.text.muted, fontSize: theme.typography.fontSize.sm }}>
+              © 2024 NeuralFlow. All rights reserved.
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: theme.spacing.lg }}>
+            {['Twitter', 'LinkedIn', 'GitHub'].map((social, index) => (
+              <a
+                key={index}
+                href="#"
+                style={{ 
+                  color: theme.colors.text.muted, 
+                  textDecoration: 'none', 
+                  fontSize: theme.typography.fontSize.sm,
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {social}
+              </a>
+            ))}
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

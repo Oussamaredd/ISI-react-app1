@@ -1,48 +1,35 @@
 {
-  "name": "ticket-management-system",
+  "name": "react-app1",
   "version": "1.0.0",
-  "description": "Full-stack ticket management system with React frontend and Node.js backend",
+  "description": "Four-layer ticket management monorepo",
+  "private": true,
   "type": "module",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "npm run dev --workspace=client",
-    "dev:server": "npm run dev --workspace=server",
-    "build": "npm run build --workspaces",
-    "build:client": "npm run build --workspace=client",
-    "build:server": "npm run build --workspace=server",
-    "test": "npm run test --workspaces",
-    "test:client": "npm run test --workspace=client",
-    "test:server": "npm run test --workspace=server",
-    "test:coverage": "npm run test:coverage --workspaces",
-    "lint": "npm run lint --workspaces",
-    "lint:client": "npm run lint --workspace=client",
-    "lint:server": "npm run lint --workspace=server",
-    "lint:fix": "npm run lint:fix --workspaces",
-    "typecheck": "npm run typecheck --workspaces",
-    "typecheck:client": "npm run typecheck --workspace=client",
-    "typecheck:server": "npm run typecheck --workspace=server",
-    "docker:dev": "docker-compose -f infrastructure/docker/docker-compose.dev.yml --profile core up",
-    "docker:prod": "docker-compose -f infrastructure/docker/docker-compose.yml --profile core up",
-    "docker:build": "docker-compose -f infrastructure/docker/docker-compose.yml build",
-    "docker:up": "docker-compose -f infrastructure/docker/docker-compose.yml --profile core up -d",
-    "docker:down": "docker-compose -f infrastructure/docker/docker-compose.yml --profile core down",
-    "docker:clean": "docker-compose -f infrastructure/docker/docker-compose.yml --profile core down -v --remove-orphans",
-    "deploy:infra": "cd infrastructure/terraform && terraform apply",
-    "install": "npm install && npm install --workspaces",
-    "clean": "npm run clean --workspaces && rm -rf node_modules reports/coverage",
-    "quality": "npm run lint && npm run test && npm run typecheck",
-    "quality:check": "npm run lint && npm run test && npm run typecheck && npm run test:coverage",
-    "prepare": "husky install || true"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.0",
-    "husky": "^8.0.3"
+    "dev": "npm run build --workspace=react-app1-database && concurrently -n app,api \"npm:dev:app\" \"npm:dev:api\"",
+    "dev:app": "npm run dev --workspace=react-app1-app",
+    "dev:api": "npm run dev --workspace=react-app1-api",
+    "build": "npm run build --workspace=react-app1-database && npm run build --workspace=react-app1-app && npm run build --workspace=react-app1-api",
+    "test": "npm run test --workspace=react-app1-app && npm run test --workspace=react-app1-api",
+    "lint": "npm run lint --workspace=react-app1-app",
+    "typecheck": "npm run typecheck --workspace=react-app1-app && npm run typecheck --workspace=react-app1-api && npm run typecheck --workspace=react-app1-database",
+    "db:migrate": "npm run db:migrate --workspace=react-app1-database",
+    "db:generate": "npm run db:generate --workspace=react-app1-database"
   },
   "workspaces": [
-    "apps/*"
-  ]
+    "app",
+    "api",
+    "database",
+    "infrastructure"
+  ],
+  "overrides": {
+    "esbuild": "0.25.0",
+    "lodash": "4.17.23"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
 }

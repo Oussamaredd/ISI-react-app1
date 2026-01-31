@@ -29,22 +29,22 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --workspace=client
+        run: npm ci
 
       - name: Type check client
-        run: npm run typecheck --workspace=client
+        run: npm run typecheck --workspace=react-app1-app
 
       - name: Lint client
-        run: npm run lint:client
+        run: npm run lint --workspace=react-app1-app
 
       - name: Test client
-        run: npm run test:client --workspace=client
+        run: npm run test --workspace=react-app1-app -- --coverage
 
       - name: Build frontend
-        run: npm run build --workspace=client
+        run: npm run build --workspace=react-app1-app
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -52,7 +52,7 @@ jobs:
       - name: Upload build
         uses: actions/upload-pages-artifact@v3
         with:
-          path: client/dist
+          path: app/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

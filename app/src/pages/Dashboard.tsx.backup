@@ -1,0 +1,384 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+
+const theme = {
+  colors: {
+    background: {
+      primary: '#0a0a0a',
+      secondary: '#111111',
+      tertiary: '#1a1a1a',
+      accent: '#1f2937',
+      card: 'rgba(255, 255, 255, 0.05)',
+      border: 'rgba(255, 255, 255, 0.1)',
+      text: {
+        primary: '#ffffff',
+        secondary: '#b4b4b4',
+        muted: '#6b7280',
+        accent: '#60a5fa',
+        success: '#10b981',
+        warning: '#f59e0b',
+        error: '#ef4444'
+      }
+    },
+    gradients: {
+      primary: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      secondary: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      accent: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+    },
+    glass: {
+      background: 'rgba(255, 255, 255, 0.08)',
+      border: 'rgba(255, 255, 255, 0.12)',
+      backdrop: 'blur(20px)',
+      backgroundHeavy: 'rgba(255, 255, 255, 0.12)',
+      borderHeavy: 'rgba(255, 255, 255, 0.18)'
+    }
+  },
+  spacing: {
+    xs: '0.5rem',
+    sm: '0.75rem',
+    md: '1rem',
+    lg: '1.5rem',
+    xl: '2rem',
+    '2xl': '3rem',
+    '3xl': '4rem'
+  },
+  borderRadius: {
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+    xl: '24px',
+    '2xl': '32px',
+    full: '9999px'
+  },
+  shadows: {
+    sm: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    md: '0 4px 16px rgba(0, 0, 0, 0.15)',
+    lg: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    xl: '0 16px 64px rgba(0, 0, 0, 0.3)',
+    glow: '0 0 20px rgba(102, 126, 234, 0.4)',
+    accent: '0 4px 20px rgba(64, 158, 255, 0.3)'
+  },
+  typography: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontSize: {
+      xs: '0.75rem',
+      sm: '0.875rem',
+      base: '1rem',
+      lg: '1.125rem',
+      xl: '1.25rem',
+      '2xl': '1.5rem',
+      '3xl': '1.875rem',
+      '4xl': '2.25rem',
+      '5xl': '3rem'
+    },
+    fontWeight: {
+      light: '300',
+      normal: '400',
+      medium: '500',
+      semibold: '600',
+      bold: '700',
+      extrabold: '800'
+    }
+  }
+};
+
+export default function Dashboard() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: theme.colors.background.primary,
+      color: theme.colors.text.primary,
+      fontFamily: theme.typography.fontFamily
+    }}>
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        * {
+          scrollbar-width: 8px;
+          scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+        
+        *::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        *::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        
+        *::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      `}</style>
+
+      {/* Navigation */}
+      <nav style={{
+        position: 'fixed',
+        top: 0,
+        width: '100%',
+        zIndex: 1000,
+        background: theme.glass.background,
+        backdropFilter: theme.glass.backdrop,
+        borderBottom: `1px solid ${theme.glass.border}`
+      }}>
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto',
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: theme.gradients.primary,
+              borderRadius: theme.borderRadius.md,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: theme.typography.fontWeight.bold,
+              color: theme.colors.text.primary,
+              fontSize: theme.typography.fontSize.base,
+              boxShadow: theme.shadows.accent,
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '60px',
+                height: '60px',
+                background: 'conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+                borderRadius: '50%',
+                animation: 'spin 3s linear infinite'
+              }} />
+              <span style={{ position: 'relative', zIndex: 1 }}>D</span>
+            </div>
+            <span style={{ 
+              fontSize: theme.typography.fontSize.lg, 
+              fontWeight: theme.typography.fontWeight.extrabold,
+              letterSpacing: '-0.5px',
+              marginLeft: theme.spacing.sm 
+            }}>
+              Dashboard
+            </span>
+          </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+            <Link
+              to="/"
+              style={{
+                padding: '8px 16px',
+                background: theme.glass.background,
+                border: `1px solid ${theme.glass.border}`,
+                borderRadius: theme.borderRadius.lg,
+                fontWeight: theme.typography.fontWeight.medium,
+                color: theme.colors.text.secondary,
+                textDecoration: 'none',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                fontSize: theme.typography.fontSize.sm
+              }}
+            >
+              Back to Landing
+            </Link>
+            <Link
+              to="/tickets"
+              style={{
+                padding: '8px 16px',
+                background: theme.glass.background,
+                border: `1px solid ${theme.glass.border}`,
+                borderRadius: theme.borderRadius.lg,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.text.primary,
+                textDecoration: 'none',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                fontSize: theme.typography.fontSize.base
+              }}
+            >
+              View Tickets
+            </Link>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+      {/* Main Content */}
+      <main style={{
+        padding: '120px 24px 80px 24px',
+        maxWidth: '1400px',
+        margin: '0 auto'
+      }}>
+        <h1 style={{
+          fontSize: theme.typography.fontSize['3xl'],
+          fontWeight: theme.typography.fontWeight.extrabold,
+          marginBottom: theme.spacing.xl,
+          background: `linear-gradient(135deg, ${theme.colors.text.primary} 0%, ${theme.colors.text.accent} 100%)`,
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          letterSpacing: '-1px',
+          textShadow: `0 0 30px rgba(102, 126, 234, 0.5)`,
+          textAlign: 'center'
+        }}>
+          Dashboard Overview
+        </h1>
+        
+        <p style={{
+          fontSize: theme.typography.fontSize.lg,
+          color: theme.colors.text.secondary,
+          marginBottom: theme.spacing['3xl'],
+          textAlign: 'center',
+          maxWidth: '800px',
+          margin: '0 auto 3rem'
+        }}>
+          Welcome to your NeuralFlow Dashboard - your AI-powered development platform
+        </p>
+
+        {/* Stats Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: theme.spacing.lg,
+          marginBottom: theme.spacing['3xl']
+        }}>
+          {[
+            { 
+              title: 'Active Projects', 
+              value: '24', 
+              color: theme.colors.text.accent,
+              icon: '📂'
+            },
+            { 
+              title: 'Total Commits', 
+              value: '1,247', 
+              color: theme.colors.text.success,
+              icon: '💻'
+            },
+            { 
+              title: 'Team Members', 
+              value: '156', 
+              color: theme.colors.text.primary,
+              icon: '👥'
+            },
+            { 
+              title: 'Code Coverage', 
+              value: '92.3%', 
+              color: theme.colors.text.warning,
+              icon: '📊'
+            }
+          ].map((stat, index) => (
+            <div
+              key={index}
+              style={{
+                padding: theme.spacing.xl,
+                borderRadius: theme.borderRadius.xl,
+                background: theme.glass.background,
+                backdropFilter: theme.glass.backdrop,
+                border: `1px solid ${theme.glass.border}`,
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                transform: 'translateY(0)',
+                ':hover': {
+                  transform: 'translateY(-4px)',
+                  borderColor: theme.glass.borderHeavy,
+                  boxShadow: theme.shadows.lg
+                }
+              }}
+            >
+              <div style={{ marginBottom: theme.spacing.sm }}>
+                <div style={{
+                  fontSize: theme.typography.fontSize['3xl'],
+                  color: stat.color || theme.colors.text.primary,
+                  marginBottom: theme.spacing.xs
+                }}>
+                  {stat.icon}
+                </div>
+                <h3 style={{ 
+                  fontSize: theme.typography.fontSize.lg, 
+                  fontWeight: theme.typography.fontWeight.bold, 
+                  color: theme.colors.text.primary,
+                  marginBottom: theme.spacing.xs
+                }}>
+                  {stat.title}
+                </h3>
+                <div style={{
+                  fontSize: theme.typography.fontSize['2xl'],
+                  fontWeight: theme.typography.fontWeight.extrabold,
+                  color: theme.colors.text.primary,
+                  textShadow: `0 0 10px ${stat.color}`
+                }}>
+                  {stat.value}
+                </div>
+              </div>
+            </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent Activity */}
+        <div style={{
+          background: theme.colors.background.secondary,
+          borderRadius: theme.borderRadius.xl,
+          padding: theme.spacing.xl,
+          boxShadow: theme.shadows.lg
+        }}>
+          <h3 style={{
+            fontSize: theme.typography.fontSize.xl,
+            fontWeight: theme.typography.fontWeight.bold,
+            marginBottom: theme.spacing.lg,
+            color: theme.colors.text.primary
+          }}>
+            Recent Activity
+          </h3>
+          
+          <div style={{
+            color: theme.colors.text.secondary,
+            lineHeight: 1.6
+          }}>
+            <div style={{ marginBottom: theme.spacing.md }}>
+              <strong style={{ color: theme.colors.text.success }}>✓ Deploy</strong> Production server updated successfully
+              <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.muted, marginTop: theme.spacing.xs }}>
+                2 minutes ago
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: theme.spacing.md }}>
+              <strong style={{ color: theme.colors.text.primary }}>🔄 Build</strong> Pipeline completed - 42 builds processed
+              <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.muted, marginTop: theme.spacing.xs }}>
+                15 minutes ago
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: theme.spacing.md }}>
+              <strong style={{ color: theme.colors.text.warning }}>⚠️ Alert</strong> Security scan detected 3 vulnerabilities
+              <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.muted, marginTop: theme.spacing.xs }}>
+                1 hour ago
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: theme.spacing.md }}>
+              <strong style={{ color: theme.colors.text.accent }}>🎉 Release</strong> Version 2.4.0 published
+              <div style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.text.muted, marginTop: theme.spacing.xs }}>
+                3 hours ago
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

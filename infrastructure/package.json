@@ -1,0 +1,11 @@
+{
+  "name": "react-app1-infrastructure",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "docker:dev": "docker compose -f docker-compose.yml up",
+    "docker:down": "docker compose -f docker-compose.yml down",
+    "health": "pwsh ./health-check.bat"
+  }
+}
