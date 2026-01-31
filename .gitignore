@@ -12,6 +12,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.npm-cache/
 
 # Editor directories and files
 .vscode/*
@@ -54,3 +55,7 @@ coverage/
 *.lcov
 app/coverage/
 api/coverage/
+
+# Playwright
+playwright-report/
+test-results/
