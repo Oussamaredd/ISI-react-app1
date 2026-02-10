@@ -7,7 +7,8 @@
     "docker:dev": "docker compose -f docker-compose.yml --profile core up --build -d",
     "docker:down": "docker compose -f docker-compose.yml --profile core down --remove-orphans",
     "health": "pwsh ./health-check.bat",
-    "migrate:up": "sh ./scripts/migrate.sh up",
-    "migrate:status": "sh ./scripts/migrate.sh status"
+    "migrate:up": "docker compose -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=false migrate",
+    "migrate:up:seed": "docker compose -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e \"SEED_COMMAND=npm run db:seed --workspace=react-app1-database\" migrate",
+    "migrate:status": "docker compose -f docker-compose.yml --profile core run --rm migrate sh -c \"./infrastructure/scripts/migrate.sh status\""
   }
 }

@@ -21,7 +21,9 @@ docker compose -f infrastructure/docker-compose.yml --profile core down --remove
 5) **Optional observability**: Elasticsearch/Logstash/Kibana (profile `obs`) and Prometheus/Grafana (profile `quality`).
 
 ## Environment for Docker
-Create or edit `.env.docker`:
+Core compose runtime uses `infrastructure/environments/.env.docker`.
+
+Create or edit `infrastructure/environments/.env.docker`:
 ```dotenv
 API_PORT=3001
 DATABASE_URL=postgres://postgres:postgres@db:5432/ticketdb
@@ -39,18 +41,41 @@ ENABLE_SEED_DATA=false
 SEED_COMMAND=npm run db:seed --workspace=react-app1-database
 ```
 
-## Running migrations explicitly
-From repo root (Linux/macOS shell):
+If you still have a legacy root `.env.docker`, copy it to `infrastructure/environments/.env.docker`.
+
+## Running migrations explicitly (PowerShell + Linux/macOS)
+Workspace scripts from repo root:
 ```bash
-ENABLE_SEED_DATA=false ./infrastructure/scripts/migrate.sh up
-ENABLE_SEED_DATA=true SEED_COMMAND="npm run db:seed --workspace=react-app1-database" ./infrastructure/scripts/migrate.sh up
+npm run migrate:up --workspace=react-app1-infrastructure
+npm run migrate:up:seed --workspace=react-app1-infrastructure
+npm run migrate:status --workspace=react-app1-infrastructure
 ```
 
-Cross-platform alternative (runs inside migration container):
+Direct compose equivalents (all run inside migration container):
 ```bash
 docker compose -f infrastructure/docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=false migrate
 docker compose -f infrastructure/docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e "SEED_COMMAND=npm run db:seed --workspace=react-app1-database" migrate
+docker compose -f infrastructure/docker-compose.yml --profile core run --rm migrate sh -c "./infrastructure/scripts/migrate.sh status"
 ```
+
+`infrastructure/scripts/migrate.sh` is an in-container command used by the `migrate` service; standard host workflow should call compose.
+
+## Acceptance flow and expected states
+Run from repo root:
+```bash
+docker compose -f infrastructure/docker-compose.yml --profile core down -v --remove-orphans
+docker compose -f infrastructure/docker-compose.yml --profile core config
+docker compose -f infrastructure/docker-compose.yml --profile core up -d --build
+docker compose -f infrastructure/docker-compose.yml --profile core ps
+docker inspect -f "{{.State.Status}} {{.State.ExitCode}}" ticket_migrate
+docker compose -f infrastructure/docker-compose.yml --profile core logs backend --tail=200
+curl -fsS http://localhost:3001/api/health
+```
+
+Expected core state:
+- `ticket_db` is `healthy`
+- `ticket_migrate` is `exited 0`
+- `ticket_backend` stays up and becomes `healthy`
 
 ## Quick troubleshooting
 ```bash
@@ -60,5 +85,5 @@ docker compose -f infrastructure/docker-compose.yml logs -f backend
 docker compose -f infrastructure/docker-compose.yml logs -f db
 ```
 - If backend is not starting, check `ticket_migrate` exit code first.
-- If needed, run migration manually with `./infrastructure/scripts/migrate.sh up`.
+- If needed, run migration manually with `docker compose -f infrastructure/docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=false migrate`.
 - For a clean restart: `docker compose -f infrastructure/docker-compose.yml --profile core down -v && npm run infra:up`.

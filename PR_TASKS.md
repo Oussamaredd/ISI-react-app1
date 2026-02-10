@@ -1,105 +1,225 @@
-# PR / Task Backlog (Refactored February 9, 2026)
+# Phase 4 Infra Hardening Plan (Rechecked February 10, 2026)
 
-## Context
-- Previous backlog items in this file were completed and are now archived.
-- This new backlog is focused on hardening the 4-layer architecture with explicit ownership and dependency direction.
-- Layer 1: `app` (frontend only).
-- Layer 2: `api` (NestJS controllers/modules/use-cases/repositories).
-- Layer 3: `database` (Drizzle source of truth: schema + client + migrations + seed).
-- Layer 4: `infrastructure` (Docker/Terraform/monitoring + explicit migration/seed execution).
+## Objective
+Make this command reliable on Windows and Linux:
 
-## Global dependency contract (must hold after all PRs)
-- `app` must not import runtime code from `api`, `database`, or `infrastructure`.
-- `api` may depend on `database`, but `database` must never depend on `api`.
-- `infrastructure` must execute migration/seed commands without requiring Nest runtime bootstrap.
-- Controllers in `api` must not call Drizzle directly; use use-cases/services and repositories.
+`docker compose -f infrastructure/docker-compose.yml --profile core up -d --build`
 
-## Phase 0 - Baseline and guardrails
-- [x] PR: Create architecture-hardening baseline branch and validation snapshot
-  - Why: Establish a clean rollback point before folder-level and dependency changes.
-  - Scope: create branch, run and capture current `build`, `typecheck`, and tests as baseline logs.
-  - Commands:
-    - `git checkout -b chore/4-layer-architecture-hardening`
-    - `npm ci`
-    - `npm run build`
-    - `npm run typecheck`
-    - `npm run test`
+Target state:
+- `db` healthy
+- `migrate` exits `0`
+- `backend` healthy
 
-- [x] PR: Add a formal architecture contract document
-  - Why: Make ownership and import rules explicit and enforceable.
-  - Scope: add a short ADR-style doc and link it from root `README.md`.
-  - Files: `docs/ARCHITECTURE_OVERVIEW.md`, `README.md`
+## Recheck Findings (current state)
+- `docker compose -f infrastructure/docker-compose.yml --profile core config` shows:
+  - `GOOGLE_CLIENT_ID: ""`
+  - `GOOGLE_CLIENT_SECRET: ""`
+- `docker compose -f infrastructure/docker-compose.yml --profile core up -d --build` still fails:
+  - backend unhealthy/restarting
+  - Nest bootstrap error: `Google OAuth env vars are missing (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).`
+- `migrate` is already deterministic and succeeds:
+  - `docker inspect -f "{{.State.Status}} {{.State.ExitCode}}" ticket_migrate` => `exited 0`
 
-## Phase 1 - Workspace and boundary enforcement (keep 4 root layers)
-- [x] PR: Keep root layout (`app`, `api`, `database`, `infrastructure`) and enforce import boundaries
-  - Why: The layer model is already present; enforcement is missing.
-  - Scope: add `eslint` restricted import rules so forbidden cross-layer imports fail CI.
-  - Files: `app/eslint.config.js`, `api/eslint.config.js`, root lint docs
+Root cause of mismatch:
+- Core compose stack currently reads `../.env.docker` (repo root), not `infrastructure/environments/.env.*`.
+- Secrets added only in `infrastructure/environments` do not reach `backend`/`migrate` in current wiring.
 
-- [x] PR: Normalize root scripts around the 4-layer model
-  - Why: Developers need one consistent command surface to run app/api/database/infra tasks.
-  - Scope: update root `package.json` scripts (`dev`, `build`, `test`, `typecheck`, `db:*`, `infra:*` wrappers).
-  - Files: `package.json`, `README.md`, `docs/ENVIRONMENT_SETUP.md`
+---
 
-## Phase 2 - Database layer as sole Drizzle owner
-- [x] PR: Finalize Drizzle ownership in `database` and expose stable API
-  - Why: `database` must be the single source of truth for schema/client/migrations/seed.
-  - Scope: keep all Drizzle artifacts in `database`, export `createDatabaseInstance` and schema/index from `database/src/index.ts`, and ensure `db:*` scripts are only owned there.
-  - Files: `database/src/index.ts`, `database/src/client.ts`, `database/src/schema.ts`, `database/src/seed.ts`, `database/drizzle.config.ts`, `database/package.json`
-  - Commands:
-    - `npm run db:generate --workspace=react-app1-database`
-    - `npm run db:migrate --workspace=react-app1-database`
-    - `npm run db:seed --workspace=react-app1-database`
+## Execution Order
+1. Fix env source-of-truth and backend env injection (P0)
+2. Keep startup sequencing deterministic (P0)
+3. Make host commands shell-independent (P1)
+4. Prevent CRLF regressions (P1)
+5. Update docs and run full acceptance checks (P1)
 
-- [x] PR: Remove Drizzle toolkit ownership leakage from `api`
-  - Why: `api` currently carries Drizzle toolkit deps/scripts that belong to `database`.
-  - Scope: remove `drizzle-kit` from `api` dependencies and remove DB lifecycle scripts from `api/package.json`.
-  - Files: `api/package.json`, root `package-lock.json`
+---
 
-## Phase 3 - API refactor to clean repository pattern
-- [x] PR: Replace legacy `#database` bridge with direct package dependency
-  - Why: `api/src/external/database.ts` is an indirect coupling workaround.
-  - Scope: import from `react-app1-database` package directly and remove alias bridge.
-  - Files: `api/src/external/database.ts`, `api/tsconfig.json`, `api/package.json`, `api/src/database/*`, service imports
+## Phase 1 (P0): Fix Backend Unhealthy via Infra Env Wiring
 
-- [x] PR: Implement explicit `DbModule` provider contract in API
-  - Why: Nest DI for DB must be explicit and stable for tests/runtime.
-  - Scope: keep `DRIZZLE` token + provider, source `DATABASE_URL` from validated config, and centralize disposal on module shutdown.
-  - Files: `api/src/database/database.module.ts`, `api/src/database/database.service.ts`, `api/src/database/database.constants.ts`, `api/src/config/*`
+### Checklist
+- [x] Use one canonical env file path for core compose runtime.
+- [x] Ensure `backend` and `migrate` read the same canonical env file.
+- [x] Stop overriding OAuth values with empty compose interpolation.
+- [x] Keep container-safe DB host (`db`) inside compose network.
 
-- [x] PR: Introduce repository layer per domain and remove direct Drizzle calls from controllers/use-cases
-  - Why: enforce `controller -> use-case/service -> repository -> database`.
-  - Scope: move query logic from services into repositories for `tickets`, `users`, `hotels`, `dashboard`, `admin`.
-  - Files: `api/src/tickets/*`, `api/src/users/*`, `api/src/hotels/*`, `api/src/dashboard/*`, `api/src/admin/*`
+### Files to edit
+- `infrastructure/docker-compose.yml`
+- `infrastructure/start-dev.bat`
+- `docs/DOCKER_SETUP.md`
+- `docs/ENV.md`
+- `README.md`
 
-## Phase 4 - Infrastructure runs migrations explicitly
-- [x] PR: Run migrations as explicit deploy/init step in Docker
-  - Why: schema setup must be deterministic and independent from API runtime startup.
-  - Scope: add a dedicated migration step/service in compose; make API startup depend on successful migration completion.
-  - Files: `infrastructure/docker-compose.yml`, `infrastructure/start-dev.bat`, `infrastructure/stop-dev.bat`, `infrastructure/health-check.bat`
+### Key diff guidance
+```diff
+diff --git a/infrastructure/docker-compose.yml b/infrastructure/docker-compose.yml
+@@ migrate
+- env_file:
+-   - ../.env.docker
++ env_file:
++   - ./environments/.env.docker
+@@ migrate.environment
+  DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/ticketdb}
+@@ backend
+- env_file:
+-   - ../.env.docker
++ env_file:
++   - ./environments/.env.docker
+@@ backend.environment
+  API_PORT: ${API_PORT:-3001}
+  DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/ticketdb}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+  SESSION_SECRET: ${SESSION_SECRET:-changeme-session}
+  JWT_SECRET: ${JWT_SECRET:-changeme-jwt}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+- GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+- GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  NODE_ENV: ${NODE_ENV:-development}
+```
 
-- [x] PR: Point infrastructure migration scripts to database workspace commands
-  - Why: infra should call `database` package commands as the source of truth.
-  - Scope: update migration script defaults and docs; keep optional seed gating via env flags.
-  - Files: `infrastructure/scripts/migrate.sh`, `infrastructure/package.json`, `.env.example`, `docs/DOCKER_SETUP.md`, `docs/ENV.md`
-  - Commands:
-    - `ENABLE_SEED_DATA=false ./infrastructure/scripts/migrate.sh up`
-    - `ENABLE_SEED_DATA=true SEED_COMMAND="npm run db:seed --workspace=react-app1-database" ./infrastructure/scripts/migrate.sh up`
+Rationale:
+- Remove explicit `GOOGLE_*` entries from `environment:` so `env_file` values are not replaced by empty interpolation.
+- Keep other non-secret runtime defaults if needed.
 
-## Phase 5 - CI, reliability, and cleanup
-- [x] PR: Add CI gates for architecture and migration reliability
-  - Why: prevent regressions in layer boundaries and DB lifecycle.
-  - Scope: add CI jobs for `database` build/typecheck/migrate, run API tests against migrated DB, fail on forbidden imports.
-  - Files: `.github/workflows/CI.yml`, `.github/workflows/CD.yml`, lint configs
+### Validate Phase 1
+```bash
+docker compose -f infrastructure/docker-compose.yml --profile core config
+docker compose -f infrastructure/docker-compose.yml --profile core up -d --build
+docker compose -f infrastructure/docker-compose.yml --profile core logs backend --tail=200
+docker compose -f infrastructure/docker-compose.yml --profile core ps
+```
 
-- [x] PR: Refresh docs and remove stale architecture references
-  - Why: docs still contain outdated assumptions and old command paths.
-  - Scope: update all architecture/setup docs to the enforced 4-layer model and current scripts.
-  - Files: `README.md`, `docs/ARCHITECTURE_OVERVIEW.md`, `docs/ENVIRONMENT_SETUP.md`, `docs/DOCKER_SETUP.md`, `docs/README.md`
+Expected:
+- Backend no longer crashes on missing Google OAuth vars.
 
-## Definition of done for this backlog
-- [x] `npm run dev` starts frontend + backend with local DB available.
-- [x] `npm run db:migrate --workspace=react-app1-database` succeeds from root.
-- [x] API builds and runs using DB imports from `database` package.
-- [x] No forbidden cross-layer imports (lint/CI enforced).
-- [x] Infrastructure applies migrations explicitly before API startup.
+---
+
+## Phase 2 (P0): Keep DB -> Migrate -> Backend Deterministic
+
+### Checklist
+- [x] DB healthcheck uses explicit user + database.
+- [x] `migrate` depends on DB healthy.
+- [x] `backend` depends on `migrate` `service_completed_successfully`.
+- [x] `migrate.sh` exits non-zero on failure (keep `set -eu` behavior).
+
+### Files to edit
+- `infrastructure/docker-compose.yml`
+- `infrastructure/scripts/migrate.sh` (only if behavior drift found)
+
+### Key diff guidance
+```diff
+diff --git a/infrastructure/docker-compose.yml b/infrastructure/docker-compose.yml
+@@ db.healthcheck
+- test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
++ test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ticketdb}"]
+```
+
+### Validate Phase 2
+```bash
+docker compose -f infrastructure/docker-compose.yml --profile core down -v --remove-orphans
+docker compose -f infrastructure/docker-compose.yml --profile core up -d --build
+docker inspect -f "{{.State.Status}} {{.State.ExitCode}}" ticket_migrate
+docker compose -f infrastructure/docker-compose.yml --profile core ps
+```
+
+Expected:
+- `ticket_db` healthy
+- `ticket_migrate` exited `0`
+- `ticket_backend` stays up and becomes healthy
+
+---
+
+## Phase 3 (P1): Cross-Platform Commands (No host `sh`)
+
+### Checklist
+- [x] Replace host calls to `sh ./scripts/migrate.sh ...` with `docker compose ... run --rm migrate`.
+- [x] Keep `migrate.sh` only as in-container command.
+- [x] Provide no-seed and seed-enabled script variants.
+
+### Files to edit
+- `infrastructure/package.json`
+- `docs/DOCKER_SETUP.md`
+- `README.md`
+
+### Key diff guidance
+```diff
+diff --git a/infrastructure/package.json b/infrastructure/package.json
+@@ scripts
+- "migrate:up": "sh ./scripts/migrate.sh up",
+- "migrate:status": "sh ./scripts/migrate.sh status"
++ "migrate:up": "docker compose -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=false migrate",
++ "migrate:up:seed": "docker compose -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e SEED_COMMAND=\"npm run db:seed --workspace=react-app1-database\" migrate",
++ "migrate:status": "docker compose -f docker-compose.yml --profile core run --rm migrate status"
+```
+
+### Validate Phase 3
+```bash
+npm run migrate:up --workspace=react-app1-infrastructure
+npm run migrate:up:seed --workspace=react-app1-infrastructure
+```
+
+---
+
+## Phase 4 (P1): Line Ending Durability
+
+### Checklist
+- [x] Add root `.gitattributes` enforcing LF for scripts run in Linux containers.
+- [x] Renormalize tracked files.
+
+### Files to edit
+- `.gitattributes`
+
+### Key snippet
+```gitattributes
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+```
+
+### Validate Phase 4
+```bash
+git add --renormalize .
+git status
+```
+
+---
+
+## Phase 5 (P1): Documentation Alignment
+
+### Checklist
+- [x] Document the canonical compose env file path.
+- [x] Document compose-based migrate commands for PowerShell/Linux.
+- [x] Document acceptance flow and expected states.
+
+### Files to edit
+- `docs/DOCKER_SETUP.md`
+- `docs/ENV.md`
+- `README.md`
+
+---
+
+## Final Acceptance Criteria
+- [x] `docker compose -f infrastructure/docker-compose.yml --profile core config` passes.
+- [x] `docker compose -f infrastructure/docker-compose.yml --profile core up -d --build` yields:
+  - `db` healthy
+  - `migrate` exited `0`
+  - `backend` healthy
+- [x] No-seed migrate run works via compose.
+- [x] Seed-enabled migrate run works via compose.
+- [x] Standard workflow has no host dependency on `sh`.
+- [x] Docs match final commands and env source-of-truth.
+
+## Final Validation Commands
+```bash
+docker compose -f infrastructure/docker-compose.yml --profile core down -v --remove-orphans
+docker compose -f infrastructure/docker-compose.yml --profile core config
+docker compose -f infrastructure/docker-compose.yml --profile core up -d --build
+docker compose -f infrastructure/docker-compose.yml --profile core ps
+docker inspect -f "{{.State.Status}} {{.State.ExitCode}}" ticket_migrate
+docker compose -f infrastructure/docker-compose.yml --profile core logs backend --tail=200
+curl -fsS http://localhost:3001/api/health
+npm run migrate:up --workspace=react-app1-infrastructure
+npm run migrate:up:seed --workspace=react-app1-infrastructure
+```

@@ -24,12 +24,31 @@ Optional:
 
 ## Docker Compose Variables (infrastructure/)
 
+Canonical env files:
+- Local development (non-Docker): `.env` (repo root)
+- Docker development: `infrastructure/environments/.env.docker`
+- Docker staging: `infrastructure/environments/.env.staging`
+- Docker production: `infrastructure/environments/.env.production`
+
+Core compose note:
+- `docker compose -f infrastructure/docker-compose.yml --profile core ...` reads `infrastructure/environments/.env.docker` for `migrate` and `backend`.
+- Keep `DATABASE_URL` container-safe for compose networking (host `db`).
+
 - `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` - PostgreSQL credentials for the DB container
 - `DATABASE_URL` - passed to migration and API containers (use `db` host inside compose)
 - `API_PORT` - published API port (defaults to 3001)
 - `MIGRATE_COMMAND` - migration command source of truth (default: `npm run db:migrate --workspace=react-app1-database`)
 - `ENABLE_SEED_DATA` - when `true`, migration scripts run seeders after migrations
 - `SEED_COMMAND` - command used by migration scripts to execute seeding (default: `npm run db:seed --workspace=react-app1-database`)
+
+## Docker acceptance expectations
+
+For the core profile (`docker compose -f infrastructure/docker-compose.yml --profile core ...`), expected runtime state is:
+- `ticket_db` healthy
+- `ticket_migrate` exited with code `0`
+- `ticket_backend` healthy
+
+Use the acceptance command sequence in `docs/DOCKER_SETUP.md`.
 
 ## Setup Instructions
 

@@ -2,21 +2,37 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
 
+set "SCRIPT_DIR=%~dp0"
+set "COMPOSE_FILE=%SCRIPT_DIR%docker-compose.yml"
+set "CANONICAL_ENV=%SCRIPT_DIR%environments\.env.docker"
+set "LEGACY_ENV=%SCRIPT_DIR%..\.env.docker"
+set "ROOT_ENV_EXAMPLE=%SCRIPT_DIR%..\.env.example"
+
 echo Starting React App 1 Development Environment...
 echo.
 
-echo Step 1: Setting up environment...
-if not exist ..\.env.docker (
-    echo Creating root .env.docker from .env.example...
-    copy ..\.env.example ..\.env.docker >nul
-    echo Root .env.docker created successfully
+echo Step 1: Setting up canonical Docker environment...
+if exist "%CANONICAL_ENV%" (
+    echo Canonical Docker env already exists: infrastructure\environments\.env.docker
 ) else (
-    echo Root .env.docker already exists
+    if exist "%LEGACY_ENV%" (
+        echo Migrating legacy root .env.docker to infrastructure\environments\.env.docker...
+        copy "%LEGACY_ENV%" "%CANONICAL_ENV%" >nul
+        echo Canonical Docker env created from legacy file
+    ) else (
+        if not exist "%ROOT_ENV_EXAMPLE%" (
+            echo Missing template file: %ROOT_ENV_EXAMPLE%
+            goto :error
+        )
+        echo Creating canonical Docker env from .env.example...
+        copy "%ROOT_ENV_EXAMPLE%" "%CANONICAL_ENV%" >nul
+        echo Canonical Docker env created successfully
+    )
 )
 
 echo.
 echo Step 2: Building and starting core services (db, migrate, backend, frontend)...
-docker compose --profile core up --build -d
+docker compose -f "%COMPOSE_FILE%" --profile core up --build -d
 if errorlevel 1 goto :error
 
 echo.
@@ -35,22 +51,22 @@ for /L %%i in (1,1,60) do (
 :migration_done
 if not "!MIGRATE_EXIT!"=="0" (
     echo Migration job failed or did not complete in time.
-    docker compose logs migrate
+    docker compose -f "%COMPOSE_FILE%" logs migrate
     goto :error
 )
 
 echo.
 echo Step 4: Service status
-docker compose ps
+docker compose -f "%COMPOSE_FILE%" ps
 
 echo.
 echo Service URLs:
 echo    Frontend: http://localhost:3000
 echo    Backend:  http://localhost:3001/api
 echo.
-echo To view logs: docker compose logs -f
+echo To view logs: docker compose -f infrastructure/docker-compose.yml logs -f
 echo.
-echo To stop services: docker compose --profile core down --remove-orphans
+echo To stop services: docker compose -f infrastructure/docker-compose.yml --profile core down --remove-orphans
 echo.
 pause
 exit /b 0
