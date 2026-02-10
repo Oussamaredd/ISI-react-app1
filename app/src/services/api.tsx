@@ -34,7 +34,7 @@ export const apiClient = {
         if (contentType && contentType.includes('application/json')) {
           try {
             error = await response.json();
-          } catch (e) {
+          } catch {
             // Keep default error
           }
         }
@@ -66,7 +66,7 @@ export const apiClient = {
         if (contentType && contentType.includes('application/json')) {
           try {
             error = await response.json();
-          } catch (e) {
+          } catch {
             // Keep default error
           }
         }
@@ -98,7 +98,7 @@ export const apiClient = {
         if (contentType && contentType.includes('application/json')) {
           try {
             error = await response.json();
-          } catch (e) {
+          } catch {
             // Keep default error
           }
         }
@@ -125,7 +125,7 @@ export const apiClient = {
         if (contentType && contentType.includes('application/json')) {
           try {
             error = await response.json();
-          } catch (e) {
+          } catch {
             // Keep default error
           }
         }

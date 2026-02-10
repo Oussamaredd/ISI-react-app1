@@ -1,21 +1,53 @@
 .create-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 80vh;
+  align-items: stretch;
+  gap: 1.25rem;
+}
+
+.create-page h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
 }
 
 .create-form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 1rem;
+  width: 100%;
+  max-width: 680px;
 }
 
-.create-form input {
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #fff;
-  background-color: #1e1e1e;
-  color: #fff;
+.create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.create-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.create-input {
+  width: 100%;
+}
+
+.create-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.create-submit {
+  align-self: flex-start;
+}
+
+.create-submit:disabled {
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .create-submit {
+    width: 100%;
+  }
 }

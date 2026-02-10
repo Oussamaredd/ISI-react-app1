@@ -1,14 +1,11 @@
 @echo off
 chcp 65001 >nul
 echo Stopping React App 1 services...
-docker compose --profile core down
+docker compose --profile core down --remove-orphans
 
 echo.
-echo Cleaning up Docker resources...
-docker system prune -f
-
+echo Services stopped.
 echo.
-echo Services stopped and cleaned up
+echo To remove DB volume too: docker compose --profile core down -v
 echo.
-echo To restart: start-dev.bat
 pause

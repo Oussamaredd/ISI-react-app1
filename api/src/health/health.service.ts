@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DRIZZLE } from '../database/database.constants.js';
-import { type DatabaseClient, tickets } from '#database';
+import { type DatabaseClient, tickets } from 'react-app1-database';
 
 @Injectable()
 export class HealthService {

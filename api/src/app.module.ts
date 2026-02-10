@@ -10,6 +10,8 @@ import { TicketsModule } from './tickets/tickets.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { HotelsModule } from './hotels/hotels.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { AdminModule } from './admin/admin.module.js';
+import { MonitoringModule } from './monitoring/monitoring.module.js';
 
 const envFilePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.env');
 
@@ -27,6 +29,8 @@ const envFilePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     TicketsModule,
     HotelsModule,
     DashboardModule,
+    AdminModule,
+    MonitoringModule,
   ],
 })
 export class AppModule {}

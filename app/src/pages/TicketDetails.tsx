@@ -157,7 +157,7 @@ const CommentSection: React.FC<{
     try {
       await addComment({ ticketId, body: newComment.trim() });
       setNewComment('');
-    } catch (error) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -174,7 +174,7 @@ const CommentSection: React.FC<{
       await updateComment({ ticketId, commentId, body: editBody.trim() });
       setEditingComment(null);
       setEditBody('');
-    } catch (error) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -182,7 +182,7 @@ const CommentSection: React.FC<{
   const handleDelete = async (commentId: string) => {
     try {
       await deleteComment({ ticketId, commentId });
-    } catch (error) {
+    } catch {
       // Error is handled by the hook
     }
   };
@@ -474,10 +474,8 @@ export default function TicketDetails() {
   const navigate = useNavigate();
   
   const { data: ticketData, isLoading, error } = useTicketDetails(id);
-  const {
-    data: commentsData,
-    isLoading: commentsLoading,
-  } = useTicketComments(id);
+  const { data: commentsData } = useTicketComments(id);
+  const { data: activityData } = useTicketActivity(id);
 
   const ticket = (ticketData as any)?.ticket ?? ticketData;
   const comments = (commentsData as any)?.comments
@@ -486,7 +484,10 @@ export default function TicketDetails() {
     (commentsData as any)?.pagination
     || (commentsData as any)?.commentsPagination
     || { total: comments.length, hasNext: false, page: 1 };
-  const activity = (ticketData as any)?.activity || [];
+  const activityFromEndpoint = Array.isArray(activityData)
+    ? activityData
+    : (activityData as any)?.activity;
+  const activity = activityFromEndpoint ?? (ticketData as any)?.activity ?? [];
   
   if (isLoading) {
     return (
@@ -686,7 +687,7 @@ export default function TicketDetails() {
           </h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {activity.map((activityItem, index) => (
+            {activity.map((activityItem) => (
               <ActivityItem 
                 key={activityItem.id} 
                 activity={activityItem}

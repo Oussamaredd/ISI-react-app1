@@ -8,7 +8,7 @@ export default function CreateTickets() {
   const navigate = useNavigate();
 
   return (
-    <div className="container">
+    <div className="container create-page">
       <h1>Create a New Ticket</h1>
       <CreateTicket onSuccess={() => navigate("/tickets")} />
     </div>

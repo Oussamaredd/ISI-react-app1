@@ -18,7 +18,6 @@ import { AdminDashboard } from "./pages/AdminDashboard";
 import LoginButton from "./components/LoginButton";
 import LogoutButton from "./components/LogoutButton";
 
-// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -28,43 +27,33 @@ const queryClient = new QueryClient({
   },
 });
 
-// Navigation component
 function Navigation({ user }) {
   const location = useLocation();
 
-  const getLinkStyle = (path) => ({
-    marginRight: "1rem",
-    textDecoration: location.pathname === path ? "underline" : "none",
-    fontWeight: location.pathname === path ? "bold" : "normal",
-    color: location.pathname === path ? "#007bff" : "#000",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.35rem",
-  });
+  const getLinkClass = (path) =>
+    location.pathname === path ? "app-nav-link app-nav-link-active" : "app-nav-link";
+
+  const hasAdminAccess =
+    user?.roles?.some((role) => role.name === "admin" || role.name === "super_admin") ||
+    user?.role === "admin" ||
+    user?.role === "super_admin";
 
   return (
-    <nav style={{ padding: "1rem 0", borderBottom: "1px solid #ddd", marginBottom: "1rem" }}>
-      <Link to="/dashboard" style={getLinkStyle("/dashboard")}>
-        <span aria-hidden="true">📊</span>
+    <nav className="app-nav">
+      <Link to="/dashboard" className={getLinkClass("/dashboard")}>
         <span>Dashboard</span>
       </Link>
-      <Link to="/tickets/advanced" style={getLinkStyle("/tickets/advanced")}>
-        <span aria-hidden="true">🎯</span>
+      <Link to="/tickets/advanced" className={getLinkClass("/tickets/advanced")}>
         <span>Advanced List</span>
       </Link>
-      <Link to="/tickets" style={getLinkStyle("/tickets")}>
-        <span aria-hidden="true">📋</span>
+      <Link to="/tickets" className={getLinkClass("/tickets")}>
         <span>Simple List</span>
       </Link>
-      <Link to="/tickets/create" style={getLinkStyle("/tickets/create")}>
-        <span aria-hidden="true">➕</span>
+      <Link to="/tickets/create" className={getLinkClass("/tickets/create")}>
         <span>Create Ticket</span>
       </Link>
-      {(user?.roles?.some((role) => role.name === "admin" || role.name === "super_admin") ||
-        user?.role === "admin" ||
-        user?.role === "super_admin") && (
-        <Link to="/admin" style={getLinkStyle("/admin")}>
-          <span aria-hidden="true">⚙️</span>
+      {hasAdminAccess && (
+        <Link to="/admin" className={getLinkClass("/admin")}>
           <span>Admin</span>
         </Link>
       )}
@@ -72,13 +61,15 @@ function Navigation({ user }) {
   );
 }
 
-// Authenticated App Component
 function AuthenticatedApp({ user }) {
+  const hasAdminAccess =
+    user?.roles?.some((role) => role.name === "admin" || role.name === "super_admin") ||
+    user?.role === "admin" ||
+    user?.role === "super_admin";
+
   return (
     <div>
-      <header
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}
-      >
+      <header className="app-header">
         <h3>Logged in as {user?.name || user?.email || "User"}</h3>
         <LogoutButton />
       </header>
@@ -95,12 +86,10 @@ function AuthenticatedApp({ user }) {
         <Route
           path="/admin"
           element={
-            user?.roles?.some((role) => role.name === "admin" || role.name === "super_admin") ||
-            user?.role === "admin" ||
-            user?.role === "super_admin" ? (
+            hasAdminAccess ? (
               <AdminDashboard />
             ) : (
-              <div style={{ padding: "2rem", textAlign: "center" }}>
+              <div className="app-access-denied">
                 <h2>Access Denied</h2>
                 <p>You don't have permission to access the admin dashboard.</p>
               </div>
@@ -118,34 +107,27 @@ function AuthenticatedApp({ user }) {
 function AppContent() {
   const { user, isLoading, isAuthenticated } = useCurrentUser();
   const [initializing, setInitializing] = React.useState(true);
+
   React.useEffect(() => {
     const timer = window.setTimeout(() => setInitializing(false), 0);
     return () => window.clearTimeout(timer);
   }, []);
+
   const isLoggedIn = Boolean(user) || Boolean(isAuthenticated);
 
   if (isLoading || initializing) {
     return (
-      <div
-        style={{
-          padding: 24,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-        }}
-      >
+      <div className="app-loading-screen">
         <div>Loading...</div>
       </div>
     );
   }
 
-  // If NOT logged in: show login screen only
   if (!isLoggedIn) {
     return (
       <ErrorHandlingSetup>
         <ToastProvider>
-          <div style={{ textAlign: "center", marginTop: "4rem" }}>
+          <div className="app-login-screen">
             <h2>AUTHENTIFICATION PROCESS</h2>
             <p>Please log in with your Google account to continue.</p>
             <LoginButton />
@@ -165,7 +147,6 @@ function AppContent() {
   );
 }
 
-// Main App Component
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>

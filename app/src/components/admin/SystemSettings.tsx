@@ -40,8 +40,9 @@ export function SystemSettings() {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    if (settingsData?.data) {
-      setFormData(settingsData.data);
+    if (settingsData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync fetched settings into editable form state
+      setFormData(settingsData);
     }
   }, [settingsData]);
 

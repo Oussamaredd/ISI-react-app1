@@ -1,62 +1,59 @@
 # Ticket Management System
 
-Monorepo with four active layers and a shared utilities area:
-- **app** – Vite + React 18 frontend.
-- **api** – NestJS 10 backend using Drizzle ORM.
-- **database** – Drizzle schema, migrations, and DB helpers.
-- **infrastructure** – Docker compose + ops scripts.
-- **shared** – Cross-cutting types/utilities (future use).
+Four-layer monorepo for ticket operations:
+- `app`: React frontend (Vite)
+- `api`: NestJS backend
+- `database`: Drizzle schema, migrations, and seeders
+- `infrastructure`: Docker Compose and local ops scripts
 
-Legacy Express code has been removed to avoid confusion.
-
-## Project Structure
-```
+## Repository Layout
+```text
 react-app1/
-├── app/             # Frontend workspace
-├── api/             # NestJS backend
-├── database/        # Drizzle schema + migrations
-├── infrastructure/  # Docker, env bootstrap, health checks
-├── shared/          # Shared code (placeholder)
-├── docs/            # Project docs
-└── .github/         # CI/CD
+|-- app/
+|-- api/
+|-- database/
+|-- infrastructure/
+|-- docs/
+`-- .github/workflows/
 ```
 
-## Getting Started
+## Quick Start
 ```bash
 npm install
+cp app/.env.example app/.env.local
 cp api/.env.example api/.env
-cp database/.env.example database/.env
+cp database/.env.example database/.env.local
 npm run dev
 ```
 
-Default ports:
-- Frontend: http://localhost:5173
-- API: http://localhost:3001/api
-- Health: http://localhost:3001/api/health
+Default local endpoints:
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:3001/api`
+- API health: `http://localhost:3001/api/health`
 
-Root `dev` builds the database package first, then starts Vite and Nest concurrently.
+## Root Commands
+- `npm run dev` - build database workspace, then run app + api
+- `npm run build` - build database, app, api
+- `npm run test` - run app + api tests
+- `npm run typecheck` - run app + api + database type checks
+- `npm run lint` - enforce lint rules including architecture import boundaries
+- `npm run db:migrate` - run Drizzle migrations from `database` workspace
+- `npm run db:seed` - run seeders from `database` workspace
+- `npm run infra:up` / `npm run infra:down` / `npm run infra:health` - Docker lifecycle wrappers
 
-## Scripts (root)
-- `npm run dev` – Build database, start frontend + API watchers.
-- `npm run build` – Build database, frontend, API.
-- `npm run test` – Run frontend + API test suites.
-- `npm run lint` – Lint frontend.
-- `npm run typecheck` – Typecheck app, api, and database.
-- `npm run db:migrate` – Run Drizzle migrations (database workspace).
-- `npm run db:generate` – Generate SQL from schema (database workspace).
+## Architecture Contract
+See `docs/ARCHITECTURE_OVERVIEW.md`.
 
-Run any workspace script directly: `npm run <script> --workspace=<workspace-name>`.
-
-## Layer Notes
-- **app**: Vite entry points for landing/app modes; env files `.env.app`, `.env.landing`, `.env.local`.
-- **api**: Uses `DatabaseModule` to consume shared Drizzle client; validation via `class-validator`/Zod.
-- **database**: `drizzle-kit` config, SQL migrations under `migrations/`; includes `migrations/legacy` for historical reference.
-- **infrastructure**: Docker compose files, health-check scripts.
+Key rules:
+- API data path: `controller -> service -> repository -> database`
+- Controllers and services in domain modules must not import `drizzle-orm` or `react-app1-database` directly
+- Database migration and seed commands are owned by the `database` workspace
 
 ## CI/CD
-GitHub Actions run lint/test/build per workspace and publish artifacts. See `.github/workflows` for specifics.
+`CI.yml` includes:
+- architecture lint gate
+- database gate (`build`, `typecheck`, `db:migrate`)
+- backend tests against migrated Postgres
+- frontend build/test
 
-## Next Steps
-- Flesh out domain modules (hotels, metrics, admin) inside `api`.
-- Replace placeholder auth with Google OAuth + sessions.
-- Expand shared utilities in `shared/` and add infra smoke tests.
+`CD.yml` runs pre-deploy validation gates before frontend Pages deployment.

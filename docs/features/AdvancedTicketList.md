@@ -325,7 +325,7 @@ npm run dev
 http://localhost:5173/tickets/advanced
 
 # Test with sample data
-npm run seed
+npm run db:seed
 ```
 
 ### Testing

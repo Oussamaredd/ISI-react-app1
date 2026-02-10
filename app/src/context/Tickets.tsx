@@ -107,50 +107,7 @@ export const TicketsProvider = ({ children, user }: { children: ReactNode; user:
     loadHotels();
   }, [loadTickets, loadHotels]);
 
-  // Note: Most operations are now handled by React Query hooks
-  // Keeping minimal context for backward compatibility during migration
-
-  const deleteTicket = useCallback(async (id: number) => {
-    try {
-      const res = await fetch(`${TICKETS_URL}/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (res.status === 401) {
-        setTickets([]);
-        return;
-      }
-      if (!res.ok) throw new Error(`delete ticket ${res.status}`);
-      setTickets((prev) => prev.filter((t) => t.id !== id));
-    } catch (e) {
-      console.error("Failed to delete ticket:", e);
-    }
-  }, []);
-
-  const assignTicketToHotel = useCallback(
-    async (ticketId: number, hotelId: number) => {
-      try {
-        const res = await fetch(`${TICKETS_URL}/${ticketId}/assign-hotel`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ hotelId }),
-        });
-        if (res.status === 401) {
-          setTickets([]);
-          return;
-        }
-        if (!res.ok) throw new Error(`assign failed ${res.status}`);
-        await loadTickets();
-        await loadHotels();
-      } catch (e) {
-        console.error("Failed to assign ticket:", e);
-      }
-    },
-    [loadTickets, loadHotels]
-  );
-
-  // 👇 This fixes the "value changes every render" warning
+  // Keep context value stable for consumers.
   const value = useMemo<TicketsContextType>(
     () => ({
       user,
@@ -159,18 +116,8 @@ export const TicketsProvider = ({ children, user }: { children: ReactNode; user:
       refreshTickets: loadTickets,
       refreshHotels: loadHotels,
     }),
-    [
-      user,
-      tickets,
-      hotels,
-      loadTickets,
-      loadHotels,
-    ]
+    [user, tickets, hotels, loadTickets, loadHotels]
   );
 
-  return (
-    <TicketsContext.Provider value={value}>
-      {children}
-    </TicketsContext.Provider>
-  );
+  return <TicketsContext.Provider value={value}>{children}</TicketsContext.Provider>;
 };

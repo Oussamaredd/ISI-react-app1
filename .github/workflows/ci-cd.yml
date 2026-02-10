@@ -1,156 +1,22 @@
-name: CI/CD Pipeline
+name: Legacy CI/CD (Manual)
 
 on:
-  push:
-    branches: [ main, develop, staging ]
-  pull_request:
-    branches: [ main, staging ]
-
-env:
-  NODE_VERSION: '18'
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  workflow_dispatch:
 
 jobs:
-  # Code Quality and Testing
-  test:
+  deprecation-note:
+    name: Workflow Notice
     runs-on: ubuntu-latest
-    name: Test and Quality Checks
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: ticketapp_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Explain workflow status
+        run: |
+          echo "Automatic CI is handled by .github/workflows/CI.yml"
+          echo "Automatic deployment is handled by .github/workflows/CD.yml"
+          echo "This legacy workflow remains manual-only for compatibility."
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run linting
-        run: npm run lint
-
-      - name: Run type checking
-        run: npm run typecheck
-
-      - name: Run tests
-        run: npm run test
-        env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://postgres:test@localhost:5432/ticketapp_test
-          REDIS_URL: redis://localhost:6379
-
-      - name: Security audit
-        run: npm audit --audit-level moderate
-
-  # Build Application
-  build:
-    needs: test
+  docker-build-check:
+    name: Docker Build Check
     runs-on: ubuntu-latest
-    name: Build Application
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-        env:
-          NODE_ENV: production
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-artifacts
-          path: |
-            app/dist/
-            api/dist/
-            database/dist/
-          retention-days: 1
-
-  # Security Scanning
-  security:
-    runs-on: ubuntu-latest
-    name: Security Scan
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
-        with:
-          languages: javascript
-
-  # Docker Build and Push
-  docker:
-    needs: [test, build, security]
-    runs-on: ubuntu-latest
-    name: Docker Build & Push
-    if: github.event_name == 'push'
-    
-    strategy:
-      matrix:
-        environment:
-          - staging
-          - production
-        include:
-          - environment: staging
-            tag: staging
-            deploy: false
-          - environment: production
-            tag: latest
-            deploy: true
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -158,119 +24,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch,suffix=-${{ matrix.tag }}
-            type=ref,event=pr,suffix=-${{ matrix.tag }}
-            type=sha,prefix={{branch}}-
-
-      - name: Build and push Docker image
+      - name: Build image using infrastructure Dockerfile
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-
-  # Deploy to Staging
-  deploy-staging:
-    needs: docker
-    runs-on: ubuntu-latest
-    name: Deploy to Staging
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment: staging
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to staging
-        run: |
-          echo "Deploying to staging environment..."
-          # Add your staging deployment logic here
-          # Example: kubectl apply -f k8s/staging/
-          # Example: docker-compose -f docker-compose.staging.yml up -d
-
-      - name: Run smoke tests
-        run: |
-          echo "Running smoke tests..."
-          # Add smoke test logic here
-          curl -f ${{ secrets.STAGING_URL }}/health || exit 1
-
-  # Deploy to Production
-  deploy-production:
-    needs: docker
-    runs-on: ubuntu-latest
-    name: Deploy to Production
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to production
-        run: |
-          echo "Deploying to production environment..."
-          # Add your production deployment logic here
-          # Example: kubectl apply -f k8s/production/
-          # Example: docker-compose -f docker-compose.production.yml up -d
-
-      - name: Run production smoke tests
-        run: |
-          echo "Running production smoke tests..."
-          # Add smoke test logic here
-          curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
-
-      - name: Notify team
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          channel: '#deployments'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        if: always()
-
-  # Performance Testing
-  performance:
-    needs: deploy-staging
-    runs-on: ubuntu-latest
-    name: Performance Tests
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run performance tests
-        run: npm run test:performance
-        env:
-          TEST_URL: ${{ secrets.STAGING_URL }}
-
-      - name: Upload performance results
-        uses: actions/upload-artifact@v3
-        with:
-          name: performance-results
-          path: performance-results/
+          file: ./infrastructure/Dockerfile
+          push: false
+          load: false

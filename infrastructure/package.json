@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docker:dev": "docker compose -f docker-compose.yml up",
-    "docker:down": "docker compose -f docker-compose.yml down",
-    "health": "pwsh ./health-check.bat"
+    "docker:dev": "docker compose -f docker-compose.yml --profile core up --build -d",
+    "docker:down": "docker compose -f docker-compose.yml --profile core down --remove-orphans",
+    "health": "pwsh ./health-check.bat",
+    "migrate:up": "sh ./scripts/migrate.sh up",
+    "migrate:status": "sh ./scripts/migrate.sh status"
   }
 }

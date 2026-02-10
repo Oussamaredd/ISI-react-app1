@@ -521,7 +521,7 @@ npm run dev
 http://localhost:5173/tickets/123/details
 
 # Test with sample data
-npm run seed
+npm run db:seed
 ```
 
 ### Database Setup

@@ -163,14 +163,14 @@ const ToastContainer = ({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
       maxWidth: '400px',
     }}>
       {toasts.map(toast => (
-        <Toast key={toast.id} toast={toast} onRemove={onRemove} />
+        <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
       ))}
     </div>
   );
 };
 
 // Individual toast component
-const Toast = ({ toast, onRemove }: { toast: Toast; onRemove: (id: number) => void }) => {
+const ToastItem = ({ toast, onRemove }: { toast: Toast; onRemove: (id: number) => void }) => {
   const getToastStyle = (type) => {
     const baseStyle = {
       padding: '12px 16px',

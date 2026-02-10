@@ -633,8 +633,6 @@ export default function AdvancedTicketList() {
                 color: '#6c757d'
               }}>
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }} aria-hidden="true">🎫</div>
-                <div style={{ fontSize: '0.1rem', height: 0, overflow: 'hidden' }} aria-hidden="true">ðŸŽ«</div>
-                <div style={{ fontSize: '0.1rem', height: 0, overflow: 'hidden' }} aria-hidden="true">Ã°Å¸Å½Â«</div>
                 <div style={{ fontSize: '1.125rem', fontWeight: '500', marginBottom: '0.5rem' }}>
                   No tickets found
                 </div>

@@ -176,7 +176,7 @@ npm test
 npm run migrate
 
 # Seed sample data
-npm run seed
+npm run db:seed
 ```
 
 ## Troubleshooting

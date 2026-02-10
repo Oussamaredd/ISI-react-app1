@@ -1,22 +1,131 @@
 .list-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-height: 80vh;
+  gap: 1.25rem;
 }
 
-.list-page ul {
+.list-page h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
+}
+
+.ticket-items {
   list-style: none;
+  margin: 0;
   padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.list-page li {
-  margin: 10px 0;
-  padding: 10px 20px;
-  border: 1px solid #fff;
-  border-radius: 5px;
-  width: 300px;
+.ticket-item {
+  padding: 0.85rem 1rem;
+  background: rgba(18, 24, 38, 0.6);
+  border-bottom: 1px solid var(--border);
+}
+
+.ticket-item:last-child {
+  border-bottom: none;
+}
+
+.ticket-item-layout {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+}
+
+.ticket-item-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticket-priority {
+  font-weight: 600;
+}
+
+.ticket-priority-high {
+  color: var(--danger);
+}
+
+.ticket-priority-medium {
+  color: var(--accent);
+}
+
+.ticket-priority-low {
+  color: var(--muted);
+}
+
+.ticket-status {
+  font-style: normal;
+}
+
+.ticket-status-open {
+  color: var(--warning);
+}
+
+.ticket-status-closed {
+  color: var(--success);
+}
+
+.ticket-hotel {
+  color: var(--muted);
+  margin-left: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ticket-action-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #f8faff;
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ticket-action-link:hover {
+  color: #fff;
+}
+
+.ticket-delete-btn {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #ff6b6b, #de4e4e);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ticket-delete-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(255, 107, 107, 0.22);
+}
+
+.ticket-delete-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .ticket-item-layout {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ticket-actions {
+    width: 100%;
+  }
 }

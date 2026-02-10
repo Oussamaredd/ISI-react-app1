@@ -1,80 +1,42 @@
-# Multi-stage Dockerfile for production
-# Stage 1: Build stage
-FROM node:18-alpine AS builder
+# syntax=docker/dockerfile:1
 
-# Set working directory
-WORKDIR /app
+# Monorepo build image for the API service.
+# Uses the root workspace lockfile and builds database + API packages.
 
-# Install build dependencies
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    libc-dev \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    musl-dev \
-    giflib-dev \
-    pixman-dev \
-    pangomm-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    chromium
+FROM node:20-alpine AS deps
+WORKDIR /workspace
 
-# Copy package files
 COPY package*.json ./
-COPY apps/server/package*.json ./apps/server/
-COPY apps/client/package*.json ./apps/client/
+COPY app/package*.json ./app/
+COPY api/package*.json ./api/
+COPY database/package*.json ./database/
+COPY infrastructure/package*.json ./infrastructure/
 
-# Install all dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci
 
-# Copy source code
+FROM deps AS builder
+WORKDIR /workspace
 COPY . .
 
-# Build the application
-RUN npm run build
+RUN npm run build --workspace=react-app1-database
+RUN npm run build --workspace=react-app1-api
 
-# Stage 2: Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS runtime
+WORKDIR /workspace
+ENV NODE_ENV=production
 
-# Install runtime dependencies
-RUN apk add --no-cache \
-    dumb-init \
-    curl \
-    && rm -rf /var/cache/apk/*
+RUN apk add --no-cache curl
 
-# Create app user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+COPY --from=deps /workspace/node_modules ./node_modules
+COPY --from=builder /workspace/package*.json ./
+COPY --from=builder /workspace/api ./api
+COPY --from=builder /workspace/database ./database
+COPY --from=builder /workspace/infrastructure ./infrastructure
 
-# Set working directory
-WORKDIR /app
+WORKDIR /workspace/api
+EXPOSE 3001
 
-# Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nextjs:nodejs /app/apps/server/dist ./apps/server/dist
-COPY --from=builder --chown=nextjs:nodejs /app/apps/client/dist ./apps/client/dist
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/package*.json ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/server/package*.json ./apps/server/
-COPY --from=builder --chown=nextjs:nodejs /app/apps/client/package*.json ./apps/client/
-COPY --from=builder --chown=nextjs:nodejs /app/shared ./shared
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS http://localhost:3001/api/health || exit 1
 
-# Create uploads directory
-RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
-
-# Switch to non-root user
-USER nextjs
-
-# Expose port
-EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
-
-# Start the application
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/main.js"]

@@ -32,6 +32,11 @@ vi.mock('../hooks/useTickets', () => ({
     isLoading: false,
     error: null,
   }),
+  useTicketActivity: () => ({
+    data: { activity: [] },
+    isLoading: false,
+    error: null,
+  }),
   useAddComment: () => ({
     mutate: vi.fn(),
     isPending: false,

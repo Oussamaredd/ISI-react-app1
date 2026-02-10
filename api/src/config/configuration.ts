@@ -1,4 +1,4 @@
-const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/tickets';
+const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/ticketdb';
 
 export type AppConfig = {
   nodeEnv: string;

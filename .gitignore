@@ -32,9 +32,14 @@ dist-ssr
 .env.test.local
 .env.production.local
 .env.docker
+*.env.backup
+*.env.bak
+*.secrets.env
+.envrc
 */.env
 */.env.local
 */.env.docker
+*/.env.*.local
 api/.env
 api/.env.local
 api/.env.docker
@@ -43,6 +48,8 @@ app/.env.local
 database/.env
 database/.env.local
 infrastructure/.env
+infrastructure/environments/.env.local
+infrastructure/environments/.env.*.local
 
 # Terraform state
 infrastructure/.terraform/
@@ -59,3 +66,7 @@ api/coverage/
 # Playwright
 playwright-report/
 test-results/
+
+# Temporary local verification artifacts
+temp_dev_*
+*.pid

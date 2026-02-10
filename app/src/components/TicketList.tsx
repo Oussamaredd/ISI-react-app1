@@ -16,64 +16,37 @@ const formatPriority = (priority: Ticket["priority"]) =>
 function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
   const status = formatStatus(ticket.status);
   const priority = formatPriority(ticket.priority);
-  const statusColor = status === "OPEN" ? "orange" : "#2e7d32";
-  const priorityColor =
-    priority === "HIGH" ? "#dc3545" : priority === "LOW" ? "#6c757d" : "#0d6efd";
   const isOpen = status === "OPEN";
 
+  const statusClass = isOpen ? "ticket-status ticket-status-open" : "ticket-status ticket-status-closed";
+
+  const priorityClass =
+    priority === "HIGH"
+      ? "ticket-priority ticket-priority-high"
+      : priority === "LOW"
+        ? "ticket-priority ticket-priority-low"
+        : "ticket-priority ticket-priority-medium";
+
   return (
-    <li style={{ padding: "0.5rem 0", borderBottom: "1px solid #eee" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <li className="ticket-item">
+      <div className="ticket-item-layout">
         <div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <div className="ticket-item-header">
             <strong>{ticket.title}</strong>
-            <span style={{ color: priorityColor, fontWeight: 600 }}>Priority: {priority}</span>
-            <em style={{ color: statusColor }}>Status: {status}</em>
+            <span className={priorityClass}>Priority: {priority}</span>
+            <em className={statusClass}>Status: {status}</em>
           </div>
-          {ticket.hotelId && (
-            <span style={{ marginLeft: "0.25rem", color: "#666" }}>Hotel: {ticket.hotelId}</span>
-          )}
+          {ticket.hotelId && <span className="ticket-hotel">Hotel: {ticket.hotelId}</span>}
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+
+        <div className="ticket-actions">
           {isOpen && (
-            <Link
-              to={`/tickets/${ticket.id}/treat`}
-              style={{
-                padding: "0.25rem 0.5rem",
-                background: "#007bff",
-                color: "white",
-                textDecoration: "none",
-                borderRadius: "3px",
-                fontSize: "0.8rem",
-              }}
-            >
+            <Link to={`/tickets/${ticket.id}/treat`} className="ticket-action-link">
               Treat
             </Link>
           )}
-          <button
-            onClick={() => onDelete(ticket.id)}
-            disabled={isDeleting}
-            style={{
-              padding: "0.25rem 0.5rem",
-              background: "#dc3545",
-              color: "white",
-              border: "none",
-              borderRadius: "3px",
-              cursor: isDeleting ? "not-allowed" : "pointer",
-              fontSize: "0.8rem",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (!isDeleting) {
-                e.currentTarget.style.background = "#c82333";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isDeleting) {
-                e.currentTarget.style.background = "#dc3545";
-              }
-            }}
-          >
+
+          <button onClick={() => onDelete(ticket.id)} disabled={isDeleting} className="ticket-delete-btn">
             {isDeleting ? "Deleting..." : "Delete"}
           </button>
         </div>
@@ -101,7 +74,7 @@ export default function TicketList() {
           No tickets yet. <Link to="/tickets/create">Create your first ticket!</Link>
         </p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        <ul className="ticket-items">
           {tickets.map((ticket: Ticket) => (
             <TicketItem
               key={ticket.id}

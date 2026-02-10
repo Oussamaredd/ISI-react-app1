@@ -5,6 +5,24 @@ import AdvancedTicketList from '../pages/AdvancedTicketList';
 import { renderWithProviders } from './test-utils';
 import { useTickets } from '../hooks/useTickets';
 
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { name: 'Test User' },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    getAuthHeaders: async () => ({}),
+  }),
+  useCurrentUser: () => ({
+    user: { name: 'Test User' },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 vi.mock('../hooks/useTickets', () => {
   const useTicketsMock = vi.fn((filters?: any) => {
     if (filters === false) {
@@ -225,7 +243,7 @@ describe('AdvancedTicketList Component', () => {
     renderAdvancedList();
     
     expect(screen.getByText('No tickets found')).toBeInTheDocument();
-    expect(screen.getByText('ðŸŽ«')).toBeInTheDocument(); // Empty state icon
+    expect(screen.getByText('🎫')).toBeInTheDocument(); // Empty state icon
   });
 
   test('error state displays correctly', () => {

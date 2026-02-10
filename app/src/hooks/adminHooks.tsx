@@ -96,7 +96,7 @@ export function useUpdateUserRoles() {
         message: 'User roles have been updated successfully.',
       });
     },
-    onError: (error) => {
+    onError: () => {
       addToast({
         type: 'error',
         title: 'Error',
@@ -141,7 +141,7 @@ export function useUpdateUserStatus() {
         message: `User has been ${variables.isActive ? 'activated' : 'deactivated'} successfully.`,
       });
     },
-    onError: (error) => {
+    onError: () => {
       addToast({
         type: 'error',
         title: 'Error',

@@ -40,10 +40,10 @@ export type DashboardData = {
     maxPrice?: number;
   };
   statusBreakdown?: Record<string, number>;
-  hotels?: Array<{ id: number; name: string; ticketCount?: number; avgPrice?: number }>;
+  hotels?: Array<{ id: string | number; name: string; ticketCount?: number; avgPrice?: number }>;
   recentActivity?: Array<{ date: string; created: number; updated: number }>;
   recentTickets?: Array<{
-    id: number;
+    id: string | number;
     name: string;
     price: number;
     status: string;
@@ -201,6 +201,7 @@ export const useAddComment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticketComments'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketActivity'] });
     },
   });
 
@@ -229,6 +230,7 @@ export const useUpdateComment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticketComments'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketActivity'] });
     },
   });
 
@@ -249,6 +251,7 @@ export const useDeleteComment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticketComments'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketActivity'] });
     },
   });
 

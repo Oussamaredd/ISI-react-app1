@@ -280,7 +280,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
 // Error handling hook for components
 export const useErrorHandler = () => {
-  const classifyErrorMemo = React.useCallback(classifyError, []);
+  const classifyErrorMemo = React.useCallback((error: any) => classifyError(error), []);
 
   const handleError = React.useCallback((error: any, context = '') => {
     const errorInfo = handleApiError(error, context);

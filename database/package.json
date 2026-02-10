@@ -16,17 +16,19 @@
     "watch": "tsc -w -p tsconfig.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:seed": "npm run build && node dist/seed.js",
+    "db:migrate:seed": "npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
-    "drizzle-orm": "^0.32.0",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.4",
-    "zod": "^3.23.8",
-    "dotenv": "^16.4.5"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
-    "drizzle-kit": "^0.28.1",
+    "drizzle-kit": "^0.31.9",
     "typescript": "^5.7.2"
   }
 }

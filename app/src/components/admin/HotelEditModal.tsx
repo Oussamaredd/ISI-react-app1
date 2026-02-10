@@ -19,12 +19,14 @@ export function HotelEditModal({ hotel, onClose, onUpdate }: { hotel: Hotel; onC
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (hotel) {
       setName(hotel.name || '');
       setIsAvailable(hotel.is_available !== false);
     }
   }, [hotel]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/tickets';
+const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/ticketdb';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

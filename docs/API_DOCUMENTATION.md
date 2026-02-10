@@ -494,20 +494,74 @@ GET /health
 }
 ```
 
-### Liveness Probe
+### Health Check
 ```
-GET /health/liveness
+GET /health
 ```
 
-### Readiness Probe
+### Frontend Error Ingestion
 ```
-GET /health/readiness
+POST /errors
+```
+
+Accepts client-side error logs from the frontend.
+
+**Example Request Body:**
+```json
+{
+  "type": "NETWORK",
+  "message": "Failed to fetch",
+  "context": "AdvancedTicketList",
+  "severity": "high",
+  "status": 503,
+  "timestamp": "2026-02-01T10:00:00.000Z"
+}
+```
+
+**Response (202):**
+```json
+{
+  "accepted": true,
+  "total": 42
+}
+```
+
+### Frontend Metrics Ingestion
+```
+POST /metrics/frontend
+```
+
+Accepts client-side performance metrics from the frontend.
+
+**Example Request Body:**
+```json
+{
+  "type": "navigation",
+  "name": "ttfb",
+  "value": 123.45,
+  "rating": "good",
+  "timestamp": "2026-02-01T10:00:01.000Z"
+}
+```
+
+**Response (202):**
+```json
+{
+  "accepted": true,
+  "total": 128
+}
 ```
 
 ### Metrics (Prometheus format)
 ```
 GET /metrics
 ```
+
+Returns Prometheus-compatible `text/plain` metrics, including:
+- `frontend_errors_total`
+- `frontend_metrics_total`
+- `frontend_errors_by_type_total`
+- `frontend_metrics_by_type_total`
 
 ## Error Responses
 

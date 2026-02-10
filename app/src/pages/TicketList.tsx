@@ -5,7 +5,7 @@ import "../styles/TicketList.css";
 
 export default function TicketListPage() {
   return (
-    <div className="container">
+    <div className="container list-page">
       <h1>All Tickets</h1>
       <TicketList />
     </div>

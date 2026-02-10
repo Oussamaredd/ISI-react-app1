@@ -30,7 +30,6 @@ import {
 import { 
   HotelEditModal
 } from './HotelEditModal';
-import { useToast } from '../../context/ToastContext';
 
 export function HotelManagement() {
   const [search, setSearch] = useState('');
@@ -39,7 +38,6 @@ export function HotelManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingHotel, setEditingHotel] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const { addToast } = useToast();
 
   const { data: hotelsData, isLoading, error } = useAdminHotels({
     search,
@@ -209,7 +207,7 @@ export function HotelManagement() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {hotelsData?.data?.hotels?.map((hotel) => (
+                  {hotelsData?.hotels?.map((hotel) => (
                     <tr key={hotel.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -284,7 +282,7 @@ export function HotelManagement() {
             </div>
 
             {/* Pagination */}
-            {hotelsData?.data?.pagination?.totalPages > 1 && (
+            {hotelsData?.pagination?.totalPages > 1 && (
               <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <Button
@@ -297,7 +295,7 @@ export function HotelManagement() {
                   <Button
                     variant="secondary"
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === hotelsData.data.pagination.totalPages}
+                    disabled={currentPage === hotelsData?.pagination?.totalPages}
                   >
                     Next
                   </Button>
@@ -311,10 +309,10 @@ export function HotelManagement() {
                       </span>{' '}
                       to{' '}
                       <span className="font-medium">
-                        {Math.min(currentPage * 20, hotelsData.data.pagination.total)}
+                        {Math.min(currentPage * 20, hotelsData?.pagination?.total ?? 0)}
                       </span>{' '}
                       of{' '}
-                      <span className="font-medium">{hotelsData.data.pagination.total}</span> results
+                      <span className="font-medium">{hotelsData?.pagination?.total ?? 0}</span> results
                     </p>
                   </div>
                   <div>
@@ -328,7 +326,7 @@ export function HotelManagement() {
                         Previous
                       </Button>
                       
-                      {Array.from({ length: hotelsData.data.pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                      {Array.from({ length: hotelsData?.pagination?.totalPages ?? 0 }, (_, i) => i + 1).map((page) => (
                         <button
                           key={page}
                           onClick={() => handlePageChange(page)}
@@ -345,7 +343,7 @@ export function HotelManagement() {
                       <Button
                         variant="secondary"
                         onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === hotelsData.data.pagination.totalPages}
+                        disabled={currentPage === hotelsData?.pagination?.totalPages}
                         className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                       >
                         Next

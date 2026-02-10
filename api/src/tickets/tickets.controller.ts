@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Inject,
   InternalServerErrorException,
   NotFoundException,
   Param,
@@ -12,6 +13,7 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
@@ -19,6 +21,9 @@ import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 import { UpdateCommentDto } from './dto/update-comment.dto.js';
 import { AssignHotelDto } from './dto/assign-hotel.dto.js';
+import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../auth/permissions.guard.js';
+import { RequirePermissions } from '../auth/permissions.decorator.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -35,8 +40,10 @@ const normalizeSearch = (value?: string) => {
 };
 
 @Controller('tickets')
+@UseGuards(AuthenticatedUserGuard, PermissionsGuard)
+@RequirePermissions('tickets.read')
 export class TicketsController {
-  constructor(private readonly ticketsService: TicketsService) {}
+  constructor(@Inject(TicketsService) private readonly ticketsService: TicketsService) {}
 
   @Get()
   async findAll(
@@ -109,11 +116,12 @@ export class TicketsController {
   }
 
   @Post(':id/comments')
+  @RequirePermissions('tickets.write')
   async addComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: CreateCommentDto,
   ) {
-    const body = dto.body ?? dto.content;
+    const body = (dto.body ?? dto.content ?? '').trim();
     if (!body) {
       throw new BadRequestException('Comment body is required');
     }
@@ -126,12 +134,13 @@ export class TicketsController {
   }
 
   @Put(':id/comments/:commentId')
+  @RequirePermissions('tickets.write')
   async updateComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
     @Body() dto: UpdateCommentDto,
   ) {
-    const body = dto.body ?? dto.content;
+    const body = (dto.body ?? dto.content ?? '').trim();
     if (!body) {
       throw new BadRequestException('Comment body is required');
     }
@@ -147,6 +156,7 @@ export class TicketsController {
   }
 
   @Delete(':id/comments/:commentId')
+  @RequirePermissions('tickets.write')
   async deleteComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
@@ -177,11 +187,13 @@ export class TicketsController {
   }
 
   @Post()
+  @RequirePermissions('tickets.write')
   create(@Body() dto: CreateTicketDto) {
     return this.ticketsService.create(dto);
   }
 
   @Post(':id/assign-hotel')
+  @RequirePermissions('tickets.write')
   @HttpCode(200)
   async assignHotel(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -199,11 +211,13 @@ export class TicketsController {
   }
 
   @Put(':id')
+  @RequirePermissions('tickets.write')
   update(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateTicketDto) {
     return this.ticketsService.update(id, dto);
   }
 
   @Delete(':id')
+  @RequirePermissions('tickets.write')
   remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.ticketsService.remove(id);
   }

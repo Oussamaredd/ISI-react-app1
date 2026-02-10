@@ -3,30 +3,36 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 import type { AuthUser } from './auth.types.js';
 import { AuthService } from './auth.service.js';
+import { UsersService } from '../users/users.service.js';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Get('status')
-  getStatus(@Req() req: Request) {
+  async getStatus(@Req() req: Request) {
     const user = this.authService.getAuthUserFromCookie(req.headers.cookie);
 
     if (!user) {
       return { authenticated: false };
     }
 
-    return { authenticated: true, user };
+    const enriched = await this.buildUserResponse(user);
+    return { authenticated: true, user: enriched };
   }
 
   @Get('me')
-  getCurrentUser(@Req() req: Request) {
+  async getCurrentUser(@Req() req: Request) {
     const user = this.authService.getAuthUserFromCookie(req.headers.cookie);
     if (!user) {
       throw new UnauthorizedException();
     }
 
-    return { user };
+    const enriched = await this.buildUserResponse(user);
+    return { user: enriched };
   }
 
   @Get('google')
@@ -52,5 +58,26 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(this.authService.getAuthCookieName(), this.authService.getAuthCookieOptions());
     return { success: true };
+  }
+
+  private async buildUserResponse(user: AuthUser) {
+    try {
+      const dbUser = await this.usersService.ensureUserForAuth(user);
+      if (!dbUser) {
+        return user;
+      }
+
+      const roles = await this.usersService.getRolesForUser(dbUser.id);
+
+      return {
+        ...user,
+        role: dbUser.role ?? null,
+        roles: roles.map((role) => ({ id: role.id, name: role.name })),
+        isActive: dbUser.isActive ?? true,
+      };
+    } catch (error) {
+      console.error('Failed to enrich auth user:', error);
+      return user;
+    }
   }
 }

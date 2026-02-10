@@ -15,30 +15,17 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f8fafc',
-      color: '#1e293b',
-      fontFamily: 'Arial, sans-serif',
-      padding: '2rem'
-    }}>
+    <div className="dashboard-page">
       <h1>Dashboard</h1>
       <p>Welcome, {user?.name || 'User'}!</p>
-      <div style={{ marginTop: '2rem' }}>
+
+      <div className="dashboard-nav-section">
         <h2>Navigation</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <a
-            href="/tickets"
-            style={{ color: '#1e293b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <span aria-hidden="true">📋</span>
+        <div className="dashboard-nav-links">
+          <a href="/tickets" className="dashboard-nav-link">
             <span>View Tickets</span>
           </a>
-          <a
-            href="/tickets/create"
-            style={{ color: '#1e293b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <span aria-hidden="true">➕</span>
+          <a href="/tickets/create" className="dashboard-nav-link">
             <span>Create Ticket</span>
           </a>
         </div>

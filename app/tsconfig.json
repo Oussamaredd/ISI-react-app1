@@ -25,10 +25,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "src/utils/animations.tsx",
-    "src/utils/performanceMonitoring.tsx",
-    "src/utils/queryClient.tsx",
-    "src/hooks/useApi.tsx",
     "src/components/admin/UserManagement.tsx",
     "src/components/admin/UserEditModal.tsx",
     "src/tests/errorHandling.test.tsx"

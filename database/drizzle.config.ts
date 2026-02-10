@@ -5,7 +5,7 @@ export default defineConfig({
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/tickets',
+    url: process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/ticketdb',
   },
   verbose: true,
   strict: true,
