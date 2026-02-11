@@ -240,7 +240,7 @@ expect(endTime - startTime).toBeLessThan(1000);
 ```
 
 ### Integration Tests
-- **E2E Workflows**: Complete user journeys
+- **Workflow Smoke Tests**: Complete user journeys
 - **Performance Tests**: Load testing with concurrent users
 - **Accessibility Tests**: Screen reader and keyboard navigation
 - **Cross-browser Tests**: Chrome, Firefox, Safari, Edge

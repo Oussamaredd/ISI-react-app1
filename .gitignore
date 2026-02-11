@@ -50,6 +50,10 @@ database/.env.local
 infrastructure/.env
 infrastructure/environments/.env.local
 infrastructure/environments/.env.*.local
+infrastructure/environments/.env.docker
+infrastructure/environments/.env.development
+infrastructure/environments/.env.staging
+infrastructure/environments/.env.production
 
 # Terraform state
 infrastructure/.terraform/
@@ -62,10 +66,6 @@ coverage/
 *.lcov
 app/coverage/
 api/coverage/
-
-# Playwright
-playwright-report/
-test-results/
 
 # Temporary local verification artifacts
 temp_dev_*

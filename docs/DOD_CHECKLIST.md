@@ -32,7 +32,7 @@
 ### Testing Coverage
 - [ ] **Unit Tests**: >80% code coverage for critical paths
 - [ ] **Integration Tests**: API endpoint integration tests
-- [ ] **E2E Tests**: Critical user journey tests
+- [ ] **Smoke Tests**: Critical user journey checks
 - [ ] **Database Tests**: Transaction and constraint tests
 - [ ] **Security Tests**: Authentication and authorization tests
 - [ ] **Performance Tests**: Load and stress tests
@@ -66,6 +66,8 @@
 ### Tooling & Automation
 - [ ] **Code Formatting**: Automated formatting (Prettier)
 - [ ] **Linting**: Comprehensive linting rules enforced
+- [ ] **Env Policy Validation**: `infrastructure/scripts/validate-env.mjs` validates required keys, frontend `VITE_*` policy, and `ticketdb` DB-name policy
+- [ ] **CI Env Gates**: CI/CD workflows run env validation before build/test/deploy
 - [ ] **Pre-commit Hooks**: Quality gates on commit
 - [ ] **IDE Configuration**: VS Code settings and extensions
 - [ ] **Documentation**: In-code documentation complete

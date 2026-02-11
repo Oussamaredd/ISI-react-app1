@@ -21,10 +21,6 @@
     "test": "npm run test:app && npm run test:api",
     "test:app": "npm run test --workspace=react-app1-app",
     "test:api": "npm run test --workspace=react-app1-api",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report",
     "lint": "npm run lint:app && npm run lint:api",
     "lint:app": "npm run lint --workspace=react-app1-app",
     "lint:api": "npm run lint --workspace=react-app1-api",
@@ -37,6 +33,15 @@
     "db:push": "npm run db:push --workspace=react-app1-database",
     "db:seed": "npm run db:seed --workspace=react-app1-database",
     "db:migrate:seed": "npm run db:migrate:seed --workspace=react-app1-database",
+    "validate-env": "node ./infrastructure/scripts/validate-env.mjs",
+    "validate-env:host": "node ./infrastructure/scripts/validate-env.mjs --workflow host-dev --files .env,app/.env.local",
+    "validate-env:host:template": "node ./infrastructure/scripts/validate-env.mjs --workflow host-dev --files .env.example,app/.env.example",
+    "validate-env:docker": "node ./infrastructure/scripts/validate-env.mjs --workflow docker-dev --files infrastructure/environments/.env.docker",
+    "validate-env:docker:template": "node ./infrastructure/scripts/validate-env.mjs --workflow docker-dev --files infrastructure/environments/.env.docker.example",
+    "validate-env:deploy:dev": "node ./infrastructure/scripts/validate-env.mjs --workflow deploy-dev --files infrastructure/environments/.env.development.example",
+    "validate-env:deploy:staging": "node ./infrastructure/scripts/validate-env.mjs --workflow deploy-staging --files infrastructure/environments/.env.staging.example",
+    "validate-env:deploy:prod": "node ./infrastructure/scripts/validate-env.mjs --workflow deploy-prod --files infrastructure/environments/.env.production.example",
+    "validate-env:all": "npm run validate-env:host:template && npm run validate-env:docker:template && npm run validate-env:deploy:dev && npm run validate-env:deploy:staging && npm run validate-env:deploy:prod",
     "infra:up": "npm run docker:dev --workspace=react-app1-infrastructure",
     "infra:down": "npm run docker:down --workspace=react-app1-infrastructure",
     "infra:health": "npm run health --workspace=react-app1-infrastructure"
@@ -52,7 +57,6 @@
     "lodash": "4.17.23"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.1",
     "concurrently": "^8.2.2"
   }
 }
