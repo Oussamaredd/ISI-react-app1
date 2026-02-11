@@ -1,6 +1,7 @@
 // API client with centralized configuration and error handling
 const rawApiBase =
   import.meta.env.VITE_API_BASE_URL ??
+  // Temporary alias support during migration to VITE_API_BASE_URL.
   import.meta.env.VITE_API_URL ??
   'http://localhost:3001';
 

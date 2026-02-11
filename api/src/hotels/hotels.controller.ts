@@ -1,8 +1,10 @@
 import { Controller, Get, Inject, InternalServerErrorException, UseGuards } from '@nestjs/common';
-import { HotelsService } from './hotels.service.js';
+
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
+import { PermissionsGuard } from '../auth/permissions.guard.js';
+
+import { HotelsService } from './hotels.service.js';
 
 @Controller('hotels')
 @UseGuards(AuthenticatedUserGuard, PermissionsGuard)

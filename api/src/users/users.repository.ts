@@ -1,8 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { type DatabaseClient, hotels, roles, userRoles, users } from 'react-app1-database';
-import { DRIZZLE } from '../database/database.constants.js';
+
 import type { AuthUser } from '../auth/auth.types.js';
+import { DRIZZLE } from '../database/database.constants.js';
 
 const DEFAULT_ROLE = 'agent';
 const DEFAULT_HOTEL_SLUG = 'default-hotel';

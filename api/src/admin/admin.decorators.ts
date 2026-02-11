@@ -1,4 +1,5 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
+
 import type { AdminUserContext } from './admin.types.js';
 
 export const AdminUser = createParamDecorator(

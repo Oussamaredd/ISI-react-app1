@@ -14,11 +14,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AdminGuard } from './admin.guard.js';
-import { AdminUser } from './admin.decorators.js';
-import type { AdminUserContext } from './admin.types.js';
+
 import { UsersService } from '../users/users.service.js';
+
 import { AdminAuditService } from './admin.audit.service.js';
+import { AdminUser } from './admin.decorators.js';
+import { AdminGuard } from './admin.guard.js';
+import type { AdminUserContext } from './admin.types.js';
 import { getRequestMetadata } from './admin.utils.js';
 
 @Controller('admin/users')

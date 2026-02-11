@@ -6,8 +6,9 @@ const GOOGLE_AUTH_URL = `${AUTH_BASE_URL}/google`;
 
 export default function LoginButton() {
   const handleClick = () => {
-    if (API_BASE === 'http://localhost:3001' && !import.meta.env.VITE_API_URL) {
-      console.warn('Warning: VITE_API_URL not set, using default http://localhost:3001');
+    const configuredApiBase = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL;
+    if (API_BASE === 'http://localhost:3001' && !configuredApiBase) {
+      console.warn('Warning: VITE_API_BASE_URL not set, using default http://localhost:3001');
     }
   };
 

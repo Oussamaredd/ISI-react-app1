@@ -1,7 +1,9 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
+
 import { AuthService } from '../auth/auth.service.js';
 import { UsersService } from '../users/users.service.js';
+
 import type { AdminUserContext } from './admin.types.js';
 
 const ADMIN_ROLE_NAMES = new Set(['admin', 'super_admin']);

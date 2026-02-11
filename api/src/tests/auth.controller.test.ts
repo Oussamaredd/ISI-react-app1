@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { AuthController } from '../auth/auth.controller.js';
 
 describe('AuthController', () => {

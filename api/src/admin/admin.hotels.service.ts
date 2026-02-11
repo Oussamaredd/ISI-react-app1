@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { AdminHotelsRepository } from './admin.hotels.repository.js';
 
 @Injectable()

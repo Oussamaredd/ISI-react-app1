@@ -5,8 +5,9 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { AdminGuard } from './admin.guard.js';
+
 import { AdminAuditService } from './admin.audit.service.js';
+import { AdminGuard } from './admin.guard.js';
 
 @Controller('admin/audit-logs')
 @UseGuards(AdminGuard)

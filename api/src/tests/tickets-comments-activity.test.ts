@@ -2,11 +2,12 @@ import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { AuthService } from '../auth/auth.service.js';
-import { TicketsController } from '../tickets/tickets.controller.js';
-import { TicketsService } from '../tickets/tickets.service.js';
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
+import { TicketsController } from '../tickets/tickets.controller.js';
+import { TicketsService } from '../tickets/tickets.service.js';
 import { UsersService } from '../users/users.service.js';
 
 describe('Tickets comments and activity endpoints', () => {

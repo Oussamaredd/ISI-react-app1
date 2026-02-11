@@ -15,7 +15,7 @@ export type DatabaseInstance = {
 
 export function createDatabaseInstance(config: DatabaseConfig = {}): DatabaseInstance {
   const env = parseDatabaseEnv({
-    DATABASE_URL: config.url ?? process.env.DATABASE_URL ?? '',
+    DATABASE_URL: config.url ?? process.env.DATABASE_URL,
   });
 
   const sql = postgres(env.DATABASE_URL, {

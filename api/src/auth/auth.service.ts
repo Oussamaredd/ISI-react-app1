@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import jwtPkg from 'jsonwebtoken';
 import type { Secret, SignOptions } from 'jsonwebtoken';
+
 import type { AuthTokenPayload, AuthUser } from './auth.types.js';
 import {
   buildRedirectUrl,

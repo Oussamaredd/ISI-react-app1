@@ -2,6 +2,7 @@ import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
 import { MonitoringModule } from '../monitoring/monitoring.module.js';
 
 describe('Monitoring endpoints', () => {

@@ -1,4 +1,11 @@
-const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/ticketdb';
+function requireEnv(name: keyof NodeJS.ProcessEnv): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required.`);
+  }
+
+  return value;
+}
 
 export type AppConfig = {
   nodeEnv: string;
@@ -13,9 +20,9 @@ export type AppConfig = {
 export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   api: {
-    port: Number(process.env.API_PORT ?? 3001),
+    port: Number(process.env.API_PORT ?? process.env.PORT ?? 3001),
   },
   database: {
-    url: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
+    url: requireEnv('DATABASE_URL'),
   },
 });

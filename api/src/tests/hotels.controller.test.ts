@@ -1,5 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { HotelsController } from '../hotels/hotels.controller.js';
 
 describe('HotelsController', () => {

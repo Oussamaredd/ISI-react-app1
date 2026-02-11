@@ -6,8 +6,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthService } from './auth.service.js';
+
 import { UsersService } from '../users/users.service.js';
+
+import { AuthService } from './auth.service.js';
 import type { RequestWithAuthUser } from './authorization.types.js';
 
 const ALL_PLATFORM_PERMISSIONS = [

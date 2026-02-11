@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+
 import type { RequestWithAuthUser } from './authorization.types.js';
 import { REQUIRED_PERMISSIONS_KEY } from './permissions.decorator.js';
 

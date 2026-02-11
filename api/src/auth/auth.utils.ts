@@ -1,6 +1,7 @@
 const DEFAULT_CLIENT_ORIGIN = 'http://localhost:5173';
 const DEFAULT_API_PORT = 3001;
 const DEFAULT_AUTH_COOKIE_NAME = 'auth_token';
+const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
 
 export const getEnvValue = (...keys: string[]) => {
   for (const key of keys) {
@@ -29,21 +30,28 @@ export const getGoogleCallbackUrl = () => {
   );
 
   if (explicitCallback) {
-    return explicitCallback;
+    const parsed = new URL(explicitCallback);
+    if (parsed.pathname !== OAUTH_CALLBACK_PATH) {
+      throw new Error(
+        `Invalid GOOGLE_CALLBACK_URL path: expected '${OAUTH_CALLBACK_PATH}', got '${parsed.pathname}'.`,
+      );
+    }
+    return explicitCallback.replace(/\/+$/, '');
   }
 
   const apiBase = getEnvValue('API_URL', 'API_BASE_URL');
   if (apiBase) {
     const normalized = apiBase.replace(/\/+$/, '');
-    const withApi = normalized.endsWith('/api') ? normalized : `${normalized}/api`;
-    return `${withApi}/auth/google/callback`;
+    return normalized.endsWith('/api')
+      ? `${normalized}/auth/google/callback`
+      : `${normalized}${OAUTH_CALLBACK_PATH}`;
   }
 
   const apiHost = getEnvValue('API_HOST');
   const host = apiHost && apiHost !== '0.0.0.0' ? apiHost : 'localhost';
   const port = Number(process.env.API_PORT ?? DEFAULT_API_PORT) || DEFAULT_API_PORT;
 
-  return `http://${host}:${port}/api/auth/google/callback`;
+  return `http://${host}:${port}${OAUTH_CALLBACK_PATH}`;
 };
 
 export const getJwtSecret = () => getEnvValue('JWT_SECRET', 'SESSION_SECRET');

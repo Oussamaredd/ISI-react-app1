@@ -1,8 +1,10 @@
 import { Controller, Get, Inject, InternalServerErrorException, UseGuards } from '@nestjs/common';
-import { DashboardService } from './dashboard.service.js';
+
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
+import { PermissionsGuard } from '../auth/permissions.guard.js';
+
+import { DashboardService } from './dashboard.service.js';
 
 @Controller('dashboard')
 @UseGuards(AuthenticatedUserGuard, PermissionsGuard)

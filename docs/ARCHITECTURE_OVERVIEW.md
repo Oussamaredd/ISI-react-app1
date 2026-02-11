@@ -6,7 +6,7 @@
 
 ## Context
 
-The repository already follows a four-layer folder layout, but architecture ownership and dependency direction must be explicit so future changes do not reintroduce cross-layer coupling.
+The repository already follows a four-layer layout. Ownership and dependency direction must stay explicit to prevent cross-layer coupling and env-source drift.
 
 ## Decision
 
@@ -15,36 +15,41 @@ The repository already follows a four-layer folder layout, but architecture owne
 - `app`: frontend UI only (routing, views, client-side state, API calls).
 - `api`: NestJS modules/controllers/use-cases/repositories.
 - `database`: Drizzle schema, database client factory, migrations, seed lifecycle.
-- `infrastructure`: Docker/Terraform/ops scripts that run deploy and runtime orchestration.
+- `infrastructure`: Docker/Terraform/ops scripts for runtime orchestration.
 
 ### Dependency direction
 
 - `app` must not import runtime code from `api`, `database`, or `infrastructure`.
 - `api` may depend on `database`.
 - `database` must never depend on `api`.
-- `infrastructure` must execute migration and seed commands without bootstrapping Nest runtime.
+- `infrastructure` runs migration/seed commands without API bootstrap.
 
 ### Runtime behavior rules
 
 - Controllers in `api` must not execute Drizzle queries directly.
-- Data access path in `api` is `controller -> use-case/service -> repository -> database`.
-- `database` is the single source of truth for schema, migration, and seed commands.
+- Data access path: `controller -> service -> repository -> database`.
+- `database` is the source of truth for schema, migration, and seed commands.
 - Domain controllers/services in `api` must not import `drizzle-orm` or `react-app1-database` directly.
+
+### Environment ownership rules
+
+- Host/native runtime source: root `.env` plus `app/.env.local` (`VITE_*` only).
+- Docker runtime source: `infrastructure/environments/.env.docker`.
+- Deployed runtime source: secret-manager injection; committed files are templates only.
+- Canonical keys:
+  - `DATABASE_URL`
+  - `API_PORT`
+  - `VITE_API_BASE_URL`
+- Canonical database name in templates: `ticketdb`.
 
 ## Enforcement
 
-- Lint rules block forbidden cross-layer imports (`app` and `api`).
-- API lint rules also block direct database imports in domain controllers/services.
-- Root lint command (`npm run lint`) is the architecture boundary gate.
-- CI includes:
-  - architecture lint gate,
-  - database gate (`build`, `typecheck`, `db:migrate`),
-  - backend tests against a migrated Postgres DB,
-  - frontend build/test gates.
-- CD includes a pre-deploy validation job with architecture and migration checks.
+- Lint blocks forbidden cross-layer imports.
+- CI/CD gates run architecture lint, migration checks, build/test, and env validation.
+- Frontend env policy checks fail on non-`VITE_*` keys in frontend env files.
 
 ## Consequences
 
-- Ownership is explicit per layer, reducing accidental coupling.
-- Database lifecycle operations remain independent from API bootstrap.
-- Regressions become detectable through lint/CI rather than production behavior.
+- Layer ownership is explicit and testable.
+- Env-source ambiguity is removed across host, docker, and deploy workflows.
+- Regression risk shifts from runtime surprises to CI failures.

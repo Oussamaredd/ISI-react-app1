@@ -6,7 +6,7 @@ The Ticket Management System provides a comprehensive RESTful API for managing t
 
 ## Base URL
 
-- **Development**: `http://localhost:3000/api`
+- **Development**: `http://localhost:3001/api`
 - **Staging**: `https://staging.yourdomain.com/api`
 - **Production**: `https://yourdomain.com/api`
 
@@ -23,8 +23,13 @@ GET /auth/google
 
 #### OAuth Callback
 ```
-GET /auth/google/callback
+GET /api/auth/google/callback
 ```
+
+Full local callback URI:
+`http://localhost:3001/api/auth/google/callback`
+
+Google Cloud Console Authorized redirect URI must exactly match runtime callback URI.
 
 #### Logout
 ```

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import 'dotenv/config';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
@@ -15,7 +15,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number(process.env.API_PORT ?? 3001);
+  const port = Number(process.env.API_PORT ?? process.env.PORT ?? 3001);
   const host = process.env.API_HOST ?? '0.0.0.0';
   const origins = (process.env.CORS_ORIGINS ?? process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
     .split(',')

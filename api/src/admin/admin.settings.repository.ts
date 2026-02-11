@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { systemSettings, type DatabaseClient } from 'react-app1-database';
+
 import { DRIZZLE } from '../database/database.constants.js';
 
 const DEFAULT_SETTINGS = {

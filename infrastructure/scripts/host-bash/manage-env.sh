@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Environment Variable Management Script
-# Usage: ./scripts/manage-env.sh [command] [options]
+# Usage: ./scripts/host-bash/manage-env.sh [command] [options]
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Colors for output
 RED='\033[0;31m'

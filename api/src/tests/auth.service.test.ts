@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+
 import { AuthService } from '../auth/auth.service.js';
 
 describe('AuthService', () => {

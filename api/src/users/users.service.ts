@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+
 import type { AuthUser } from '../auth/auth.types.js';
+
 import { UsersRepository } from './users.repository.js';
 
 type UserFilters = {

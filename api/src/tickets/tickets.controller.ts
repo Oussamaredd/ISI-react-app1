@@ -15,15 +15,17 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { TicketsService } from './tickets.service.js';
-import { CreateTicketDto } from './dto/create-ticket.dto.js';
-import { UpdateTicketDto } from './dto/update-ticket.dto.js';
-import { CreateCommentDto } from './dto/create-comment.dto.js';
-import { UpdateCommentDto } from './dto/update-comment.dto.js';
-import { AssignHotelDto } from './dto/assign-hotel.dto.js';
+
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
+import { PermissionsGuard } from '../auth/permissions.guard.js';
+
+import { AssignHotelDto } from './dto/assign-hotel.dto.js';
+import { CreateCommentDto } from './dto/create-comment.dto.js';
+import { CreateTicketDto } from './dto/create-ticket.dto.js';
+import { UpdateCommentDto } from './dto/update-comment.dto.js';
+import { UpdateTicketDto } from './dto/update-ticket.dto.js';
+import { TicketsService } from './tickets.service.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

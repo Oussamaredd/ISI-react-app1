@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
-import type { AuthUser } from './auth.types.js';
-import { AuthService } from './auth.service.js';
+
 import { UsersService } from '../users/users.service.js';
+
+import { AuthService } from './auth.service.js';
+import type { AuthUser } from './auth.types.js';
 
 @Controller('auth')
 export class AuthController {

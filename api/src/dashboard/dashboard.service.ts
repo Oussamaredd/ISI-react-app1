@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+
 import { DashboardRepository, type DashboardResponse } from './dashboard.repository.js';
 
 @Injectable()

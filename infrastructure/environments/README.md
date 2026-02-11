@@ -1,49 +1,26 @@
-# Environment Configuration Guide
+# Infrastructure Environment Files
 
-This project uses different environment files for different deployment stages:
+## Canonical Files
 
-## Environment Files Location
+- `.env.docker` (private runtime, docker-dev source)
+- `.env.docker.example` (committed docker-dev template)
+- `.env.development.example` (committed deploy-dev template)
+- `.env.staging.example` (committed deploy-staging template)
+- `.env.production.example` (committed deploy-prod template)
 
-All environment files are located in the `environments/` directory:
+## Rules
 
-- `environments/.env.development` - Development environment
-- `environments/.env.staging` - Staging environment  
-- `environments/.env.production` - Production environment
-- `environments/.env.docker` - Docker environment
+- Runtime secret values are injected by environment/secret manager.
+- `.example` files are templates only and must not contain real secrets.
+- Docker compose core commands must pass:
+  - `--env-file infrastructure/environments/.env.docker`
 
-## Application Environment Files
+## Database Policy
 
-### Client (apps/client/)
-- `.env.example` - Template for client environment variables
-- `.env.local` - Local overrides (do not commit)
+- Canonical DB env key is `DATABASE_URL`.
+- Canonical DB name is `ticketdb`.
+- Docker network DB host is `ticket_db`.
 
-### Server (apps/server/)
-- `.env.example` - Template for server environment variables
-- `.env.local` - Local overrides (do not commit)
+## Frontend Separation
 
-## Usage
-
-### Development
-```bash
-# Use development environment
-cp environments/.env.development .env
-```
-
-### Docker
-```bash
-# Use Docker environment
-cp environments/.env.docker .env
-```
-
-### Production
-```bash
-# Use production environment
-cp environments/.env.production .env
-```
-
-## Security Notes
-
-- Never commit `.env` files containing secrets
-- Use `.env.local` for local development overrides
-- All secret values should be replaced in production
-- Use environment-specific secrets management in production
+Frontend env keys stay in `app/.env.local` / `app/.env.example` and must be `VITE_*` only.
