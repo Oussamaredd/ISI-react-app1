@@ -68,9 +68,9 @@ vi.mock('../hooks/useTickets', () => {
   return { useTickets: useTicketsMock };
 });
 
-const renderAdvancedList = (initialEntries = ['/tickets/advanced?page=1&pageSize=20']) =>
+const renderAdvancedList = (initialEntries = ['/app/tickets/advanced?page=1&pageSize=20']) =>
   renderWithProviders(<AdvancedTicketList />, {
-    path: '/tickets/advanced',
+    path: '/app/tickets/advanced',
     initialEntries,
   });
 
@@ -195,7 +195,7 @@ describe('AdvancedTicketList Component', () => {
     renderAdvancedList();
     
     const ticketLink = screen.getByText('Test Ticket');
-    expect(ticketLink.closest('a')).toHaveAttribute('href', '/tickets/1/treat');
+    expect(ticketLink.closest('a')).toHaveAttribute('href', '/app/tickets/1/treat');
   });
 
   test('pagination displays correctly', () => {

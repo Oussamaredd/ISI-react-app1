@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { AuthController } from '../auth/auth.controller.js';
 import { getGoogleCallbackUrl } from '../auth/auth.utils.js';
+import { validateEnv } from '../config/validation.js';
 
 const originalEnv = { ...process.env };
 
@@ -63,5 +64,27 @@ describe('OAuth callback config', () => {
     const mainSource = fs.readFileSync(mainPath, 'utf8');
 
     expect(mainSource).toContain("app.setGlobalPrefix('api')");
+  });
+
+  it('accepts canonical GOOGLE_CLIENT_ID format', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        GOOGLE_CLIENT_ID: '1234567890-abcdefghi12345.apps.googleusercontent.com',
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects malformed GOOGLE_CLIENT_ID format', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        GOOGLE_CLIENT_ID: '6oja0hr6gfulaqsdpkq8qf50qccipmgj.apps.googleusercontent.com',
+      }),
+    ).toThrow(/Invalid GOOGLE_CLIENT_ID format/i);
   });
 });

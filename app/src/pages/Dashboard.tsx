@@ -1,14 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useAuth';
 
 export default function Dashboard() {
-  const { user, isAuthenticated, isLoading } = useCurrentUser();
-
-  React.useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      window.location.href = '/';
-    }
-  }, [isAuthenticated, isLoading]);
+  const { user, isLoading } = useCurrentUser();
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -22,12 +17,12 @@ export default function Dashboard() {
       <div className="dashboard-nav-section">
         <h2>Navigation</h2>
         <div className="dashboard-nav-links">
-          <a href="/tickets" className="dashboard-nav-link">
+          <Link to="/app/tickets" className="dashboard-nav-link">
             <span>View Tickets</span>
-          </a>
-          <a href="/tickets/create" className="dashboard-nav-link">
+          </Link>
+          <Link to="/app/tickets/create" className="dashboard-nav-link">
             <span>Create Ticket</span>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

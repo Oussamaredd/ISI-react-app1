@@ -17,7 +17,7 @@ export default function TreatTicketPage() {
       
       <div style={{ marginTop: "2rem" }}>
         <Link 
-          to={`/tickets/${id}/details`}
+          to={`/app/tickets/${id}/details`}
           style={{
             padding: "0.5rem 1rem",
             backgroundColor: "#007bff",
@@ -31,7 +31,7 @@ export default function TreatTicketPage() {
         </Link>
         
         <Link 
-          to="/tickets"
+          to="/app/tickets"
           style={{
             padding: "0.5rem 1rem",
             backgroundColor: "#6c757d",

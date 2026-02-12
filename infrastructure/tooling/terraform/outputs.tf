@@ -4,7 +4,7 @@ output "frontend_url" {
 }
 
 output "backend_url" {
-  value = "http://localhost:5000/api/tickets"
+  value = "http://localhost:3001/api/tickets"
   description = "URL to access the backend API"
 }
 

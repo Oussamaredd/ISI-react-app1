@@ -18,5 +18,5 @@ test("renders navigation buttons", async () => {
   renderWithProviders(<App />);
 
   expect(await screen.findByText(/simple list/i)).toBeInTheDocument();
-  expect(await screen.findByText(/create ticket/i)).toBeInTheDocument();
+  expect((await screen.findAllByText(/create ticket/i)).length).toBeGreaterThan(0);
 });

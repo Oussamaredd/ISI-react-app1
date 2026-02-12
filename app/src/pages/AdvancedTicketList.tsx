@@ -42,7 +42,7 @@ const TicketRow: React.FC<{ ticket: Ticket; hotelName?: string }> = ({ ticket, h
     }}>
       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
         <Link
-          to={`/tickets/${ticket.id}/treat`}
+          to={`/app/tickets/${ticket.id}/treat`}
           style={{
             color: '#007bff',
             textDecoration: 'none',
@@ -76,7 +76,7 @@ const TicketRow: React.FC<{ ticket: Ticket; hotelName?: string }> = ({ ticket, h
       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <Link
-            to={`/tickets/${ticket.id}/treat`}
+            to={`/app/tickets/${ticket.id}/treat`}
             aria-label={`Treat ${ticket.title}`}
             style={{
               padding: '0.25rem 0.75rem',
@@ -657,7 +657,7 @@ export default function AdvancedTicketList() {
                     </button></span>
                   ) : (
                     <button
-                      onClick={() => navigate('/tickets/create')}
+                      onClick={() => navigate('/app/tickets/create')}
                       style={{
                         background: 'none',
                         border: 'none',

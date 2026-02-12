@@ -10,7 +10,7 @@ export default function CreateTickets() {
   return (
     <div className="container create-page">
       <h1>Create a New Ticket</h1>
-      <CreateTicket onSuccess={() => navigate("/tickets")} />
+      <CreateTicket onSuccess={() => navigate("/app/tickets")} />
     </div>
   );
 }

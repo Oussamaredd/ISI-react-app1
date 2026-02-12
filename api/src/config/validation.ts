@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
+const GOOGLE_WEB_CLIENT_ID_PATTERN = /^\d+-[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -9,6 +10,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().max(65535).optional(),
   CORS_ORIGINS: z.string().optional(),
   CLIENT_ORIGIN: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
 });
@@ -48,6 +50,13 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
         );
       }
     }
+  }
+
+  const googleClientId = result.data.GOOGLE_CLIENT_ID?.trim();
+  if (googleClientId && !GOOGLE_WEB_CLIENT_ID_PATTERN.test(googleClientId)) {
+    throw new Error(
+      "Invalid GOOGLE_CLIENT_ID format: expected '<numeric-project-id>-<client>.apps.googleusercontent.com'.",
+    );
   }
 
   return result.data;

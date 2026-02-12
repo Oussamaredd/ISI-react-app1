@@ -41,7 +41,7 @@ function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
 
         <div className="ticket-actions">
           {isOpen && (
-            <Link to={`/tickets/${ticket.id}/treat`} className="ticket-action-link">
+            <Link to={`/app/tickets/${ticket.id}/treat`} className="ticket-action-link">
               Treat
             </Link>
           )}
@@ -71,7 +71,7 @@ export default function TicketList() {
     <div>
       {tickets.length === 0 ? (
         <p>
-          No tickets yet. <Link to="/tickets/create">Create your first ticket!</Link>
+          No tickets yet. <Link to="/app/tickets/create">Create your first ticket!</Link>
         </p>
       ) : (
         <ul className="ticket-items">

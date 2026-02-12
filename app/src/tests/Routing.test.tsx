@@ -1,24 +1,48 @@
-// client/src/tests/Routing.test.tsx
-import { screen, waitForElementToBeRemoved } from '@testing-library/react';
-import { vi, describe, test, beforeEach, afterEach, expect, Mock } from 'vitest';
-import App from '../App';
-import { renderWithProviders } from './test-utils';
+import { screen, waitFor } from "@testing-library/react";
+import { vi, describe, test, beforeEach, afterEach, expect } from "vitest";
+import App from "../App";
+import { renderWithProviders } from "./test-utils";
 
-vi.mock('../hooks/useAuth', () => ({
-  useCurrentUser: vi.fn(),
+const mockUseCurrentUser = vi.fn();
+
+vi.mock("../hooks/useAuth", () => ({
+  useCurrentUser: () => mockUseCurrentUser(),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const mockFetch = vi.fn();
+let warnSpy: ReturnType<typeof vi.spyOn>;
+let errorSpy: ReturnType<typeof vi.spyOn>;
 
-describe('Routing', () => {
-  const renderApp = () => renderWithProviders(<App />);
+type AuthMockState = {
+  user: Record<string, unknown> | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+};
 
-  beforeEach(async () => {
+const setAuthState = (value: AuthMockState) => {
+  mockUseCurrentUser.mockReturnValue(value);
+};
+
+const renderRoute = (route: string) =>
+  renderWithProviders(<App />, {
+    route,
+    initialEntries: [route],
+  });
+
+describe("Routing Matrix", () => {
+  beforeEach(() => {
     mockFetch.mockReset();
-    vi.stubGlobal('fetch', mockFetch);
-    const { useCurrentUser } = await import('../hooks/useAuth');
-    (useCurrentUser as unknown as Mock).mockReturnValue({
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ tickets: [], hotels: [] }),
+      text: async () => JSON.stringify({}),
+    } as Response);
+    vi.stubGlobal("fetch", mockFetch);
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    setAuthState({
       user: null,
       isLoading: false,
       isAuthenticated: false,
@@ -27,40 +51,105 @@ describe('Routing', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
-  test('renders login screen when not authenticated', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ authenticated: false }),
-      text: async () => JSON.stringify({ authenticated: false }),
-    });
+  test("`/` renders landing when unauthenticated", async () => {
+    renderRoute("/");
 
-    renderApp();
-
-    expect(await screen.findByText('AUTHENTIFICATION PROCESS')).toBeInTheDocument();
-    expect(await screen.findByText('Please log in with your Google account to continue.')).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Bridge every ticket handoff/i }),
+    ).toBeInTheDocument();
   });
 
-  test('renders ticket list when authenticated', async () => {
-    const { useCurrentUser } = await import('../hooks/useAuth');
-    (useCurrentUser as unknown as Mock).mockReturnValue({
-      user: { id: '123', name: 'Test User' },
+  test("`/` redirects to `/app/dashboard` when authenticated", async () => {
+    setAuthState({
+      user: { id: "123", name: "Test User" },
       isLoading: false,
-      isAuthenticated: true
+      isAuthenticated: true,
     });
 
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ authenticated: true, user: { id: '123', name: 'Test User' } }),
-      text: async () => JSON.stringify({ authenticated: true }),
-    } as Response);
+    const { getLocation } = renderRoute("/");
 
-    renderApp();
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/app/dashboard");
+    });
+  });
 
-    await waitForElementToBeRemoved(() => screen.getByText(/Loading/i));
-    expect(screen.getByText('Simple List')).toBeInTheDocument();
+  test("`/auth` renders auth page when unauthenticated", async () => {
+    renderRoute("/auth");
+    expect(await screen.findByText(/Authenticate to access your workspace/i)).toBeInTheDocument();
+  });
+
+  test("`/auth` redirects to `/app/dashboard` when authenticated", async () => {
+    setAuthState({
+      user: { id: "123", name: "Test User" },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { getLocation } = renderRoute("/auth");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/app/dashboard");
+    });
+  });
+
+  test("`/app/*` redirects unauthenticated users to `/auth`", async () => {
+    const { getLocation } = renderRoute("/app/dashboard");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/auth");
+    });
+
+    expect(getLocation()?.search).toContain("next=");
+  });
+
+  test("public marketing pages render concrete content", async () => {
+    const { getLocation } = renderRoute("/privacy");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/privacy");
+    });
+
+    expect(await screen.findByRole("heading", { name: /Privacy notice overview/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Data categories processed/i),
+    ).toBeInTheDocument();
+  });
+
+  test("`/faq` redirects to `/support`", async () => {
+    const { getLocation } = renderRoute("/faq");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/support");
+    });
+
+    expect(await screen.findByRole("heading", { name: /Support operations playbook/i })).toBeInTheDocument();
+  });
+
+  test("legacy app routes redirect to `/app/*`", async () => {
+    setAuthState({
+      user: { id: "123", name: "Test User" },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const routes = [
+      ["/dashboard", "/app/dashboard"],
+      ["/tickets", "/app/tickets"],
+      ["/tickets/advanced", "/app/tickets/advanced"],
+      ["/tickets/create", "/app/tickets/create"],
+      ["/admin", "/app/admin"],
+    ];
+
+    for (const [legacyPath, newPath] of routes) {
+      const { getLocation, unmount } = renderRoute(legacyPath);
+      await waitFor(() => {
+        expect(getLocation()?.pathname).toBe(newPath);
+      });
+      unmount();
+    }
   });
 });

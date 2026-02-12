@@ -53,8 +53,8 @@ vi.mock('../hooks/useTickets', () => ({
 
 const renderTicketDetails = () =>
   renderWithProviders(<TicketDetails />, {
-    path: '/tickets/:id/details',
-    initialEntries: ['/tickets/1/details'],
+    path: '/app/tickets/:id/details',
+    initialEntries: ['/app/tickets/1/details'],
   });
 
 describe('TicketDetails Component', () => {

@@ -41,7 +41,7 @@ export default function TreatTicket() {
     setAssigningToHotel(hotelId);
     try {
       await assignHotel({ ticketId: id, hotelId });
-      navigate("/tickets");
+      navigate("/app/tickets");
     } catch (error: any) {
       console.error("Failed to assign hotel:", error);
       // Error is handled by React Query with toast notifications
@@ -139,7 +139,7 @@ export default function TreatTicket() {
 
       <div style={{ marginTop: "2rem" }}>
         <Link
-          to="/tickets"
+          to="/app/tickets"
           style={{
             padding: "0.5rem 1rem",
             backgroundColor: "#6c757d",

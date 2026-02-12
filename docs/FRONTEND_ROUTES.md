@@ -1,36 +1,86 @@
 # Frontend Routes and Behavior
 
-This React 18 app runs on Vite 6 with React Router 7 and TanStack Query 5. It lives in the `app/` folder (workspace name `react-app1-app`) and is launched via:
+This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/main.tsx`). SPA refresh support is preserved via Nginx fallback rewrite (`app/nginx.conf`).
 
-- `npm run dev --workspace=react-app1-app` (frontend only)
-- `npm run dev` (root script; builds the database workspace, then starts frontend + API watchers)
+## Route groups
 
-API calls use `VITE_API_BASE_URL` (set in `app/.env.example`). Keep it aligned with the Nest server default `http://localhost:3001`.
+| Path | Auth state | Result |
+| --- | --- | --- |
+| `/` | Unauthenticated | Marketing landing page |
+| `/` | Authenticated | Redirect to `/app/dashboard` |
+| `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages |
+| `/auth` | Unauthenticated | Authentication page with existing Google OAuth trigger |
+| `/auth` | Authenticated | Redirect to `/app/dashboard` |
+| `/app/*` | Unauthenticated | Redirect to `/auth` (with `next` query) |
+| `/app/*` | Authenticated | Product app pages |
+| `/faq` | Any | Compatibility redirect to `/support` |
 
-## Route map
+Special case:
 
-All routes are declared in `src/App.tsx`. Non-authenticated users see only the login prompt; all other routes require authentication. The admin page additionally checks for an `admin` or `super_admin` role (either on `user.role` or within `user.roles`).
+- `/#<section-id>` remains accessible for authenticated users to support route+scroll links back to marketing sections.
+- Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 
-| Path | Component | Auth | Notes |
-| --- | --- | --- | --- |
-| `/` | `LandingPage` | Public | Shown only when not authenticated |
-| `/dashboard` | `Dashboard` | Required | Main dashboard view |
-| `/tickets` | `TicketListPage` | Required | Basic ticket list |
-| `/tickets/advanced` | `AdvancedTicketList` | Required | Filterable/advanced list |
-| `/tickets/create` | `CreateTickets` | Required | Ticket creation form |
-| `/tickets/:id/details` | `TicketDetails` | Required | Ticket detail view |
-| `/tickets/:id/treat` | `TreatTicketPage` | Required | Treat/resolve workflow |
-| `/admin` | `AdminDashboard` | Admin only | Blocks access with a simple “Access Denied” panel |
+## Product routes (`/app/*`)
 
-## Navigation and state
+| Path | Component | Notes |
+| --- | --- | --- |
+| `/app/dashboard` | `Dashboard` | Main overview |
+| `/app/tickets` | `TicketListPage` | Basic ticket list |
+| `/app/tickets/advanced` | `AdvancedTicketList` | Search and filtering |
+| `/app/tickets/create` | `CreateTickets` | Ticket creation form |
+| `/app/tickets/:id/details` | `TicketDetails` | Ticket details |
+| `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow |
+| `/app/admin` | `AdminDashboard` | Requires `admin`/`super_admin` role |
 
-- Navigation is rendered by `Navigation` inside `src/App.tsx`; it highlights the active route and only shows the Admin link for admin-capable users.
-- Auth state comes from `useAuth` (`AuthProvider` in `src/hooks/useAuth.tsx`), which gates the app and the admin route.
-- Data fetching relies on the shared `apiClient` (`src/services/api.tsx`) and query hooks in `src/hooks/useTickets.tsx` and related hook files.
+## Landing sections and hash navigation
 
-## Key files
+Landing section IDs:
 
-- Routing and auth gate: `src/App.tsx`
-- Auth context/hooks: `src/hooks/useAuth.tsx`
-- Ticket data hooks: `src/hooks/useTickets.tsx`
-- API client: `src/services/api.tsx`
+- `hero`
+- `logos`
+- `features`
+- `how-it-works`
+- `pricing`
+- `faq`
+- `final-cta`
+
+Landing in-page navigation still uses `/#<section-id>` for section jump behavior.
+Footer links now use dedicated content pages (for example `/pricing`, `/terms`, `/privacy`) instead of hash anchors.
+Hash navigation is resolved on landing mount with sticky header offset support (`useLandingSectionScroll` + `scroll-margin-top`).
+
+## Marketing/legal info pages
+
+| Path | Primary intent |
+| --- | --- |
+| `/about` | Company overview |
+| `/contact` | Contact and request routing |
+| `/security` | Security practices summary |
+| `/features` | Product capabilities summary |
+| `/how-it-works` | Workflow overview |
+| `/pricing` | Commercial model summary |
+| `/support` | Support model and escalation guidance |
+| `/terms` | Terms summary |
+| `/privacy` | Privacy commitments |
+| `/cookies` | Cookie usage summary |
+
+## Legacy route redirects (temporary)
+
+The following legacy paths redirect to the `/app/*` namespace:
+
+- `/dashboard` -> `/app/dashboard`
+- `/tickets` -> `/app/tickets`
+- `/tickets/advanced` -> `/app/tickets/advanced`
+- `/tickets/create` -> `/app/tickets/create`
+- `/admin` -> `/app/admin`
+
+Additional compatibility redirects are also present for:
+
+- `/tickets/:id/details` -> `/app/tickets/:id/details`
+- `/tickets/:id/treat` -> `/app/tickets/:id/treat`
+
+When a legacy route is used:
+
+- A one-time `console.warn` is emitted in development.
+- A non-blocking in-app banner is shown after redirect.
+
+Planned removal window for legacy redirects: after one stable release cycle once bookmarks are updated.

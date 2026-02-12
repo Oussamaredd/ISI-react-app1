@@ -21,6 +21,7 @@ This repository uses one canonical env source per workflow and strict public/pri
 - `DATABASE_URL` for database connectivity
 - `API_PORT` for API listen port
 - `VITE_API_BASE_URL` for frontend API base URL
+- `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - `GOOGLE_CALLBACK_URL` for OAuth redirect callback (optional explicit override; canonical path is fixed)
 
 Deprecated aliases (temporary read support only):
@@ -44,6 +45,7 @@ Deprecated aliases (temporary read support only):
 
 - Canonical callback URI (local and Docker dev): `http://localhost:3001/api/auth/google/callback`
 - Callback path is fixed: `/api/auth/google/callback`
+- `GOOGLE_CLIENT_ID` must use Google Web OAuth client format (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - When `GOOGLE_CALLBACK_URL` is set for localhost, its port must match `API_PORT`
 - Google Console authorized redirect URI must exactly match runtime callback URI
 

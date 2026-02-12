@@ -568,7 +568,7 @@ export default function TicketDetails() {
         {/* Back Button */}
         <div style={{ marginBottom: '2rem' }}>
           <Link
-            to="/tickets"
+            to="/app/tickets"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
