@@ -61,13 +61,13 @@ jobs:
         run: npm ci
 
       - name: Build database workspace
-        run: npm run build --workspace=react-app1-database
+        run: npm run build --workspace=ecotrack-database
 
       - name: Typecheck database workspace
-        run: npm run typecheck --workspace=react-app1-database
+        run: npm run typecheck --workspace=ecotrack-database
 
       - name: Run database migrations
-        run: npm run db:migrate --workspace=react-app1-database
+        run: npm run db:migrate --workspace=ecotrack-database
 
   frontend:
     name: Frontend CI
@@ -86,10 +86,10 @@ jobs:
         run: npm ci
 
       - name: Build frontend
-        run: npm run build --workspace=react-app1-app
+        run: npm run build --workspace=ecotrack-app
 
       - name: Test frontend (Vitest)
-        run: npm run test:coverage --workspace=react-app1-app
+        run: npm run test:coverage --workspace=ecotrack-app
 
       - name: Upload frontend coverage
         uses: actions/upload-artifact@v4
@@ -137,13 +137,13 @@ jobs:
         run: npm ci
 
       - name: Build backend
-        run: npm run build --workspace=react-app1-api
+        run: npm run build --workspace=ecotrack-api
 
       - name: Migrate database before backend tests
-        run: npm run db:migrate --workspace=react-app1-database
+        run: npm run db:migrate --workspace=ecotrack-database
 
       - name: Test backend against migrated DB (Vitest)
-        run: npm run test:coverage --workspace=react-app1-api
+        run: npm run test:coverage --workspace=ecotrack-api
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4

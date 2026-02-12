@@ -1,10 +1,10 @@
 {
-  "name": "react-app1-api",
+  "name": "ecotrack-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run build --workspace=react-app1-database && npm run build && concurrently -n api,tsc \"cross-env NODE_ENV=development node dist/main.js\" \"tsc -p tsconfig.build.json -w\"",
+    "dev": "npm run build --workspace=ecotrack-database && npm run build && concurrently --kill-others-on-fail -n api,tsc \"cross-env NODE_ENV=development node dist/main.js\" \"tsc -p tsconfig.build.json -w\"",
     "build": "tsc -p tsconfig.build.json",
     "start": "cross-env NODE_ENV=production node dist/main.js",
     "start:debug": "cross-env NODE_ENV=development tsx src/main.ts",
@@ -28,7 +28,7 @@
     "jsonwebtoken": "^9.0.3",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "react-app1-database": "0.1.0",
+    "ecotrack-database": "0.1.0",
     "reflect-metadata": "^0.1.14",
     "rxjs": "^7.8.1",
     "tslib": "^2.8.1",

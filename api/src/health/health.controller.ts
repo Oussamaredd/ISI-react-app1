@@ -10,7 +10,7 @@ export class HealthController {
   async check() {
     const database = await this.healthService.checkDatabase();
     return {
-      service: 'react-app1-api',
+      service: 'EcoTrack API',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
       database,

@@ -29,7 +29,7 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 - Controllers in `api` must not execute Drizzle queries directly.
 - Data access path: `controller -> service -> repository -> database`.
 - `database` is the source of truth for schema, migration, and seed commands.
-- Domain controllers/services in `api` must not import `drizzle-orm` or `react-app1-database` directly.
+- Domain controllers/services in `api` must not import `drizzle-orm` or `ecotrack-database` directly.
 
 ### Environment ownership rules
 

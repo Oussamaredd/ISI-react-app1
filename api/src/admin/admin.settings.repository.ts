@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { systemSettings, type DatabaseClient } from 'react-app1-database';
+import { systemSettings, type DatabaseClient } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 

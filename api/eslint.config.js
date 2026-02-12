@@ -29,11 +29,11 @@ const forbiddenDirectDatabaseImports = [
 const crossLayerRestrictedImports = {
   paths: [
     {
-      name: 'react-app1-app',
+      name: 'ecotrack-app',
       message: 'The api layer must not import runtime modules from the app layer.',
     },
     {
-      name: 'react-app1-infrastructure',
+      name: 'ecotrack-infrastructure',
       message: 'The api layer must not import runtime modules from the infrastructure layer.',
     },
   ],
@@ -53,7 +53,7 @@ const controllerAndServiceRestrictedImports = {
       message: 'Controllers/services must not import Drizzle directly. Use repositories.',
     },
     {
-      name: 'react-app1-database',
+      name: 'ecotrack-database',
       message: 'Controllers/services must not import database package modules directly. Use repositories.',
     },
   ],

@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
-import { type DatabaseClient, comments, hotels, tickets, users } from 'react-app1-database';
+import { type DatabaseClient, comments, hotels, tickets, users } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 

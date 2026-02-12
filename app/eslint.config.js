@@ -64,15 +64,15 @@ export default [
               message: 'The app layer must not import database runtime modules.',
             },
             {
-              name: 'react-app1-api',
+              name: 'ecotrack-api',
               message: 'The app layer must not import runtime modules from the api layer.',
             },
             {
-              name: 'react-app1-database',
+              name: 'ecotrack-database',
               message: 'The app layer must not import runtime modules from the database layer.',
             },
             {
-              name: 'react-app1-infrastructure',
+              name: 'ecotrack-infrastructure',
               message: 'The app layer must not import runtime modules from the infrastructure layer.',
             },
           ],

@@ -39,9 +39,9 @@ npm run infra:health
 ## Migration Commands
 
 ```bash
-npm run migrate:up --workspace=react-app1-infrastructure
-npm run migrate:up:seed --workspace=react-app1-infrastructure
-npm run migrate:status --workspace=react-app1-infrastructure
+npm run migrate:up --workspace=ecotrack-infrastructure
+npm run migrate:up:seed --workspace=ecotrack-infrastructure
+npm run migrate:status --workspace=ecotrack-infrastructure
 ```
 
 ## Policy

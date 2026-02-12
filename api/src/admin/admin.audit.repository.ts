@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, ilike, lte, or, sql } from 'drizzle-orm';
-import { auditLogs, type DatabaseClient, users } from 'react-app1-database';
+import { auditLogs, type DatabaseClient, users } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 

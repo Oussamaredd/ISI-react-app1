@@ -1,5 +1,5 @@
 {
-  "name": "react-app1-infrastructure",
+  "name": "ecotrack-infrastructure",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "health": ".\\health-check.bat",
     "verify:docker": "pwsh ./scripts/verify-docker.ps1",
     "migrate:up": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=false migrate",
-    "migrate:up:seed": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e \"SEED_COMMAND=npm run db:seed --workspace=react-app1-database\" migrate",
+    "migrate:up:seed": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e \"SEED_COMMAND=npm run db:seed --workspace=ecotrack-database\" migrate",
     "migrate:status": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --rm migrate sh -c \"./infrastructure/scripts/migrate.sh status\""
   }
 }

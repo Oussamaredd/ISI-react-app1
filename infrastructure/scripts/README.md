@@ -8,5 +8,5 @@ Execution policy:
 - `infrastructure/scripts/ci/*.sh` contains CI command bundles invoked by `.github/workflows/*`.
 
 Common host commands:
-- `npm run health --workspace=react-app1-infrastructure`
-- `npm run verify:docker --workspace=react-app1-infrastructure`
+- `npm run health --workspace=ecotrack-infrastructure`
+- `npm run verify:docker --workspace=ecotrack-infrastructure`

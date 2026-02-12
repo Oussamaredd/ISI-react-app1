@@ -4,7 +4,7 @@ import {
   createDatabaseInstance,
   type DatabaseClient,
   type DatabaseInstance,
-} from 'react-app1-database';
+} from 'ecotrack-database';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy, OnApplicationShutdown {

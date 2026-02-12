@@ -6,9 +6,9 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
 cd "$REPO_ROOT"
 
-MIGRATE_COMMAND=${MIGRATE_COMMAND:-npm run db:migrate --workspace=react-app1-database}
+MIGRATE_COMMAND=${MIGRATE_COMMAND:-npm run db:migrate --workspace=ecotrack-database}
 ENABLE_SEED_DATA=${ENABLE_SEED_DATA:-false}
-SEED_COMMAND=${SEED_COMMAND:-npm run db:seed --workspace=react-app1-database}
+SEED_COMMAND=${SEED_COMMAND:-npm run db:seed --workspace=ecotrack-database}
 DRY_RUN=${DRY_RUN:-false}
 
 print_info() {
@@ -85,9 +85,9 @@ Commands:
   help      Show this help
 
 Environment variables:
-  MIGRATE_COMMAND   Default: npm run db:migrate --workspace=react-app1-database
+  MIGRATE_COMMAND   Default: npm run db:migrate --workspace=ecotrack-database
   ENABLE_SEED_DATA  Default: false
-  SEED_COMMAND      Default: npm run db:seed --workspace=react-app1-database
+  SEED_COMMAND      Default: npm run db:seed --workspace=ecotrack-database
   DRY_RUN           Default: false
 EOF
 }

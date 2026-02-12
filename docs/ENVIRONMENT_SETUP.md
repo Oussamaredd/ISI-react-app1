@@ -58,6 +58,8 @@ Templates to keep in source control:
 
 - Canonical callback URI for local and Docker dev:
   - `http://localhost:3001/api/auth/google/callback`
+- `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID in this format:
+  - `<numeric-project-id>-<client>.apps.googleusercontent.com`
 - Set `GOOGLE_CALLBACK_URL` to the canonical callback URI in runtime env files.
 - Google Cloud Console Authorized redirect URI must match exactly:
   - scheme + host + port + path
@@ -72,7 +74,7 @@ Deprecated aliases:
 ## Validation Commands
 
 ```bash
-npm run db:migrate --workspace=react-app1-database
+npm run db:migrate --workspace=ecotrack-database
 npm run build
 npm run test
 ```

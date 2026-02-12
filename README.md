@@ -10,7 +10,7 @@ Four-layer monorepo:
 ## Repository Layout
 
 ```text
-react-app1/
+EcoTrack/
 |-- app/
 |-- api/
 |-- database/
@@ -55,6 +55,14 @@ Default local endpoints:
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:3001/api`
 - API health: `http://localhost:3001/api/health`
+
+If the frontend shows `ERR_CONNECTION_REFUSED` for `http://localhost:3001/api/*`, the API process is not reachable. Verify API health with:
+
+```bash
+curl -f http://localhost:3001/api/health
+```
+
+If the check fails, restart `npm run dev` and read the API startup error in the terminal output.
 
 ## OAuth Callback Setup
 

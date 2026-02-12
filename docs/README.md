@@ -37,8 +37,8 @@ npm install
 Develop:
 ```bash
 npm run dev
-npm run dev --workspace=react-app1-app
-npm run dev --workspace=react-app1-api
+npm run dev --workspace=ecotrack-app
+npm run dev --workspace=ecotrack-api
 ```
 
 Validate:

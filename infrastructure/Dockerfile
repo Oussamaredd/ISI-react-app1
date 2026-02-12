@@ -18,8 +18,8 @@ FROM deps AS builder
 WORKDIR /workspace
 COPY . .
 
-RUN npm run build --workspace=react-app1-database
-RUN npm run build --workspace=react-app1-api
+RUN npm run build --workspace=ecotrack-database
+RUN npm run build --workspace=ecotrack-api
 
 FROM node:20-alpine AS runtime
 WORKDIR /workspace

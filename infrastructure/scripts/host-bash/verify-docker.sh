@@ -69,7 +69,7 @@ else
     exit 1
 fi
 
-if docker compose config | grep -q "isi-react-app1-network"; then
+if docker compose config | grep -q "isi-ecotrack-network"; then
     echo "✅ Application network is defined"
 else
     echo "❌ Application network not found"
@@ -101,7 +101,7 @@ fi
 # Test 8: Port mappings
 echo ""
 echo "8. Checking port mappings..."
-ports=("5432:5432" "5000:5000" "3000:80" "9200:9200" "5601:5601" "9000:9000" "9090:9090" "3030:3000")
+ports=("5432:5432" "3001:3001" "3000:80" "9200:9200" "5601:5601" "9000:9000" "9090:9090" "3030:3000")
 for port in "${ports[@]}"; do
     if docker compose config | grep -q "$port"; then
         echo "✅ Port mapping '$port' is defined"

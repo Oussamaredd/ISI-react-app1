@@ -8,11 +8,11 @@ echo "[ci] enforce architecture boundaries"
 npm run lint
 
 echo "[ci] build and typecheck database workspace"
-npm run build --workspace=react-app1-database
-npm run typecheck --workspace=react-app1-database
+npm run build --workspace=ecotrack-database
+npm run typecheck --workspace=ecotrack-database
 
 echo "[ci] run database migrations"
-npm run db:migrate --workspace=react-app1-database
+npm run db:migrate --workspace=ecotrack-database
 
 echo "[ci] run backend tests"
-npm run test --workspace=react-app1-api
+npm run test --workspace=ecotrack-api

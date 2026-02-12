@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type DatabaseClient, tickets } from 'react-app1-database';
+import { type DatabaseClient, tickets } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 

@@ -65,7 +65,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     env:
-      VITE_BASE: /isi-react-app1/
+      VITE_BASE: /isi-ecotrack/
     
     steps:
       - name: Checkout code
