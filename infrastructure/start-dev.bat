@@ -8,7 +8,7 @@ set "CANONICAL_ENV=%SCRIPT_DIR%environments\.env.docker"
 set "LEGACY_ENV=%SCRIPT_DIR%..\.env.docker"
 set "ROOT_ENV_EXAMPLE=%SCRIPT_DIR%..\.env.example"
 
-echo Starting React App 1 Development Environment...
+echo Starting EcoTrack development environment...
 echo.
 
 echo Step 1: Setting up canonical Docker environment...
@@ -32,7 +32,7 @@ if exist "%CANONICAL_ENV%" (
 
 echo.
 echo Step 2: Building and starting core services (db, migrate, backend, frontend)...
-docker compose -f "%COMPOSE_FILE%" --profile core up --build -d
+docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" --profile core up --build -d
 if errorlevel 1 goto :error
 
 echo.
@@ -51,13 +51,13 @@ for /L %%i in (1,1,60) do (
 :migration_done
 if not "!MIGRATE_EXIT!"=="0" (
     echo Migration job failed or did not complete in time.
-    docker compose -f "%COMPOSE_FILE%" logs migrate
+    docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" logs migrate
     goto :error
 )
 
 echo.
 echo Step 4: Service status
-docker compose -f "%COMPOSE_FILE%" ps
+docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" ps
 
 echo.
 echo Service URLs:

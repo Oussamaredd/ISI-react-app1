@@ -1,8 +1,8 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Application Overview",
-    "tags": ["ticketapp", "overview"],
+    "title": "EcoTrack Metrics Overview",
+    "tags": ["ecotrack", "monitoring"],
     "style": "dark",
     "timezone": "browser",
     "editable": true,
@@ -17,12 +17,12 @@
         "height": "250px",
         "panels": [
           {
-            "title": "Request Rate",
+            "title": "Frontend Errors Ingested (rate)",
             "type": "graph",
             "targets": [
               {
-                "expr": "rate(http_requests_total{job=\"ticketapp\"}[5m])",
-                "legendFormat": "{{method}} {{status}}"
+                "expr": "rate(frontend_errors_total[5m])",
+                "legendFormat": "errors/sec"
               }
             ],
             "gridPos": {
@@ -34,16 +34,12 @@
             "id": 1
           },
           {
-            "title": "Response Time",
+            "title": "Frontend Metrics Ingested (rate)",
             "type": "graph",
             "targets": [
               {
-                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"ticketapp\"}[5m]))",
-                "legendFormat": "95th percentile"
-              },
-              {
-                "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"ticketapp\"}[5m]))",
-                "legendFormat": "50th percentile"
+                "expr": "rate(frontend_metrics_total[5m])",
+                "legendFormat": "metrics/sec"
               }
             ],
             "gridPos": {
@@ -55,23 +51,19 @@
             "id": 2
           }
         ],
-        "title": "API Metrics"
+        "title": "Ingestion Rates"
       },
       {
         "collapse": false,
         "height": "250px",
         "panels": [
           {
-            "title": "Error Rate",
+            "title": "Frontend Error Buffer Size",
             "type": "graph",
             "targets": [
               {
-                "expr": "rate(http_requests_total{job=\"ticketapp\",status=~\"4..\"}[5m])",
-                "legendFormat": "4xx errors"
-              },
-              {
-                "expr": "rate(http_requests_total{job=\"ticketapp\",status=~\"5..\"}[5m])",
-                "legendFormat": "5xx errors"
+                "expr": "frontend_error_buffer_size",
+                "legendFormat": "error buffer"
               }
             ],
             "gridPos": {
@@ -83,12 +75,12 @@
             "id": 3
           },
           {
-            "title": "Active Users",
-            "type": "stat",
+            "title": "Frontend Metric Buffer Size",
+            "type": "graph",
             "targets": [
               {
-                "expr": "ticketapp_active_users_total",
-                "legendFormat": "Active Users"
+                "expr": "frontend_metric_buffer_size",
+                "legendFormat": "metric buffer"
               }
             ],
             "gridPos": {
@@ -100,19 +92,19 @@
             "id": 4
           }
         ],
-        "title": "User Metrics"
+        "title": "Buffer Health"
       },
       {
         "collapse": false,
         "height": "250px",
         "panels": [
           {
-            "title": "Database Connections",
+            "title": "Errors by Type",
             "type": "graph",
             "targets": [
               {
-                "expr": "pg_stat_database_numbackends",
-                "legendFormat": "Active Connections"
+                "expr": "frontend_errors_by_type_total",
+                "legendFormat": "{{type}}"
               }
             ],
             "gridPos": {
@@ -124,16 +116,12 @@
             "id": 5
           },
           {
-            "title": "Ticket Metrics",
+            "title": "Metrics by Type",
             "type": "graph",
             "targets": [
               {
-                "expr": "rate(ticketapp_tickets_created_total[5m])",
-                "legendFormat": "Tickets Created/sec"
-              },
-              {
-                "expr": "rate(ticketapp_tickets_resolved_total[5m])",
-                "legendFormat": "Tickets Resolved/sec"
+                "expr": "frontend_metrics_by_type_total",
+                "legendFormat": "{{type}}"
               }
             ],
             "gridPos": {
@@ -145,11 +133,11 @@
             "id": 6
           }
         ],
-        "title": "Business Metrics"
+        "title": "Metric Distribution"
       }
     ],
     "schemaVersion": 14,
-    "version": 0,
+    "version": 1,
     "templating": {
       "list": []
     },

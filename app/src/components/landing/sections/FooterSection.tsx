@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { MARKETING_PAGES } from "../../../pages/landing/marketingPages";
 import { Separator } from "../../ui/separator";
+import BrandLogo from "../../branding/BrandLogo";
 
 const footerColumns = [
   {
@@ -23,7 +24,7 @@ const footerColumns = [
     title: "Resources",
     links: [
       { label: MARKETING_PAGES.support.label, href: MARKETING_PAGES.support.href },
-      { label: "Log in", href: "/auth" },
+      { label: "Log in", href: "/login" },
       { label: "Dashboard", href: "/app/dashboard" },
     ],
   },
@@ -43,8 +44,11 @@ export default function FooterSection() {
       <div className="landing-container">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]">
-              EcoTrack
+            <h3>
+              <BrandLogo
+                imageClassName="h-11 w-11"
+                textClassName="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
+              />
             </h3>
             <p className="mt-3 text-sm leading-7 text-[var(--text-muted)]">
               Bridging support and operations with fewer handoff failures.

@@ -12,57 +12,76 @@ The Ticket Management System provides a comprehensive RESTful API for managing t
 
 ## Authentication
 
-### Google OAuth Authentication
+### Local Email/Password + JWT (primary frontend flow)
 
-All API endpoints (except public ones) require authentication via Google OAuth. Users must authenticate through the Google OAuth flow to receive a session token.
+Local auth endpoints:
 
-#### Get Auth URL
+```text
+POST /login
+POST /signup
+POST /auth/exchange
+POST /logout
+GET /me
+POST /forgot-password
+POST /reset-password
 ```
+
+Local auth contract:
+
+- `POST /login` returns `{ code }` (short-lived one-time exchange code)
+- `POST /auth/exchange` consumes `code` and returns `{ accessToken, user }`
+- `POST /signup` returns `{ accessToken, user }`
+- frontend stores `accessToken` in `localStorage`
+- protected API calls send `Authorization: Bearer <token>`
+- `POST /forgot-password`:
+  - production: returns `204` and never returns token/url
+  - non-production: may return `{ devResetUrl }` for local testing
+- reset tokens are stored hashed at rest
+
+### Google OAuth (unchanged endpoints)
+
+```text
 GET /auth/google
+GET /auth/google/callback
 ```
 
-#### OAuth Callback
-```
-GET /api/auth/google/callback
-```
+When `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` is not configured, these endpoints return `503 Service Unavailable` instead of failing API startup.
 
 Full local callback URI:
 `http://localhost:3001/api/auth/google/callback`
 
 Google Cloud Console Authorized redirect URI must exactly match runtime callback URI.
 
-#### Logout
-```
-POST /auth/logout
-```
+Google callback completion contract:
+- API redirects browser to frontend callback route: `${APP_BASE_URL}/auth/callback?code=<exchangeCode>`
+- frontend exchanges `code` via `POST /auth/exchange` to obtain JWT and user profile
 
-#### Get Current User
-```
-GET /auth/me
-```
+### Deprecated/removed local endpoint variants
 
-**Response:**
-```json
-{
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "name": "John Doe",
-    "role": "user",
-    "avatar_url": "https://lh3.googleusercontent.com/...",
-    "created_at": "2023-12-01T10:00:00.000Z"
-  }
-}
-```
+These are not part of the active API surface:
+
+- `POST /auth/login`
+- `POST /auth/signup`
+- non-canonical reset aliases outside `/forgot-password` and `/reset-password`
+
+## Request Correlation
+
+Every response includes `X-Request-Id`.
+
+- If the client sends `x-request-id`, the API reuses that value.
+- If no request ID is provided, the API generates one.
+- The same `requestId` is reused in API logs and error responses.
 
 ## Rate Limiting
 
 API requests are rate-limited to prevent abuse:
-- **Default**: 100 requests per 15 minutes
-- **Rate Limit Headers**: 
-  - `X-RateLimit-Limit`: Total requests allowed
-  - `X-RateLimit-Remaining`: Requests remaining
-  - `X-RateLimit-Reset`: Time when limit resets
+
+- Default global limit: `120` requests per `60s` (`RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW_MS`)
+- Stricter auth limit on abuse-sensitive endpoints:
+  - `POST /login`
+  - `POST /forgot-password`
+  - `POST /reset-password`
+- Readiness/metrics paths are excluded from throttling where required (`/health`, `/api/health`, `/api/metrics`)
 
 ## Tickets
 
@@ -238,6 +257,8 @@ Content-Type: application/json
 }
 ```
 
+Comment author is always the authenticated caller from the active access token/cookie.
+
 ### Update Comment
 ```
 PUT /tickets/{ticketId}/comments/{commentId}
@@ -248,10 +269,14 @@ Content-Type: application/json
 }
 ```
 
+Only the comment author or an admin (`admin`/`super_admin`) can update a comment.
+
 ### Delete Comment
 ```
 DELETE /tickets/{ticketId}/comments/{commentId}
 ```
+
+Only the comment author or an admin (`admin`/`super_admin`) can delete a comment.
 
 ## Ticket Attachments
 
@@ -454,7 +479,7 @@ GET /admin/audit-logs?page=1&limit=50&action=create&entity_type=ticket
 
 ## Health & Monitoring
 
-### Health Check
+### API Process Liveness (no prefix)
 ```
 GET /health
 ```
@@ -462,47 +487,25 @@ GET /health
 **Response:**
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2023-12-01T12:00:00.000Z",
-  "uptime": 86400000,
-  "version": "1.0.0",
-  "environment": "production",
-  "checks": {
-    "database": {
-      "status": "healthy",
-      "responseTime": 15,
-      "details": {
-        "pool": {
-          "used": 2,
-          "free": 8,
-          "total": 10
-        }
-      }
-    },
-    "redis": {
-      "status": "healthy",
-      "responseTime": 5
-    },
-    "memory": {
-      "status": "healthy",
-      "details": {
-        "process": {
-          "heap": {
-            "used": "45MB",
-            "total": "64MB",
-            "usage": "70%"
-          }
-        }
-      }
-    }
-  }
+  "status": "ok",
+  "service": "EcoTrack API",
+  "timestamp": "2026-02-13T12:00:00.000Z"
 }
 ```
 
-### Health Check
+### API Health (prefixed)
 ```
-GET /health
+GET /api/health
 ```
+
+Returns lightweight service status + uptime.
+
+### Database Diagnostic Health
+```
+GET /api/health/database
+```
+
+Returns dependency diagnostic payload including database status.
 
 ### Frontend Error Ingestion
 ```
@@ -574,31 +577,35 @@ All API errors follow this format:
 
 ```json
 {
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": [
-      {
-        "field": "email",
-        "message": "Email is required"
-      }
-    ]
-  }
+  "statusCode": 400,
+  "message": "Validation failed",
+  "path": "/api/login",
+  "method": "POST",
+  "timestamp": "2026-02-13T17:05:00.000Z",
+  "requestId": "d2985962-2e35-428d-8f99-d6714e0ec47f",
+  "details": [
+    "email must be an email"
+  ]
 }
 ```
 
-### Common Error Codes
+Notes:
 
-| Status Code | Error Code | Description |
-|-------------|-------------|-------------|
-| 400 | VALIDATION_ERROR | Invalid input data |
-| 401 | UNAUTHORIZED | Authentication required |
-| 403 | FORBIDDEN | Insufficient permissions |
-| 404 | NOT_FOUND | Resource not found |
-| 409 | CONFLICT | Resource already exists |
-| 422 | UNPROCESSABLE_ENTITY | Cannot process request |
-| 429 | RATE_LIMIT_EXCEEDED | Too many requests |
-| 500 | INTERNAL_ERROR | Server error |
+- `details` is included for validation errors when available.
+- Unknown runtime errors are returned as `500` with safe messaging in production.
+- The `requestId` matches `X-Request-Id` response header and structured logs.
+
+### Common Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 400 | Invalid request payload or query |
+| 401 | Authentication required |
+| 403 | Insufficient permissions |
+| 404 | Resource not found |
+| 409 | Resource conflict |
+| 429 | Too many requests |
+| 500 | Internal server error |
 
 ## SDK Examples
 
@@ -608,7 +615,7 @@ const API_BASE_URL = 'https://api.yourdomain.com';
 
 // Get current user
 async function getCurrentUser() {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  const response = await fetch(`${API_BASE_URL}/me`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -638,7 +645,7 @@ API_BASE_URL = 'https://api.yourdomain.com'
 
 def get_current_user(token):
     response = requests.get(
-        f'{API_BASE_URL}/auth/me',
+        f'{API_BASE_URL}/me',
         headers={'Authorization': f'Bearer {token}'}
     )
     return response.json()

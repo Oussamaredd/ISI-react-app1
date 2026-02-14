@@ -9,11 +9,15 @@ This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/mai
 | `/` | Unauthenticated | Marketing landing page |
 | `/` | Authenticated | Redirect to `/app/dashboard` |
 | `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages |
-| `/auth` | Unauthenticated | Authentication page with existing Google OAuth trigger |
-| `/auth` | Authenticated | Redirect to `/app/dashboard` |
-| `/app/*` | Unauthenticated | Redirect to `/auth` (with `next` query) |
+| `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices |
+| `/signup` | Unauthenticated | Local account registration page |
+| `/forgot-password` | Unauthenticated | Password reset request page |
+| `/reset-password` | Unauthenticated | Local password reset page |
+| `/auth/callback` | Any | Exchanges one-time auth code, then redirects to `/app/*`; shows loading/error states and a brief success state with a green checkmark before redirect |
+| `/app/*` | Unauthenticated | Redirect to `/login` (with `next` query) |
 | `/app/*` | Authenticated | Product app pages |
 | `/faq` | Any | Compatibility redirect to `/support` |
+| any unknown path | Any | Redirect to `/` |
 
 Special case:
 
@@ -25,12 +29,23 @@ Special case:
 | Path | Component | Notes |
 | --- | --- | --- |
 | `/app/dashboard` | `Dashboard` | Main overview |
-| `/app/tickets` | `TicketListPage` | Basic ticket list |
+| `/app/tickets` | `TicketListPage` | Basic ticket list with delete action |
 | `/app/tickets/advanced` | `AdvancedTicketList` | Search and filtering |
 | `/app/tickets/create` | `CreateTickets` | Ticket creation form |
-| `/app/tickets/:id/details` | `TicketDetails` | Ticket details |
+| `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param |
 | `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow |
+| `/app/settings` | `SettingsPage` | User profile settings (display name update) |
 | `/app/admin` | `AdminDashboard` | Requires `admin`/`super_admin` role |
+
+Authenticated shell behavior:
+
+- All `/app/*` routes render inside a shared sidebar layout.
+- Sidebar top: logo.
+- Sidebar navigation: Dashboard, ticket routes, optional Admin route.
+- Sidebar bottom: account identity row (avatar + name, display-only), Settings, and Sign Out actions.
+- Sidebar can be collapsed/expanded with a high-visibility toggle button (state persisted in browser local storage).
+- Main content header shows current route context as page name only (without a page icon).
+- Sign Out returns users to the landing page (`/`).
 
 ## Landing sections and hash navigation
 
@@ -63,24 +78,17 @@ Hash navigation is resolved on landing mount with sticky header offset support (
 | `/privacy` | Privacy commitments |
 | `/cookies` | Cookie usage summary |
 
-## Legacy route redirects (temporary)
+## Removed legacy paths
 
-The following legacy paths redirect to the `/app/*` namespace:
+Legacy top-level routes are no longer part of the supported route surface:
 
-- `/dashboard` -> `/app/dashboard`
-- `/tickets` -> `/app/tickets`
-- `/tickets/advanced` -> `/app/tickets/advanced`
-- `/tickets/create` -> `/app/tickets/create`
-- `/admin` -> `/app/admin`
+- `/auth`
+- `/dashboard`
+- `/tickets`
+- `/tickets/advanced`
+- `/tickets/create`
+- `/tickets/:id/details`
+- `/tickets/:id/treat`
+- `/admin`
 
-Additional compatibility redirects are also present for:
-
-- `/tickets/:id/details` -> `/app/tickets/:id/details`
-- `/tickets/:id/treat` -> `/app/tickets/:id/treat`
-
-When a legacy route is used:
-
-- A one-time `console.warn` is emitted in development.
-- A non-blocking in-app banner is shown after redirect.
-
-Planned removal window for legacy redirects: after one stable release cycle once bookmarks are updated.
+Requests to these paths now follow the global unknown-route behavior (`*` -> `/`).

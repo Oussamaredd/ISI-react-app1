@@ -26,6 +26,8 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 
 ### Runtime behavior rules
 
+- `app` runtime must not render TanStack Query Devtools UI in any environment.
+- `app` runtime must not render manual in-app debug/testing panels.
 - Controllers in `api` must not execute Drizzle queries directly.
 - Data access path: `controller -> service -> repository -> database`.
 - `database` is the source of truth for schema, migration, and seed commands.

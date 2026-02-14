@@ -12,7 +12,7 @@ This document explains how to use the ELK (Elasticsearch, Logstash, Kibana) stac
 ### Logstash
 - **Input**: TCP port 5001 for JSON logs
 - **Output**: Elasticsearch with daily indices
-- **Configuration**: `elk/logstash/logstash.conf`
+- **Configuration**: `infrastructure/tooling/monitoring/elk/logstash/logstash.conf`
 
 ### Kibana
 - **URL**: http://localhost:5601
@@ -23,7 +23,7 @@ This document explains how to use the ELK (Elasticsearch, Logstash, Kibana) stac
 
 ### Start ELK Stack
 ```bash
-docker compose up -d elasticsearch logstash kibana
+docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d --build
 ```
 
 ### Verify Services
@@ -43,18 +43,15 @@ curl http://localhost:5601/api/status
 Backend logs are sent as structured JSON with these fields:
 ```json
 {
-  "timestamp": "2024-01-14T12:00:00.000Z",
-  "level": "INFO",
-  "service": "express-backend",
-  "message": "Request completed",
+  "time": 1705233600000,
+  "level": 30,
+  "msg": "request completed",
   "method": "GET",
-  "url": "/api/tickets",
-  "statusCode": 200,
+  "path": "/api/tickets",
+  "status": 200,
   "requestId": "uuid-v4",
-  "correlationId": "uuid-v4",
   "duration": 150,
-  "userAgent": "Mozilla/5.0...",
-  "ip": "192.168.1.100"
+  "userId": "user_123"
 }
 ```
 
@@ -70,12 +67,12 @@ Backend logs are sent as structured JSON with these fields:
 
 #### View All Backend Logs
 ```
-service:"express-backend"
+msg:("request completed" OR "request failed")
 ```
 
 #### Find Error Logs
 ```
-service:"express-backend" AND level:"ERROR"
+level:>=50
 ```
 
 #### Track Specific Request
@@ -85,12 +82,12 @@ requestId:"550e8400-e29b-41d4-a716-446655440000"
 
 #### Monitor API Endpoints
 ```
-url:"/api/tickets" AND level:"ERROR"
+path:"/api/tickets" AND level:>=50
 ```
 
 #### Response Time Analysis
 ```
-service:"express-backend" AND duration:>1000
+duration:>1000
 ```
 
 ## Troubleshooting

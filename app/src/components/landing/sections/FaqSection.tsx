@@ -14,7 +14,7 @@ const faqs = [
   {
     question: "Can we still access old bookmarks like /dashboard?",
     answer:
-      "Yes. Legacy top-level routes redirect to the new /app namespace while exposing a migration notice.",
+      "No. Legacy top-level routes have been removed. Use the current /app/* routes and update saved bookmarks.",
   },
   {
     question: "How does section navigation work from non-root pages?",

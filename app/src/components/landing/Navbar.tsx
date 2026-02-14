@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { cn } from "../../lib/utils";
 import useNavbarScrollState from "../../hooks/useNavbarScrollState";
 import { useLandingSectionNavigation } from "../../hooks/useLandingSectionScroll";
+import { scrollPageToTop } from "../../lib/scrollPageToTop";
 import { Button } from "../ui/button";
 import {
   Sheet,
@@ -14,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "../ui/sheet";
+import BrandLogo from "../branding/BrandLogo";
 
 const sectionLinks = [
   { id: "features", label: "Features" },
@@ -27,6 +29,11 @@ export default function Navbar() {
   const location = useLocation();
   const isScrolled = useNavbarScrollState();
   const navigateToSection = useLandingSectionNavigation();
+
+  const onHomeClick = () => {
+    setIsOpen(false);
+    scrollPageToTop("auto");
+  };
 
   const onSectionClick = (sectionId: string) => {
     navigateToSection(sectionId);
@@ -43,11 +50,14 @@ export default function Navbar() {
       <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-4 px-4 py-3">
         <Link
           to="/"
-          className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
+          className="inline-flex shrink-0 items-center"
           aria-label="EcoTrack home"
+          onClick={onHomeClick}
         >
-          <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent-soft)] shadow-[0_0_20px_var(--accent)]" />
-          EcoTrack
+          <BrandLogo
+            imageClassName="h-11 w-11"
+            textClassName="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
+          />
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-6 md:flex" aria-label="Landing sections">
@@ -71,12 +81,12 @@ export default function Navbar() {
 
         <div className="hidden shrink-0 items-center gap-2 md:flex">
           <Link
-            to="/auth"
+            to="/login"
             className="inline-flex h-11 items-center justify-center rounded-[var(--radius-pill)] px-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
           >
             Log in
           </Link>
-          <Link to="/auth">
+          <Link to="/login">
             <Button size="md">Get Started</Button>
           </Link>
         </div>
@@ -111,12 +121,12 @@ export default function Navbar() {
                 ))}
               </nav>
               <SheetFooter>
-                <Link to="/auth" onClick={() => setIsOpen(false)}>
+                <Link to="/login" onClick={() => setIsOpen(false)}>
                   <Button variant="secondary" className="w-full">
                     Log in
                   </Button>
                 </Link>
-                <Link to="/auth" onClick={() => setIsOpen(false)}>
+                <Link to="/login" onClick={() => setIsOpen(false)}>
                   <Button className="w-full">Get Started</Button>
                 </Link>
               </SheetFooter>

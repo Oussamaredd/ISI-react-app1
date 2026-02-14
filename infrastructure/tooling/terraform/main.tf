@@ -1,18 +1,9 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-
-  backend "s3" {} # (later, optional)
-}
-
-# Cloud resources will go here later:
+# Docker-only Terraform workspace for EcoTrack.
 #
-# - EC2 instance or ECS cluster
-# - Security groups
-# - Networking (VPC)
-# - Cloud PostgreSQL (Neon / RDS)
-# - Load balancer
+# This directory intentionally avoids AWS/S3 scaffolding until cloud IaC is in scope.
+# Keep this stack aligned with the local Docker workflow defined in:
+# - infrastructure/docker-compose.yml
+# - infrastructure/environments/.env.docker
+
+# Example resources can be added here later when we decide to manage
+# Docker networks/volumes/images via Terraform.

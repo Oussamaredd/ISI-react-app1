@@ -1,6 +1,7 @@
 // client/src/pages/TicketDetails.tsx
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useCurrentUser } from '../hooks/useAuth';
 import { 
   useTicketDetails, 
   useTicketComments, 
@@ -45,6 +46,22 @@ interface Activity {
   actorEmail?: string;
   createdAt?: string;
 }
+
+type CurrentUser = {
+  id?: string | number;
+  role?: string;
+  roles?: Array<{ name?: string }>;
+};
+
+const hasAdminRole = (user: CurrentUser | null | undefined) => {
+  if (!user) {
+    return false;
+  }
+
+  return user.role === 'admin'
+    || user.role === 'super_admin'
+    || Boolean(user.roles?.some((role) => role.name === 'admin' || role.name === 'super_admin'));
+};
 
 // Activity type icons and colors
 const getActivityConfig = (type: string) => {
@@ -141,14 +158,14 @@ const CommentSection: React.FC<{
   comments: Comment[]; 
   pagination: any;
   onLoadMore: () => void;
-}> = ({ ticketId, comments, pagination, onLoadMore }) => {
+  currentUser: CurrentUser | null;
+}> = ({ ticketId, comments, pagination, onLoadMore, currentUser }) => {
   const [newComment, setNewComment] = useState('');
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
   const { addComment, isAdding } = useAddComment();
   const { updateComment, isUpdating } = useUpdateComment();
   const { deleteComment, isDeleting } = useDeleteComment();
-  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -301,7 +318,7 @@ const CommentSection: React.FC<{
                   }}
                 >
                   {/* Comment Actions */}
-                  {(isOwner || currentUser.role === 'admin') && (
+                  {(isOwner || hasAdminRole(currentUser)) && (
                     <div style={{
                       position: 'absolute',
                       top: '1rem',
@@ -471,10 +488,16 @@ const CommentSection: React.FC<{
 
 export default function TicketDetails() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user: currentUser } = useCurrentUser();
+  const currentCommentsPage = Number(searchParams.get('commentsPage') ?? '1');
+  const commentsPage =
+    Number.isFinite(currentCommentsPage) && currentCommentsPage > 0
+      ? Math.floor(currentCommentsPage)
+      : 1;
   
   const { data: ticketData, isLoading, error } = useTicketDetails(id);
-  const { data: commentsData } = useTicketComments(id);
+  const { data: commentsData } = useTicketComments(id, commentsPage);
   const { data: activityData } = useTicketActivity(id);
 
   const ticket = (ticketData as any)?.ticket ?? ticketData;
@@ -483,7 +506,7 @@ export default function TicketDetails() {
   const commentsPagination =
     (commentsData as any)?.pagination
     || (commentsData as any)?.commentsPagination
-    || { total: comments.length, hasNext: false, page: 1 };
+    || { total: comments.length, hasNext: false, page: commentsPage };
   const activityFromEndpoint = Array.isArray(activityData)
     ? activityData
     : (activityData as any)?.activity;
@@ -552,8 +575,15 @@ export default function TicketDetails() {
   }
 
   const handleLoadMoreComments = () => {
-    const nextPage = commentsPagination.page + 1;
-    navigate(`?commentsPage=${nextPage}`, { replace: false });
+    const paginationPage = Number(commentsPagination.page);
+    const safeCurrentPage =
+      Number.isFinite(paginationPage) && paginationPage > 0
+        ? Math.floor(paginationPage)
+        : commentsPage;
+    const nextPage = safeCurrentPage + 1;
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('commentsPage', String(nextPage));
+    setSearchParams(nextSearchParams, { replace: false });
   };
   const title = (ticket as any).title || (ticket as any).name || 'Untitled ticket';
   const status = (ticket.status || 'open').toString().toUpperCase();
@@ -703,6 +733,7 @@ export default function TicketDetails() {
           comments={comments}
           pagination={commentsPagination}
           onLoadMore={handleLoadMoreComments}
+          currentUser={currentUser}
         />
       </div>
     </div>

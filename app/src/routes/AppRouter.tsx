@@ -5,15 +5,19 @@ import AuthLayout from "../layouts/AuthLayout";
 import AppLayout from "../layouts/AppLayout";
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
-import LegacyRouteRedirect from "./LegacyRouteRedirect";
 import Dashboard from "../pages/Dashboard";
 import TicketListPage from "../pages/TicketList";
 import AdvancedTicketList from "../pages/AdvancedTicketList";
 import CreateTickets from "../pages/CreateTickets";
 import TicketDetails from "../pages/TicketDetails";
 import TreatTicketPage from "../pages/TreatTicketPage";
+import SettingsPage from "../pages/SettingsPage";
 import { AdminDashboard } from "../pages/AdminDashboard";
-import AuthPage from "../pages/auth/AuthPage";
+import AuthCallbackPage from "../pages/auth/AuthCallbackPage";
+import LoginPage from "../pages/auth/LoginPage";
+import SignupPage from "../pages/auth/SignupPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/auth/ResetPasswordPage";
 import LandingPage from "../pages/landing/LandingPage";
 import MarketingInfoPage from "../pages/landing/MarketingInfoPage";
 import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
@@ -78,8 +82,15 @@ export default function AppRouter() {
 
         <Route element={<RequireGuest />}>
           <Route element={<AuthLayout />}>
-            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
+        </Route>
+
+        <Route element={<AuthLayout />}>
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
         </Route>
 
         <Route element={<RequireAuth />}>
@@ -91,34 +102,13 @@ export default function AppRouter() {
             <Route path="tickets/create" element={<CreateTickets />} />
             <Route path="tickets/:id/details" element={<TicketDetails />} />
             <Route path="tickets/:id/treat" element={<TreatTicketPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="admin" element={<AdminRoute />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>
 
         <Route path="/landing" element={<Navigate to="/" replace />} />
-        <Route path="/dashboard" element={<LegacyRouteRedirect to="/app/dashboard" />} />
-        <Route path="/tickets" element={<LegacyRouteRedirect to="/app/tickets" />} />
-        <Route
-          path="/tickets/advanced"
-          element={<LegacyRouteRedirect to="/app/tickets/advanced" />}
-        />
-        <Route path="/tickets/create" element={<LegacyRouteRedirect to="/app/tickets/create" />} />
-        <Route
-          path="/tickets/:id/details"
-          element={
-            <LegacyRouteRedirect
-              to={(params) => `/app/tickets/${params.id ?? ""}/details`}
-            />
-          }
-        />
-        <Route
-          path="/tickets/:id/treat"
-          element={
-            <LegacyRouteRedirect to={(params) => `/app/tickets/${params.id ?? ""}/treat`} />
-          }
-        />
-        <Route path="/admin" element={<LegacyRouteRedirect to="/app/admin" />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

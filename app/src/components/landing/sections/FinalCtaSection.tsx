@@ -13,7 +13,7 @@ export default function FinalCtaSection() {
             contract changes.
           </p>
           <div className="mt-8">
-            <Link to="/auth">
+            <Link to="/login">
               <Button size="lg">
                 Start now
                 <ArrowRight className="h-4 w-4" />

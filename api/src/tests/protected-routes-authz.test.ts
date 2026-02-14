@@ -34,7 +34,7 @@ describe('Protected API route authorization', () => {
   };
 
   const authServiceMock = {
-    getAuthUserFromCookie: vi.fn(),
+    getAuthUserFromRequest: vi.fn(),
   };
 
   const usersServiceMock = {
@@ -95,8 +95,8 @@ describe('Protected API route authorization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    authServiceMock.getAuthUserFromCookie.mockImplementation((cookie?: string) =>
-      cookie ? authUser : null,
+    authServiceMock.getAuthUserFromRequest.mockImplementation(
+      (request?: { headers?: { cookie?: string } }) => (request?.headers?.cookie ? authUser : null),
     );
     usersServiceMock.ensureUserForAuth.mockResolvedValue(baseDbUser);
     usersServiceMock.getRolesForUser.mockResolvedValue([]);

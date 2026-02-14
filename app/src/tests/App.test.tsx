@@ -5,6 +5,15 @@ import App from "../App";
 import { renderWithProviders } from "./test-utils";
 
 vi.mock("../hooks/useAuth", () => ({
+  useAuth: () => ({
+    user: { id: "1", name: "Test User" },
+    isLoading: false,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshAuth: vi.fn(),
+    getAuthHeaders: () => ({}),
+  }),
   useCurrentUser: () => ({
     user: { id: "1", name: "Test User" },
     isLoading: false,

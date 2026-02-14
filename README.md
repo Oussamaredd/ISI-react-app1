@@ -54,15 +54,33 @@ Default local endpoints:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:3001/api`
-- API health: `http://localhost:3001/api/health`
+- API readiness: `http://localhost:3001/health`
+- API diagnostics: `http://localhost:3001/api/health`
 
-If the frontend shows `ERR_CONNECTION_REFUSED` for `http://localhost:3001/api/*`, the API process is not reachable. Verify API health with:
+If the frontend shows `ERR_CONNECTION_REFUSED` for `http://localhost:3001/api/*`, the API process is not reachable. Verify API readiness with:
 
 ```bash
-curl -f http://localhost:3001/api/health
+curl -f http://localhost:3001/health
 ```
 
 If the check fails, restart `npm run dev` and read the API startup error in the terminal output.
+
+## Auth Routes (Host/Docker)
+
+- Login: `http://localhost:5173/login`
+- Signup: `http://localhost:5173/signup`
+- Forgot password: `http://localhost:5173/forgot-password`
+- Reset password: `http://localhost:5173/reset-password`
+
+Local auth contract:
+
+- `POST /api/login` returns `{ code }` (short-lived exchange code)
+- `POST /api/signup` returns `{ accessToken, user }`
+- frontend exchanges login `code` via `POST /api/auth/exchange` to obtain `{ accessToken, user }`
+- frontend stores `accessToken` in `localStorage`
+- protected API requests use `Authorization: Bearer <token>`
+- reset endpoints are only `POST /api/forgot-password` and `POST /api/reset-password`
+- in production, forgot-password returns `204` with no token/url payload
 
 ## OAuth Callback Setup
 

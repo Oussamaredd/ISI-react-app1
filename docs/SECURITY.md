@@ -62,3 +62,18 @@ npm run validate-env:all
 - Use cryptographically secure random generation.
 - Keep secrets in runtime env injection, not source files.
 - Enforce env-policy validation in CI before build/deploy.
+
+## API Runtime Hardening
+
+- Security headers are applied with `helmet` (CSP disabled for API-only JSON responses).
+- HTTP auto-logging is structured (`nestjs-pino`) and emits one completion line per request (health/metrics paths excluded).
+- Request log levels are differentiated by outcome (`info` for success, `warn` for 4xx, `error` for 5xx/error cases).
+- Logged request paths exclude query strings to reduce token leakage risk from URLs.
+- Sensitive inputs are redacted in logs:
+  - request headers: `authorization`, `cookie`, `x-api-key`, `x-auth-token`
+  - request body fields: `password`, `currentPassword`, `newPassword`, `token`, `accessToken`, `refreshToken`, `idToken`, `clientSecret`, `secret`
+  - request query fields: `token`, `accessToken`, `refreshToken`
+  - response headers: `set-cookie`
+- Nest internal startup/module/route mapping logs are suppressed by default in `development`/`test` (restored when `LOG_LEVEL=debug|trace`).
+- Each response carries `X-Request-Id` and the same value is emitted in logs/error payloads for traceability.
+- Global rate limiting is enabled (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`) with stricter limits on auth abuse endpoints.

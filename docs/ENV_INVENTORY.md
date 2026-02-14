@@ -63,9 +63,11 @@ Visibility legend:
 | ENABLE_REGISTRATION | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | ENABLE_SEED_DATA | infrastructure | private | docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ENABLE_SWAGGER | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| GOOGLE_CALLBACK_URL | api | private | host-dev, docker-dev | optional override (derived callback remains supported) |
+| GOOGLE_CALLBACK_URL | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical for deploy templates (path fixed to `/api/auth/google/callback`) |
 | GOOGLE_CLIENT_ID | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | GOOGLE_CLIENT_SECRET | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| JWT_ACCESS_EXPIRES_IN | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| JWT_ACCESS_SECRET | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_EXPIRES_IN | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_SECRET | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | LOG_FORMAT | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |

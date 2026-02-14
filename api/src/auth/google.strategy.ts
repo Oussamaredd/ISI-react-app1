@@ -12,29 +12,37 @@ import {
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+  private readonly oauthEnabled: boolean;
+
   constructor() {
     const clientId = getGoogleClientId();
     const clientSecret = getGoogleClientSecret();
-
-    if (!clientId || !clientSecret) {
-      throw new Error('Google OAuth env vars are missing (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).');
-    }
+    const oauthEnabled = Boolean(clientId && clientSecret);
 
     super({
-      clientID: clientId,
-      clientSecret,
+      clientID: clientId ?? 'oauth-disabled',
+      clientSecret: clientSecret ?? 'oauth-disabled',
       callbackURL: getGoogleCallbackUrl(),
       scope: ['profile', 'email'],
     });
+
+    this.oauthEnabled = oauthEnabled;
   }
 
   validate(accessToken: string, refreshToken: string, profile: Profile): AuthUser {
+    if (!this.oauthEnabled) {
+      throw new Error('Google OAuth is not configured.');
+    }
+
+    const profilePayload = profile as Profile & { _json?: { picture?: string | null } };
+    const avatarUrl = profile.photos?.[0]?.value ?? profilePayload._json?.picture ?? null;
+
     return {
       provider: 'google',
       id: profile.id,
       email: profile.emails?.[0]?.value ?? null,
       name: profile.displayName ?? null,
-      avatarUrl: profile.photos?.[0]?.value ?? null,
+      avatarUrl,
     };
   }
 }

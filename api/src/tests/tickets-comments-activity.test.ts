@@ -28,7 +28,18 @@ describe('Tickets comments and activity endpoints', () => {
   };
 
   const authServiceMock = {
-    getAuthUserFromCookie: vi.fn(),
+    getAuthUserFromRequest: vi.fn(),
+  };
+
+  const mockAuthUser = {
+    id: '6f6f5f4e-57f8-4ac4-88ff-2ec83c44ee1d',
+    email: 'agent@example.com',
+    displayName: 'Agent User',
+    role: 'agent',
+    roles: [],
+    permissions: ['tickets.read', 'tickets.write'],
+    isActive: true,
+    hotelId: '9d8f3f51-cf0f-46b4-a418-4d13e4df95ce',
   };
 
   const usersServiceMock = {
@@ -63,9 +74,13 @@ describe('Tickets comments and activity endpoints', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
-    vi.spyOn(AuthenticatedUserGuard.prototype, 'canActivate').mockResolvedValue(true as any);
+    vi.spyOn(AuthenticatedUserGuard.prototype, 'canActivate').mockImplementation(async (context) => {
+      const request = context.switchToHttp().getRequest();
+      request.authUser = mockAuthUser;
+      return true;
+    });
     vi.spyOn(PermissionsGuard.prototype, 'canActivate').mockReturnValue(true as any);
-    authServiceMock.getAuthUserFromCookie.mockReturnValue(null);
+    authServiceMock.getAuthUserFromRequest.mockReturnValue(null);
     usersServiceMock.ensureUserForAuth.mockResolvedValue(null);
     usersServiceMock.getRolesForUser.mockResolvedValue([]);
   });
@@ -84,7 +99,11 @@ describe('Tickets comments and activity endpoints', () => {
       .send({ body: 'Hello world' })
       .expect(201);
 
-    expect(mockService.addComment).toHaveBeenCalledWith(ticketId, 'Hello world');
+    expect(mockService.addComment).toHaveBeenCalledWith(ticketId, 'Hello world', {
+      id: mockAuthUser.id,
+      role: mockAuthUser.role,
+      roles: mockAuthUser.roles,
+    });
     expect(response.body).toEqual(payload);
   });
 
@@ -97,7 +116,11 @@ describe('Tickets comments and activity endpoints', () => {
       .send({ content: 'From content' })
       .expect(201);
 
-    expect(mockService.addComment).toHaveBeenCalledWith(ticketId, 'From content');
+    expect(mockService.addComment).toHaveBeenCalledWith(ticketId, 'From content', {
+      id: mockAuthUser.id,
+      role: mockAuthUser.role,
+      roles: mockAuthUser.roles,
+    });
     expect(response.body).toEqual(payload);
   });
 
@@ -119,7 +142,11 @@ describe('Tickets comments and activity endpoints', () => {
       .send({ content: 'Updated comment' })
       .expect(200);
 
-    expect(mockService.updateComment).toHaveBeenCalledWith(ticketId, commentId, 'Updated comment');
+    expect(mockService.updateComment).toHaveBeenCalledWith(ticketId, commentId, 'Updated comment', {
+      id: mockAuthUser.id,
+      role: mockAuthUser.role,
+      roles: mockAuthUser.roles,
+    });
     expect(response.body).toEqual(payload);
   });
 
@@ -131,7 +158,11 @@ describe('Tickets comments and activity endpoints', () => {
       .delete(`/api/tickets/${ticketId}/comments/${commentId}`)
       .expect(200);
 
-    expect(mockService.deleteComment).toHaveBeenCalledWith(ticketId, commentId);
+    expect(mockService.deleteComment).toHaveBeenCalledWith(ticketId, commentId, {
+      id: mockAuthUser.id,
+      role: mockAuthUser.role,
+      roles: mockAuthUser.roles,
+    });
     expect(response.body).toEqual(payload);
   });
 

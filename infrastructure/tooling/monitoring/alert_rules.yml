@@ -1,168 +1,42 @@
-# Alert rules for Prometheus
+# Alert rules aligned to currently exposed API metrics
 
 groups:
-  - name: application.rules
+  - name: ecotrack.api.availability
     rules:
-      # Application health
-      - alert: ApplicationDown
-        expr: up{job="ticketapp"} == 0
+      - alert: EcoTrackApiDown
+        expr: up{job="ecotrack-api"} == 0
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Application is down"
-          description: "Ticket application has been down for more than 1 minute."
+          summary: "EcoTrack API metrics target is down"
+          description: "Prometheus cannot scrape the EcoTrack API metrics endpoint for over 1 minute."
 
-      - alert: ApplicationHighErrorRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High error rate detected"
-          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes."
-
-      - alert: ApplicationHighResponseTime
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High response time detected"
-          description: "95th percentile response time is {{ $value }}s for the last 5 minutes."
-
-      # Database alerts
-      - alert: DatabaseDown
-        expr: up{job="postgres-exporter"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Database is down"
-          description: "PostgreSQL database has been down for more than 1 minute."
-
-      - alert: DatabaseHighConnections
-        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High database connections"
-          description: "Database connection usage is {{ $value | humanizePercentage }}."
-
-      - alert: DatabaseSlowQueries
-        expr: rate(pg_stat_statements_mean_time_seconds[5m]) > 0.5
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Slow database queries"
-          description: "Average query time is {{ $value }}s for the last 5 minutes."
-
-      # Redis alerts
-      - alert: RedisDown
-        expr: up{job="redis-exporter"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Redis is down"
-          description: "Redis cache has been down for more than 1 minute."
-
-      - alert: RedisHighMemoryUsage
-        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High Redis memory usage"
-          description: "Redis memory usage is {{ $value | humanizePercentage }}."
-
-      # System alerts
-      - alert: HighCPUUsage
-        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High CPU usage"
-          description: "CPU usage is {{ $value }}% on instance {{ $labels.instance }}."
-
-      - alert: HighMemoryUsage
-        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High memory usage"
-          description: "Memory usage is {{ $value }}% on instance {{ $labels.instance }}."
-
-      - alert: LowDiskSpace
-        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Low disk space"
-          description: "Disk space is {{ $value }}% on mount point {{ $labels.mountpoint }}."
-
-      # Application-specific alerts
-      - alert: HighActiveUsers
-        expr: ticketapp_active_users_total > 1000
+  - name: ecotrack.frontend.ingestion
+    rules:
+      - alert: FrontendErrorIngestionSpike
+        expr: rate(frontend_errors_total[5m]) > 0.2
         for: 10m
         labels:
-          severity: info
+          severity: warning
         annotations:
-          summary: "High number of active users"
-          description: "There are {{ $value }} active users, which is unusually high."
+          summary: "High frontend error ingestion rate"
+          description: "Frontend error ingestion rate is above 0.2 events/second for 10 minutes."
 
-      - alert: TicketQueueBacklog
-        expr: ticketapp_queue_size > 100
+      - alert: FrontendErrorBufferNearCapacity
+        expr: frontend_error_buffer_size > 180
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Ticket processing backlog"
-          description: "Ticket queue has {{ $value }} pending items."
+          summary: "Frontend error buffer near capacity"
+          description: "In-memory frontend error buffer is above 180 entries."
 
-  - name: business.rules
-    rules:
-      # Business metrics
-      - alert: NoNewTickets
-        expr: increase(ticketapp_tickets_created_total[1h]) == 0
-        for: 2h
+      - alert: FrontendMetricBufferNearCapacity
+        expr: frontend_metric_buffer_size > 900
+        for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "No new tickets created"
-          description: "No new tickets have been created in the last 2 hours."
-
-      - alert: HighUnresolvedTickets
-        expr: ticketapp_tickets_status{status="open"} > 50
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High number of unresolved tickets"
-          description: "There are {{ $value }} unresolved tickets."
-
-  - name: security.rules
-    rules:
-      # Security alerts
-      - alert: HighFailedLogins
-        expr: rate(ticketapp_login_failures_total[5m]) > 10
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High number of failed login attempts"
-          description: "{{ $value }} failed login attempts per second for the last 5 minutes."
-
-      - alert: SuspiciousAPIUsage
-        expr: rate(http_requests_total{job="ticketapp"}[5m]) > 100
-        for: 3m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Suspicious API usage"
-          description: "API request rate is {{ $value }} requests per second."
+          summary: "Frontend metric buffer near capacity"
+          description: "In-memory frontend metric buffer is above 900 entries."

@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Header, HttpCode, HttpStatus, Inject, Post } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { MonitoringService } from './monitoring.service.js';
 
@@ -24,6 +25,7 @@ export class MonitoringController {
   }
 
   @Get('metrics')
+  @SkipThrottle()
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   getPrometheusMetrics() {
     return this.monitoringService.renderPrometheusMetrics();

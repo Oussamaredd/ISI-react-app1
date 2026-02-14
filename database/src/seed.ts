@@ -21,6 +21,9 @@ type UserSeed = {
   hotelSlug: string;
   assignedRoles: string[];
   isActive: boolean;
+  authProvider: 'local' | 'google';
+  passwordHash?: string | null;
+  googleId?: string | null;
 };
 
 type TicketSeed = {
@@ -90,12 +93,26 @@ const HOTEL_SEEDS: HotelSeed[] = [
 
 const USER_SEEDS: UserSeed[] = [
   {
+    email: 'test@ecotrack.local',
+    displayName: 'Local Smoke User',
+    role: 'agent',
+    hotelSlug: 'default-hotel',
+    assignedRoles: ['agent'],
+    isActive: true,
+    authProvider: 'local',
+    passwordHash: '$2a$10$a9vsUVq25Tk/tpF4zduryOsGZeimJCpl09DlQGhFdlXA4RVtJwH/u',
+    googleId: null,
+  },
+  {
     email: 'superadmin@example.com',
     displayName: 'Super Admin',
     role: 'super_admin',
     hotelSlug: 'default-hotel',
     assignedRoles: ['super_admin', 'admin'],
     isActive: true,
+    authProvider: 'google',
+    passwordHash: null,
+    googleId: null,
   },
   {
     email: 'admin@example.com',
@@ -104,6 +121,9 @@ const USER_SEEDS: UserSeed[] = [
     hotelSlug: 'default-hotel',
     assignedRoles: ['admin'],
     isActive: true,
+    authProvider: 'google',
+    passwordHash: null,
+    googleId: null,
   },
   {
     email: 'manager@example.com',
@@ -112,6 +132,9 @@ const USER_SEEDS: UserSeed[] = [
     hotelSlug: 'north-star-hotel',
     assignedRoles: ['manager'],
     isActive: true,
+    authProvider: 'google',
+    passwordHash: null,
+    googleId: null,
   },
   {
     email: 'agent@example.com',
@@ -120,6 +143,9 @@ const USER_SEEDS: UserSeed[] = [
     hotelSlug: 'north-star-hotel',
     assignedRoles: ['agent'],
     isActive: true,
+    authProvider: 'google',
+    passwordHash: null,
+    googleId: null,
   },
 ];
 
@@ -205,9 +231,14 @@ export async function seedDatabase() {
   const now = new Date();
 
   try {
-    const roleIds = new Map<string, string>();
-    for (const seed of ROLE_SEEDS) {
-      await db
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DATABASE_SEED_IN_PROD !== 'true') {
+      throw new Error('Refusing to run database seed in production without ALLOW_DATABASE_SEED_IN_PROD=true');
+    }
+
+    await db.transaction(async (tx) => {
+      const roleIds = new Map<string, string>();
+      for (const seed of ROLE_SEEDS) {
+        await tx
         .insert(roles)
         .values({
           name: seed.name,
@@ -223,16 +254,16 @@ export async function seedDatabase() {
           },
         });
 
-      const [row] = await db.select().from(roles).where(eq(roles.name, seed.name)).limit(1);
-      if (!row) {
-        throw new Error(`Failed to resolve role: ${seed.name}`);
+        const [row] = await tx.select().from(roles).where(eq(roles.name, seed.name)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve role: ${seed.name}`);
+        }
+        roleIds.set(seed.name, row.id);
       }
-      roleIds.set(seed.name, row.id);
-    }
 
-    const hotelIds = new Map<string, string>();
-    for (const seed of HOTEL_SEEDS) {
-      await db
+      const hotelIds = new Map<string, string>();
+      for (const seed of HOTEL_SEEDS) {
+        await tx
         .insert(hotels)
         .values({
           name: seed.name,
@@ -248,25 +279,28 @@ export async function seedDatabase() {
           },
         });
 
-      const [row] = await db.select().from(hotels).where(eq(hotels.slug, seed.slug)).limit(1);
-      if (!row) {
-        throw new Error(`Failed to resolve hotel: ${seed.slug}`);
-      }
-      hotelIds.set(seed.slug, row.id);
-    }
-
-    const userIds = new Map<string, string>();
-    for (const seed of USER_SEEDS) {
-      const hotelId = hotelIds.get(seed.hotelSlug);
-      if (!hotelId) {
-        throw new Error(`Hotel not found for user ${seed.email}: ${seed.hotelSlug}`);
+        const [row] = await tx.select().from(hotels).where(eq(hotels.slug, seed.slug)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve hotel: ${seed.slug}`);
+        }
+        hotelIds.set(seed.slug, row.id);
       }
 
-      await db
+      const userIds = new Map<string, string>();
+      for (const seed of USER_SEEDS) {
+        const hotelId = hotelIds.get(seed.hotelSlug);
+        if (!hotelId) {
+          throw new Error(`Hotel not found for user ${seed.email}: ${seed.hotelSlug}`);
+        }
+
+        await tx
         .insert(users)
         .values({
           email: seed.email,
           displayName: seed.displayName,
+          authProvider: seed.authProvider,
+          passwordHash: seed.passwordHash ?? null,
+          googleId: seed.googleId ?? null,
           role: seed.role,
           isActive: seed.isActive,
           hotelId,
@@ -282,101 +316,101 @@ export async function seedDatabase() {
           },
         });
 
-      const [row] = await db.select().from(users).where(eq(users.email, seed.email)).limit(1);
-      if (!row) {
-        throw new Error(`Failed to resolve user: ${seed.email}`);
-      }
-      userIds.set(seed.email, row.id);
-    }
-
-    for (const userSeed of USER_SEEDS) {
-      const userId = userIds.get(userSeed.email);
-      if (!userId) {
-        throw new Error(`User missing for role assignment: ${userSeed.email}`);
+        const [row] = await tx.select().from(users).where(eq(users.email, seed.email)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve user: ${seed.email}`);
+        }
+        userIds.set(seed.email, row.id);
       }
 
-      for (const roleName of userSeed.assignedRoles) {
-        const roleId = roleIds.get(roleName);
-        if (!roleId) {
-          throw new Error(`Role missing for user assignment: ${roleName}`);
+      for (const userSeed of USER_SEEDS) {
+        const userId = userIds.get(userSeed.email);
+        if (!userId) {
+          throw new Error(`User missing for role assignment: ${userSeed.email}`);
         }
 
-        await db
-          .insert(userRoles)
-          .values({
-            userId,
-            roleId,
-          })
-          .onConflictDoNothing();
-      }
-    }
+        for (const roleName of userSeed.assignedRoles) {
+          const roleId = roleIds.get(roleName);
+          if (!roleId) {
+            throw new Error(`Role missing for user assignment: ${roleName}`);
+          }
 
-    const ticketIds = new Map<string, string>();
-    for (const seed of TICKET_SEEDS) {
-      const requesterId = userIds.get(seed.requesterEmail);
-      const assigneeId = userIds.get(seed.assigneeEmail);
-      const hotelId = hotelIds.get(seed.hotelSlug);
-
-      if (!requesterId || !assigneeId || !hotelId) {
-        throw new Error(`Missing references for ticket seed: ${seed.title}`);
+          await tx
+            .insert(userRoles)
+            .values({
+              userId,
+              roleId,
+            })
+            .onConflictDoNothing();
+        }
       }
 
-      const [existing] = await db
+      const ticketIds = new Map<string, string>();
+      for (const seed of TICKET_SEEDS) {
+        const requesterId = userIds.get(seed.requesterEmail);
+        const assigneeId = userIds.get(seed.assigneeEmail);
+        const hotelId = hotelIds.get(seed.hotelSlug);
+
+        if (!requesterId || !assigneeId || !hotelId) {
+          throw new Error(`Missing references for ticket seed: ${seed.title}`);
+        }
+
+        const [existing] = await tx
         .select()
         .from(tickets)
         .where(and(eq(tickets.title, seed.title), eq(tickets.requesterId, requesterId)))
         .limit(1);
 
-      if (existing) {
-        const closedAtValue = CLOSED_STATUSES.has(seed.status) ? existing.closedAt ?? now : null;
+        if (existing) {
+          const closedAtValue = CLOSED_STATUSES.has(seed.status) ? existing.closedAt ?? now : null;
 
-        await db
-          .update(tickets)
-          .set({
+          await tx
+            .update(tickets)
+            .set({
+              description: seed.description,
+              status: seed.status,
+              priority: seed.priority,
+              assigneeId,
+              hotelId,
+              closedAt: closedAtValue,
+              updatedAt: now,
+            })
+            .where(eq(tickets.id, existing.id));
+
+          ticketIds.set(seed.title, existing.id);
+          continue;
+        }
+
+        const [inserted] = await tx
+          .insert(tickets)
+          .values({
+            title: seed.title,
             description: seed.description,
             status: seed.status,
             priority: seed.priority,
+            requesterId,
             assigneeId,
             hotelId,
-            closedAt: closedAtValue,
-            updatedAt: now,
+            closedAt: CLOSED_STATUSES.has(seed.status) ? now : null,
           })
-          .where(eq(tickets.id, existing.id));
+          .returning({ id: tickets.id });
 
-        ticketIds.set(seed.title, existing.id);
-        continue;
+        if (!inserted) {
+          throw new Error(`Failed to create ticket seed: ${seed.title}`);
+        }
+
+        ticketIds.set(seed.title, inserted.id);
       }
 
-      const [inserted] = await db
-        .insert(tickets)
-        .values({
-          title: seed.title,
-          description: seed.description,
-          status: seed.status,
-          priority: seed.priority,
-          requesterId,
-          assigneeId,
-          hotelId,
-          closedAt: CLOSED_STATUSES.has(seed.status) ? now : null,
-        })
-        .returning({ id: tickets.id });
+      for (const seed of COMMENT_SEEDS) {
+        const ticketId = ticketIds.get(seed.ticketTitle);
+        const authorId = userIds.get(seed.authorEmail);
 
-      if (!inserted) {
-        throw new Error(`Failed to create ticket seed: ${seed.title}`);
-      }
+        if (!ticketId || !authorId) {
+          throw new Error(`Missing references for comment seed on ticket: ${seed.ticketTitle}`);
+        }
 
-      ticketIds.set(seed.title, inserted.id);
-    }
-
-    for (const seed of COMMENT_SEEDS) {
-      const ticketId = ticketIds.get(seed.ticketTitle);
-      const authorId = userIds.get(seed.authorEmail);
-
-      if (!ticketId || !authorId) {
-        throw new Error(`Missing references for comment seed on ticket: ${seed.ticketTitle}`);
-      }
-
-      const [existing] = await db
+        const [existing] = await tx
         .select()
         .from(comments)
         .where(
@@ -388,17 +422,17 @@ export async function seedDatabase() {
         )
         .limit(1);
 
-      if (!existing) {
-        await db.insert(comments).values({
-          ticketId,
-          authorId,
-          body: seed.body,
-        });
+        if (!existing) {
+          await tx.insert(comments).values({
+            ticketId,
+            authorId,
+            body: seed.body,
+          });
+        }
       }
-    }
 
-    for (const seed of SETTING_SEEDS) {
-      await db
+      for (const seed of SETTING_SEEDS) {
+        await tx
         .insert(systemSettings)
         .values({
           key: seed.key,
@@ -415,7 +449,8 @@ export async function seedDatabase() {
             updatedAt: now,
           },
         });
-    }
+      }
+    });
   } finally {
     await dispose();
   }

@@ -21,7 +21,7 @@ export default function RequireAuth() {
 
   if (!isLoggedIn) {
     const next = buildNextParam(location.pathname, location.search, location.hash);
-    return <Navigate to={`/auth?next=${next}`} replace />;
+    return <Navigate to={`/login?next=${next}`} replace />;
   }
 
   return <Outlet />;

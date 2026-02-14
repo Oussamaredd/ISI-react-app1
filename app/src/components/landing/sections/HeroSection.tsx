@@ -24,7 +24,7 @@ export default function HeroSection() {
             context loss, queue sprawl, or fragile spreadsheets.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/auth">
+            <Link to="/login">
               <Button size="lg">
                 Get Started
                 <ArrowRight className="h-4 w-4" />

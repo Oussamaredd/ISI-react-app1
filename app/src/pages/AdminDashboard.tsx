@@ -17,6 +17,7 @@ import { HotelManagement as HotelManagementComponent } from '../components/admin
 import { SystemSettings as SystemSettingsComponent } from '../components/admin/SystemSettings';
 import { AuditLogs } from '../components/admin/AuditLogs';
 import { useNavigate } from 'react-router-dom';
+import BrandLogo from '../components/branding/BrandLogo';
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -73,9 +74,13 @@ export function AdminDashboard() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div>
+            <div className="space-y-1">
+              <BrandLogo
+                imageClassName="h-11 w-11"
+                textClassName="text-xs font-semibold uppercase tracking-[0.08em] text-gray-700"
+              />
               <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome back, {user?.name}</p>
+              <p className="text-sm text-gray-600">Welcome back, {user?.displayName ?? user?.email}</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
@@ -100,6 +105,12 @@ export function AdminDashboard() {
           {/* Sidebar Navigation */}
           <nav className="w-64 flex-shrink-0">
             <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="mb-4">
+                <BrandLogo
+                  imageClassName="h-10 w-10"
+                  textClassName="text-xs font-semibold uppercase tracking-[0.08em] text-gray-700"
+                />
+              </div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Menu</h2>
               <div className="space-y-1">
                 {menuItems.map((item) => {

@@ -67,6 +67,11 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 - Prefer environment variables, config modules, dependency injection, or props over inline configuration.
 - Avoid deep prop drilling for config and endpoint values; prefer shared config modules or context/providers.
 
+## Autonomy Rules (No-permission actions)
+- Do not ask for my permission before editing any example/template environment files used for onboarding or documentation (e.g., `*.env.example`, sample env templates). If changes are needed for the task, update them directly and report what changed.
+- Do not ask for my permission before running any validation commands (tests/build/lint/typecheck/migrate/validate-env). Run the required commands automatically based on the Path-to-Command Matrix and include pass/fail output in the report.
+- Exception: if a command is destructive or could target non-dev/prod resources, do not run it—report the blocker and what would have been run instead.
+
 ## Response Format Contract
 - Always provide: concise summary, changed files, commands run with pass/fail, and known risks or follow-ups.
 - State skipped validations and why they were skipped.

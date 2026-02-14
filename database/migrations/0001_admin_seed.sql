@@ -10,7 +10,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 INSERT INTO roles (name, description, permissions)
 VALUES
-  ('admin', 'Administrator', '["users.read","users.write","roles.read","roles.write","hotels.read","hotels.write","audit.read","settings.write"]'),
+  ('super_admin', 'Super Administrator', '["users.read","users.write","roles.read","roles.write","hotels.read","hotels.write","tickets.read","tickets.write","audit.read","settings.write"]'),
+  ('admin', 'Administrator', '["users.read","users.write","roles.read","roles.write","hotels.read","hotels.write","tickets.read","tickets.write","audit.read","settings.write"]'),
   ('manager', 'Manager', '["users.read","hotels.read","tickets.read","audit.read"]'),
   ('agent', 'Agent', '["tickets.read","tickets.write"]')
 ON CONFLICT (name) DO NOTHING;

@@ -47,7 +47,7 @@ export class AuthenticatedUserGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<RequestWithAuthUser>();
-    const authUser = this.authService.getAuthUserFromCookie(request.headers.cookie);
+    const authUser = this.authService.getAuthUserFromRequest(request);
 
     if (!authUser) {
       throw new UnauthorizedException();

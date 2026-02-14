@@ -13,6 +13,9 @@ export const hotels = pgTable('hotels', {
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(),
+  passwordHash: text('password_hash'),
+  authProvider: text('auth_provider').default('google').notNull(),
+  googleId: text('google_id').unique(),
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
   role: text('role').default('agent').notNull(),
@@ -22,6 +25,17 @@ export const users = pgTable('users', {
     .references(() => hotels.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const tickets = pgTable('tickets', {
@@ -52,6 +66,7 @@ export const comments = pgTable('comments', {
     .references(() => users.id, { onDelete: 'cascade' }),
   body: text('body').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const attachments = pgTable('attachments', {
@@ -133,6 +148,14 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   userRoles: many(userRoles),
   auditLogs: many(auditLogs),
   updatedSettings: many(systemSettings),
+  passwordResetTokens: many(passwordResetTokens),
+}));
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
 }));
 
 export const ticketsRelations = relations(tickets, ({ one, many }) => ({
@@ -203,3 +226,4 @@ export type Role = typeof roles.$inferSelect;
 export type UserRole = typeof userRoles.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

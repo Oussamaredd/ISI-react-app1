@@ -1,12 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
-import { type DatabaseClient, hotels, roles, userRoles, users } from 'ecotrack-database';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, desc, eq, gte, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { type DatabaseClient, hotels, passwordResetTokens, roles, userRoles, users } from 'ecotrack-database';
 
 import type { AuthUser } from '../auth/auth.types.js';
 import { DRIZZLE } from '../database/database.constants.js';
 
 const DEFAULT_ROLE = 'agent';
 const DEFAULT_HOTEL_SLUG = 'default-hotel';
+const GOOGLE_SIGNIN_BLOCKED_BY_LOCAL_ACCOUNT_MESSAGE =
+  'This email is registered with email/password. Please sign in with your password.';
 
 type UserFilters = {
   search?: string;
@@ -33,31 +35,197 @@ export class UsersRepository {
     });
   }
 
+  async findByGoogleId(googleId: string) {
+    if (!googleId) return null;
+    return this.db.query.users.findFirst({
+      where: eq(users.googleId, googleId),
+    });
+  }
+
   async ensureUserForAuth(authUser: AuthUser) {
-    if (!authUser?.email) {
+    if (!authUser) {
       return null;
     }
 
-    const existing = await this.findByEmail(authUser.email);
+    if (authUser.provider === 'local') {
+      if (authUser.id) {
+        const byId = await this.findById(authUser.id);
+        if (byId) {
+          return byId;
+        }
+      }
+
+      if (!authUser.email) {
+        return null;
+      }
+
+      const byEmail = await this.findByEmail(authUser.email.trim());
+      return byEmail ?? null;
+    }
+
+    if (!authUser.email) {
+      return null;
+    }
+
+    const email = authUser.email.trim();
+    const existingByEmail = await this.findByEmail(email);
+
+    if (existingByEmail?.authProvider === 'local') {
+      throw new ConflictException(GOOGLE_SIGNIN_BLOCKED_BY_LOCAL_ACCOUNT_MESSAGE);
+    }
+
+    const existingByGoogleId = authUser.id ? await this.findByGoogleId(authUser.id) : null;
+    const existing = existingByGoogleId ?? existingByEmail;
+
     if (existing) {
-      return existing;
+      const displayName = authUser.name?.trim() || existing.displayName || email.split('@')[0] || 'User';
+
+      const [updated] = await this.db
+        .update(users)
+        .set({
+          displayName,
+          avatarUrl: authUser.avatarUrl ?? existing.avatarUrl ?? null,
+          authProvider: 'google',
+          googleId: authUser.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, existing.id))
+        .returning();
+
+      return updated ?? existing;
     }
 
     const hotelId = await this.ensureDefaultHotel();
-    const displayName = authUser.name?.trim() || authUser.email.split('@')[0] || 'User';
+    const displayName = authUser.name?.trim() || email.split('@')[0] || 'User';
 
-    const [created] = await this.db
+    const [upserted] = await this.db
       .insert(users)
       .values({
-        email: authUser.email,
+        email,
+        passwordHash: null,
+        authProvider: 'google',
+        googleId: authUser.id,
         displayName,
         avatarUrl: authUser.avatarUrl ?? null,
         role: DEFAULT_ROLE,
         hotelId,
       })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: {
+          displayName,
+          avatarUrl: authUser.avatarUrl ?? null,
+          authProvider: 'google',
+          googleId: authUser.id,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return upserted ?? this.findByEmail(email);
+  }
+
+  async createLocalUser(params: { email: string; passwordHash: string; displayName?: string }) {
+    const email = params.email.trim();
+    const hotelId = await this.ensureDefaultHotel();
+    const displayName = params.displayName?.trim() || email.split('@')[0] || 'User';
+
+    const [created] = await this.db
+      .insert(users)
+      .values({
+        email,
+        passwordHash: params.passwordHash,
+        authProvider: 'local',
+        googleId: null,
+        displayName,
+        avatarUrl: null,
+        role: DEFAULT_ROLE,
+        isActive: true,
+        hotelId,
+      })
       .returning();
 
     return created ?? null;
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string) {
+    const [updated] = await this.db
+      .update(users)
+      .set({
+        passwordHash,
+        authProvider: 'local',
+        googleId: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updated ?? null;
+  }
+
+  async updateUserProfile(userId: string, params: { displayName: string }) {
+    const displayName = params.displayName.trim();
+    if (!displayName) {
+      throw new BadRequestException('Display name is required.');
+    }
+
+    const [updated] = await this.db
+      .update(users)
+      .set({
+        displayName,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updated) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    return updated;
+  }
+
+  async createPasswordResetToken(params: { userId: string; tokenHash: string; expiresAt: Date }) {
+    const [inserted] = await this.db
+      .insert(passwordResetTokens)
+      .values({
+        userId: params.userId,
+        tokenHash: params.tokenHash,
+        expiresAt: params.expiresAt,
+      })
+      .returning();
+
+    return inserted ?? null;
+  }
+
+  async findValidPasswordResetTokenByHash(tokenHash: string) {
+    const now = new Date();
+    return this.db.query.passwordResetTokens.findFirst({
+      where: and(
+        eq(passwordResetTokens.tokenHash, tokenHash),
+        isNull(passwordResetTokens.consumedAt),
+        gte(passwordResetTokens.expiresAt, now),
+      ),
+    });
+  }
+
+  async consumePasswordResetToken(tokenId: string) {
+    const [updated] = await this.db
+      .update(passwordResetTokens)
+      .set({
+        consumedAt: new Date(),
+      })
+      .where(and(eq(passwordResetTokens.id, tokenId), isNull(passwordResetTokens.consumedAt)))
+      .returning();
+
+    return updated ?? null;
+  }
+
+  async consumeAllPasswordResetTokensForUser(userId: string) {
+    await this.db
+      .update(passwordResetTokens)
+      .set({ consumedAt: new Date() })
+      .where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.consumedAt)));
   }
 
   async listUsers(filters: UserFilters = {}) {

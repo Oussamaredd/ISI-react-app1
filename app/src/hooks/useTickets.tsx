@@ -1,7 +1,6 @@
 // client/src/hooks/useTickets.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
-import React, { createContext, useContext } from 'react';
 import { useAuth } from './useAuth';
 
 export type TicketStatus = 'open' | 'closed' | 'completed' | 'in_progress' | 'OPEN' | 'COMPLETED';
@@ -288,55 +287,3 @@ export const useDashboard = () => {
 export const useCurrentUser = () => {
   return useAuth();
 };
-
-// React Query context for sharing state
-const TicketsContext = createContext(null);
-
-export const TicketsProvider = ({ children }) => {
-  const [tickets, setTickets] = React.useState([]);
-  const [hotels, setHotels] = React.useState([]);
-  const [currentPage, setCurrentPage] = React.useState(1);
-
-  // Fetch functions
-  const refreshTickets = React.useCallback(async () => {
-    try {
-      const response = await apiClient.get('/api/tickets');
-      setTickets(response || []);
-    } catch (error) {
-      console.error('Failed to refresh tickets:', error);
-    }
-  }, []);
-
-  const refreshHotels = React.useCallback(async () => {
-    try {
-      const response = await apiClient.get('/api/hotels');
-      setHotels(response || []);
-    } catch (error) {
-      console.error('Failed to refresh hotels:', error);
-    }
-  }, []);
-
-  return (
-    <TicketsContext.Provider value={{
-      tickets,
-      hotels,
-      refreshTickets,
-      refreshHotels,
-      currentPage,
-      setCurrentPage,
-      user: null // This should come from auth context
-    }}>
-      {children}
-    </TicketsContext.Provider>
-  );
-};
-
-export const useTicketsContext = () => {
-  const context = useContext(TicketsContext);
-  if (!context) {
-    throw new Error('useTicketsContext must be used within a TicketsProvider');
-  }
-  return context;
-};
-
-export default TicketsProvider;

@@ -5,18 +5,21 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpException,
   Inject,
   InternalServerErrorException,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
   Put,
   Query,
+  Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
+import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 
@@ -112,6 +115,9 @@ export class TicketsController {
         pagination: { total, page, pageSize, hasNext },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       console.error('Failed to fetch comments', error);
       throw new InternalServerErrorException('Unable to fetch comments');
     }
@@ -122,14 +128,19 @@ export class TicketsController {
   async addComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: CreateCommentDto,
+    @Req() request: RequestWithAuthUser,
   ) {
     const body = (dto.body ?? dto.content ?? '').trim();
     if (!body) {
       throw new BadRequestException('Comment body is required');
     }
+    const actor = this.requireActor(request);
     try {
-      return await this.ticketsService.addComment(id, body);
+      return await this.ticketsService.addComment(id, body, actor);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       console.error('Failed to add comment', error);
       throw new InternalServerErrorException('Unable to add comment');
     }
@@ -141,16 +152,18 @@ export class TicketsController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
     @Body() dto: UpdateCommentDto,
+    @Req() request: RequestWithAuthUser,
   ) {
     const body = (dto.body ?? dto.content ?? '').trim();
     if (!body) {
       throw new BadRequestException('Comment body is required');
     }
+    const actor = this.requireActor(request);
     try {
-      return await this.ticketsService.updateComment(id, commentId, body);
+      return await this.ticketsService.updateComment(id, commentId, body, actor);
     } catch (error) {
       console.error('Failed to update comment', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to update comment');
@@ -162,12 +175,14 @@ export class TicketsController {
   async deleteComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
+    @Req() request: RequestWithAuthUser,
   ) {
+    const actor = this.requireActor(request);
     try {
-      return await this.ticketsService.deleteComment(id, commentId);
+      return await this.ticketsService.deleteComment(id, commentId, actor);
     } catch (error) {
       console.error('Failed to delete comment', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to delete comment');
@@ -181,7 +196,7 @@ export class TicketsController {
       return { activity };
     } catch (error) {
       console.error('Failed to fetch activity', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to fetch activity');
@@ -205,11 +220,24 @@ export class TicketsController {
       return await this.ticketsService.assignHotel(id, dto.hotelId);
     } catch (error) {
       console.error('Failed to assign hotel', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to assign hotel');
     }
+  }
+
+  private requireActor(request: RequestWithAuthUser) {
+    const authUser = request.authUser;
+    if (!authUser) {
+      throw new UnauthorizedException();
+    }
+
+    return {
+      id: authUser.id,
+      role: authUser.role,
+      roles: authUser.roles,
+    };
   }
 
   @Put(':id')
