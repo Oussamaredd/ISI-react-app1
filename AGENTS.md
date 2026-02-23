@@ -3,6 +3,12 @@
 ## Mission & Scope
 Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. Work monorepo-first across `app`, `api`, `database`, `infrastructure`, and `docs`. Preserve the four-layer architecture contract. Use `docs/ARCHITECTURE_OVERVIEW.md` and `docs/ENV.md` for deeper detail.
 
+## Temporary Specialty Scope Freeze (Development Only)
+- Until explicitly lifted, project implementation scope is `Development` specialty only.
+- Do not plan or implement `Cyber-Security` or `Data Science` specialty tracks.
+- If a requested feature depends on Security/Data deliverables, document it as a dependency/handoff item and continue with Dev-owned work only.
+- Keep interfaces ready for future Security/Data integration, but do not add specialty-specific pipelines, controls, or models in this phase.
+
 ## Repo Map
 - `app`: frontend UI, routing, state, and API consumption only.
 - `api`: NestJS controllers, services, guards, repositories, and modules.

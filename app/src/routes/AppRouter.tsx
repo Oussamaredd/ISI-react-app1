@@ -6,6 +6,12 @@ import AppLayout from "../layouts/AppLayout";
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
 import Dashboard from "../pages/Dashboard";
+import AgentTourPage from "../pages/AgentTourPage";
+import ManagerPlanningPage from "../pages/ManagerPlanningPage";
+import ManagerReportsPage from "../pages/ManagerReportsPage";
+import CitizenChallengesPage from "../pages/CitizenChallengesPage";
+import CitizenProfilePage from "../pages/CitizenProfilePage";
+import CitizenReportPage from "../pages/CitizenReportPage";
 import TicketListPage from "../pages/TicketList";
 import AdvancedTicketList from "../pages/AdvancedTicketList";
 import CreateTickets from "../pages/CreateTickets";
@@ -22,11 +28,7 @@ import LandingPage from "../pages/landing/LandingPage";
 import MarketingInfoPage from "../pages/landing/MarketingInfoPage";
 import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
 import RouteScrollToTop from "../components/RouteScrollToTop";
-
-const hasAdminRole = (user: any) =>
-  user?.roles?.some((role: any) => role.name === "admin" || role.name === "super_admin") ||
-  user?.role === "admin" ||
-  user?.role === "super_admin";
+import { hasAdminAccess, hasManagerAccess } from "../utils/authz";
 
 function RootLandingRoute() {
   const { user, isAuthenticated, isLoading } = useCurrentUser();
@@ -51,7 +53,7 @@ function RootLandingRoute() {
 function AdminRoute() {
   const { user } = useCurrentUser();
 
-  if (!hasAdminRole(user)) {
+  if (!hasAdminAccess(user)) {
     return (
       <div className="app-access-denied">
         <h2>Access Denied</h2>
@@ -61,6 +63,36 @@ function AdminRoute() {
   }
 
   return <AdminDashboard />;
+}
+
+function ManagerRoute() {
+  const { user } = useCurrentUser();
+
+  if (!hasManagerAccess(user)) {
+    return (
+      <div className="app-access-denied">
+        <h2>Access Denied</h2>
+        <p>You don&apos;t have permission to access manager planning.</p>
+      </div>
+    );
+  }
+
+  return <ManagerPlanningPage />;
+}
+
+function ManagerReportsRoute() {
+  const { user } = useCurrentUser();
+
+  if (!hasManagerAccess(user)) {
+    return (
+      <div className="app-access-denied">
+        <h2>Access Denied</h2>
+        <p>You don&apos;t have permission to access manager reports.</p>
+      </div>
+    );
+  }
+
+  return <ManagerReportsPage />;
 }
 
 export default function AppRouter() {
@@ -97,6 +129,12 @@ export default function AppRouter() {
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="agent/tour" element={<AgentTourPage />} />
+            <Route path="manager/planning" element={<ManagerRoute />} />
+            <Route path="manager/reports" element={<ManagerReportsRoute />} />
+            <Route path="citizen/report" element={<CitizenReportPage />} />
+            <Route path="citizen/profile" element={<CitizenProfilePage />} />
+            <Route path="citizen/challenges" element={<CitizenChallengesPage />} />
             <Route path="tickets/advanced" element={<AdvancedTicketList />} />
             <Route path="tickets" element={<TicketListPage />} />
             <Route path="tickets/create" element={<CreateTickets />} />

@@ -332,7 +332,7 @@ Apply to landing root in this order:
   - `/app/*` unauthenticated -> `/auth`.
   - Legacy paths (`/dashboard`, `/tickets`, etc.) redirect to `/app/*`.
 
-### Phase 2 - landing UI build (Bridgemind-style sections and visuals)
+### Phase 2 - landing UI build
 - [x] Phase 2 prerequisite: complete shadcn setup first (`components.json`, `src/lib/utils.ts`, and required `src/components/ui/*` primitives).
 - [x] Initialize shadcn primitives (button, sheet, accordion, badge, separator; optional switch) before building any landing section.
 - [x] Build optional `AnnouncementBar` with compact height and inline CTA.

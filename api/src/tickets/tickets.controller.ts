@@ -44,6 +44,57 @@ const normalizeSearch = (value?: string) => {
   return trimmed ? trimmed : undefined;
 };
 
+const SUPPORT_CATEGORY_DEFINITIONS = [
+  {
+    key: 'general_help',
+    label: 'General Help',
+    aliases: ['general', 'help', 'information'],
+  },
+  {
+    key: 'container_overflow',
+    label: 'Container Overflow',
+    aliases: ['overflow', 'bin_overflow'],
+  },
+  {
+    key: 'collection_delay',
+    label: 'Collection Delay',
+    aliases: ['delay', 'pickup_delay'],
+  },
+  {
+    key: 'damaged_container',
+    label: 'Damaged Container',
+    aliases: ['damage', 'broken_bin'],
+  },
+  {
+    key: 'route_request',
+    label: 'Route Request',
+    aliases: ['route', 'schedule_request'],
+  },
+  {
+    key: 'billing',
+    label: 'Billing',
+    aliases: ['invoice', 'payment'],
+  },
+  {
+    key: 'other',
+    label: 'Other',
+    aliases: ['misc', 'legacy_other'],
+  },
+] as const;
+
+const SUPPORT_CATEGORY_ALIAS_MAP = new Map<string, string>(
+  SUPPORT_CATEGORY_DEFINITIONS.flatMap((entry) => [
+    [entry.key, entry.key],
+    ...entry.aliases.map((alias) => [alias, entry.key] as const),
+  ]),
+);
+
+const normalizeSupportCategory = (value?: string) => {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return SUPPORT_CATEGORY_ALIAS_MAP.get(normalized) ?? undefined;
+};
+
 @Controller('tickets')
 @UseGuards(AuthenticatedUserGuard, PermissionsGuard)
 @RequirePermissions('tickets.read')
@@ -56,6 +107,8 @@ export class TicketsController {
     @Query('offset') offsetParam?: string,
     @Query('status') status?: string,
     @Query('priority') priority?: string,
+    @Query('support_category') supportCategorySnake?: string,
+    @Query('supportCategory') supportCategoryCamel?: string,
     @Query('hotel_id') hotelIdParam?: string,
     @Query('hotelId') hotelIdCamel?: string,
     @Query('assignee_id') assigneeIdParam?: string,
@@ -71,6 +124,7 @@ export class TicketsController {
     const hotelId = normalizeUuid(hotelIdParam ?? hotelIdCamel);
     const assigneeId = normalizeUuid(assigneeIdParam ?? assigneeIdCamel);
     const search = normalizeSearch(qParam ?? searchParam);
+    const supportCategory = normalizeSupportCategory(supportCategorySnake ?? supportCategoryCamel);
 
     try {
       const { tickets, total } = await this.ticketsService.findAll({
@@ -78,6 +132,7 @@ export class TicketsController {
         offset,
         status,
         priority,
+        supportCategory,
         hotelId,
         assigneeId,
         search,
@@ -87,6 +142,29 @@ export class TicketsController {
       console.error('Failed to fetch tickets', error);
       throw new InternalServerErrorException('Unable to fetch tickets');
     }
+  }
+
+  @Get('support/categories')
+  async supportCategories() {
+    return {
+      categories: SUPPORT_CATEGORY_DEFINITIONS,
+      chatbotContract: {
+        version: '1.0',
+        input: {
+          message: 'string',
+          context: {
+            category: 'optional support category key',
+            ticketId: 'optional ticket uuid',
+          },
+        },
+        output: {
+          categorySuggestion: 'support category key',
+          confidence: 'number between 0 and 1',
+          responseText: 'assistant reply text',
+          escalationRecommended: 'boolean',
+        },
+      },
+    };
   }
 
   @Get(':id')

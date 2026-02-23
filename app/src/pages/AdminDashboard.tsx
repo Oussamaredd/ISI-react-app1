@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { 
   Users, 
-  Shield, 
   Settings, 
   FileText, 
   Activity,
@@ -12,7 +11,7 @@ import {
 import { Button } from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import { useUsers } from '../hooks/adminHooks';
-// UserManagement will be implemented later
+import { UserManagement } from '../components/admin/UserManagement';
 import { HotelManagement as HotelManagementComponent } from '../components/admin/HotelManagement';
 import { SystemSettings as SystemSettingsComponent } from '../components/admin/SystemSettings';
 import { AuditLogs } from '../components/admin/AuditLogs';
@@ -31,7 +30,6 @@ export function AdminDashboard() {
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Settings },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'roles', label: 'Roles & Permissions', icon: Shield },
     { id: 'hotels', label: 'Hotel Management', icon: Hotel },
     { id: 'tickets', label: 'Ticket Management', icon: Ticket },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
@@ -53,8 +51,6 @@ export function AdminDashboard() {
         return <OverviewSection usersData={usersData} usersLoading={usersLoading} />;
       case 'users':
         return <UserManagement />;
-      case 'roles':
-        return <RoleManagement />;
       case 'hotels':
         return <HotelManagement />;
       case 'tickets':
@@ -79,7 +75,7 @@ export function AdminDashboard() {
                 imageClassName="h-11 w-11"
                 textClassName="text-xs font-semibold uppercase tracking-[0.08em] text-gray-700"
               />
-              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Admin Center</h1>
               <p className="text-sm text-gray-600">Welcome back, {user?.displayName ?? user?.email}</p>
             </div>
             <div className="flex items-center space-x-4">
@@ -170,11 +166,17 @@ function OverviewSection({ usersData, usersLoading }) {
           color="yellow"
         />
         <StatCard
-          title="System Roles"
-          value="4"
-          icon={Shield}
-          color="purple"
+          title="Audit Events"
+          value="-"
+          icon={FileText}
+          color="blue"
         />
+      </div>
+
+      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          EcoTrack role mapping is active for citizen, agent, manager, admin, and super admin profiles.
+        </p>
       </div>
 
       {/* Recent Activity */}
@@ -191,8 +193,8 @@ function OverviewSection({ usersData, usersLoading }) {
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Role permissions updated</p>
-              <p className="text-xs text-gray-500">Manager role • 1 hour ago</p>
+              <p className="text-sm font-medium text-gray-900">User account status changed</p>
+              <p className="text-xs text-gray-500">Account activation updated • 1 hour ago</p>
             </div>
           </div>
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -227,24 +229,6 @@ function StatCard({ title, value, icon: Icon, color }) {
           <Icon className="w-6 h-6" />
         </div>
       </div>
-    </div>
-  );
-}
-
-function UserManagement() {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">User Management</h2>
-      <p>User management functionality will be implemented in the next version.</p>
-    </div>
-  );
-}
-
-function RoleManagement() {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Roles & Permissions</h2>
-      <p className="text-gray-600">Role management interface will be implemented here...</p>
     </div>
   );
 }

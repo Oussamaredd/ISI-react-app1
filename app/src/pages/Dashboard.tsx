@@ -1,14 +1,20 @@
 import React from "react";
 import {
   Activity,
+  ArrowRight,
   Building2,
   CheckCircle2,
   CircleDashed,
   ClipboardList,
   Clock3,
+  Shield,
+  Users,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useEmergencyCollection, usePlanningDashboard } from "../hooks/usePlanning";
 import { useCurrentUser } from "../hooks/useAuth";
 import { useDashboard, type DashboardData } from "../hooks/useTickets";
+import { hasAdminAccess, hasManagerAccess } from "../utils/authz";
 
 const COUNT_FORMATTER = new Intl.NumberFormat("en-US");
 const DEFAULT_SUMMARY: DashboardData["summary"] = {
@@ -197,6 +203,59 @@ export default function Dashboard() {
   const userDisplayName =
     user?.displayName || user?.name || user?.email || "EcoTrack operator";
   const firstName = userDisplayName.split(" ")[0] || "Operator";
+  const canAccessAdmin = hasAdminAccess(user);
+  const canAccessManager = hasManagerAccess(user);
+  const planningDashboardQuery = usePlanningDashboard(canAccessManager);
+  const emergencyCollectionMutation = useEmergencyCollection();
+
+  const planningDashboard =
+    (planningDashboardQuery.data as {
+      ecoKpis?: { containers?: number; zones?: number; tours?: number };
+      criticalContainers?: Array<{
+        id: string;
+        code: string;
+        label: string;
+        fillLevelPercent: number;
+        status: string;
+        latitude?: string | null;
+        longitude?: string | null;
+        zoneName?: string | null;
+      }>;
+      thresholds?: { criticalFillPercent?: number };
+    } | undefined) ?? {};
+
+  const criticalContainers = Array.isArray(planningDashboard.criticalContainers)
+    ? planningDashboard.criticalContainers
+    : [];
+
+  const criticalMapPoints = criticalContainers
+    .map((container) => {
+      const lat = Number(container.latitude);
+      const lng = Number(container.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return null;
+      }
+      return { id: container.id, lat, lng, fillLevelPercent: container.fillLevelPercent };
+    })
+    .filter((point): point is { id: string; lat: number; lng: number; fillLevelPercent: number } => point != null);
+
+  const normalizedCriticalMapPoints = (() => {
+    if (criticalMapPoints.length === 0) {
+      return [] as Array<{ id: string; x: number; y: number; fillLevelPercent: number }>;
+    }
+
+    const minLat = Math.min(...criticalMapPoints.map((point) => point.lat));
+    const maxLat = Math.max(...criticalMapPoints.map((point) => point.lat));
+    const minLng = Math.min(...criticalMapPoints.map((point) => point.lng));
+    const maxLng = Math.max(...criticalMapPoints.map((point) => point.lng));
+
+    return criticalMapPoints.map((point) => ({
+      id: point.id,
+      x: maxLng === minLng ? 50 : 10 + ((point.lng - minLng) / (maxLng - minLng)) * 80,
+      y: maxLat === minLat ? 50 : 90 - ((point.lat - minLat) / (maxLat - minLat)) * 80,
+      fillLevelPercent: point.fillLevelPercent,
+    }));
+  })();
 
   const lastSync =
     dashboardQuery.dataUpdatedAt > 0
@@ -298,6 +357,92 @@ export default function Dashboard() {
         </article>
       </section>
 
+      {canAccessManager && (
+        <section className="dashboard-grid">
+          <article className="dashboard-panel">
+            <header className="dashboard-panel-header">
+              <h2>EcoTrack KPIs (parallel)</h2>
+              <p>Displayed alongside ticket KPIs pending parity sign-off.</p>
+            </header>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="dashboard-kpi-card">
+                <p className="dashboard-kpi-label">Containers</p>
+                <p className="dashboard-kpi-value">
+                  {COUNT_FORMATTER.format(planningDashboard.ecoKpis?.containers ?? 0)}
+                </p>
+              </div>
+              <div className="dashboard-kpi-card">
+                <p className="dashboard-kpi-label">Zones</p>
+                <p className="dashboard-kpi-value">
+                  {COUNT_FORMATTER.format(planningDashboard.ecoKpis?.zones ?? 0)}
+                </p>
+              </div>
+              <div className="dashboard-kpi-card">
+                <p className="dashboard-kpi-label">Tours</p>
+                <p className="dashboard-kpi-value">
+                  {COUNT_FORMATTER.format(planningDashboard.ecoKpis?.tours ?? 0)}
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article className="dashboard-panel">
+            <header className="dashboard-panel-header">
+              <h2>Critical container map</h2>
+              <p>
+                Threshold {planningDashboard.thresholds?.criticalFillPercent ?? 80}% and attention-required
+                statuses.
+              </p>
+            </header>
+
+            {normalizedCriticalMapPoints.length === 0 ? (
+              <p className="dashboard-empty-state">No critical containers with geocoordinates right now.</p>
+            ) : (
+              <svg viewBox="0 0 100 100" className="w-full max-w-sm rounded border border-gray-200 bg-gray-50">
+                {normalizedCriticalMapPoints.map((point) => (
+                  <circle
+                    key={point.id}
+                    cx={point.x}
+                    cy={point.y}
+                    r="3"
+                    fill={point.fillLevelPercent >= 90 ? '#dc2626' : '#ea580c'}
+                  />
+                ))}
+              </svg>
+            )}
+
+            <ul className="dashboard-ticket-feed mt-4">
+              {criticalContainers.slice(0, 6).map((container) => (
+                <li key={container.id} className="dashboard-ticket-item">
+                  <div className="dashboard-ticket-details">
+                    <p className="dashboard-ticket-name">
+                      {container.code} - {container.label}
+                    </p>
+                    <p className="dashboard-ticket-meta">
+                      Zone {container.zoneName ?? 'N/A'} - Fill {container.fillLevelPercent}% - Status {container.status}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="dashboard-ticket-status dashboard-ticket-status-open"
+                    onClick={() =>
+                      emergencyCollectionMutation.mutate({
+                        containerId: container.id,
+                        reason: 'Triggered by manager dashboard critical threshold',
+                      })
+                    }
+                    disabled={emergencyCollectionMutation.isPending}
+                  >
+                    Emergency
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </section>
+      )}
+
       <section className="dashboard-grid">
         <article className="dashboard-panel">
           <header className="dashboard-panel-header">
@@ -397,6 +542,42 @@ export default function Dashboard() {
       </section>
 
       <section className="dashboard-grid">
+        {canAccessAdmin && (
+          <article className="dashboard-panel">
+            <header className="dashboard-panel-header">
+              <h2>Admin center</h2>
+              <p>Configuration and governance tools are kept separate from daily operations.</p>
+            </header>
+
+            <ul className="dashboard-ticket-feed">
+              <li className="dashboard-ticket-item">
+                <div className="dashboard-ticket-details">
+                  <p className="dashboard-ticket-name">User administration</p>
+                  <p className="dashboard-ticket-meta">Manage user status and role assignments.</p>
+                </div>
+                <Link to="/app/admin" className="dashboard-ticket-status dashboard-ticket-status-open">
+                  <Users size={14} aria-hidden="true" /> Open
+                </Link>
+              </li>
+              <li className="dashboard-ticket-item">
+                <div className="dashboard-ticket-details">
+                  <p className="dashboard-ticket-name">Audit and system settings</p>
+                  <p className="dashboard-ticket-meta">Review audit history and update platform defaults.</p>
+                </div>
+                <Link to="/app/admin" className="dashboard-ticket-status dashboard-ticket-status-progress">
+                  <Shield size={14} aria-hidden="true" /> Open
+                </Link>
+              </li>
+            </ul>
+
+            <p>
+              <Link to="/app/admin" className="dashboard-ticket-meta">
+                Go to Admin Center <ArrowRight size={14} aria-hidden="true" style={{ verticalAlign: "text-bottom" }} />
+              </Link>
+            </p>
+          </article>
+        )}
+
         <article className="dashboard-panel">
           <header className="dashboard-panel-header">
             <h2>Recent ticket activity</h2>

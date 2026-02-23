@@ -10,6 +10,7 @@ import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 type TicketFilters = {
   status?: string;
   priority?: string;
+  supportCategory?: string;
   hotelId?: string;
   assigneeId?: string;
   search?: string;
@@ -81,11 +82,12 @@ export class TicketsRepository {
 
     const [ticket] = await this.db
       .insert(tickets)
-      .values({
-        title,
-        description: dto.description,
-        priority: dto.priority ?? 'medium',
-        status: 'open',
+        .values({
+          title,
+          description: dto.description,
+          priority: dto.priority ?? 'medium',
+          supportCategory: dto.supportCategory ?? 'general_help',
+          status: 'open',
         requesterId,
         hotelId,
         assigneeId: dto.assigneeId ?? null,
@@ -285,6 +287,7 @@ export class TicketsRepository {
     if (dto.title !== undefined) payload.title = dto.title;
     if (dto.description !== undefined) payload.description = dto.description;
     if (dto.priority !== undefined) payload.priority = dto.priority;
+    if (dto.supportCategory !== undefined) payload.supportCategory = dto.supportCategory;
     if (dto.status !== undefined) payload.status = dto.status;
     if (dto.assigneeId !== undefined) payload.assigneeId = dto.assigneeId;
 
@@ -327,6 +330,10 @@ export class TicketsRepository {
     const priority = this.normalizePriorityFilter(filters.priority);
     if (priority) {
       conditions.push(eq(tickets.priority, priority));
+    }
+
+    if (filters.supportCategory) {
+      conditions.push(eq(tickets.supportCategory, filters.supportCategory));
     }
 
     if (filters.hotelId) {

@@ -1,7 +1,9 @@
 # Dashboard Feature
 
 ## Overview
-The dashboard at `/app/dashboard` is a read-only operational overview for EcoTrack. It highlights ticket flow and activity without providing in-page navigation links that redirect users to other pages.
+The dashboard at `/app/dashboard` is the default operational overview for EcoTrack. It highlights ticket flow and activity for all authenticated users.
+
+For users with `admin` or `super_admin` access, the page also includes a lightweight "Admin center" panel with links into `/app/admin` for governance workflows.
 
 ## Current UX Structure
 - Hero section with user greeting and live sync indicators.
@@ -10,10 +12,11 @@ The dashboard at `/app/dashboard` is a read-only operational overview for EcoTra
 - Status distribution with proportional progress bars.
 - Recent ticket activity feed with status badges and relative timestamps.
 - Hotel workload panel showing the most active properties.
+- Admin-only panel with quick links to the Admin Center for user management, audit logs, and system settings.
 
 ## Navigation Behavior
-- The dashboard content itself does not include quick-action links such as "View Tickets" or "Create Ticket".
-- No dashboard content element triggers route redirection.
+- Non-admin users see dashboard analytics only.
+- Admin users see an additional panel that links to `/app/admin`.
 - Global app navigation remains available through the shared sidebar (`AppLayout`).
 
 ## Data Contract

@@ -22,6 +22,8 @@
     "test": "npm run test:app && npm run test:api",
     "test:app": "npm run test --workspace=ecotrack-app",
     "test:api": "npm run test --workspace=ecotrack-api",
+    "test:e2e": "npm run test:e2e --workspace=ecotrack-app",
+    "test:coverage": "npm run test:coverage --workspace=ecotrack-app && npm run test:coverage --workspace=ecotrack-api",
     "lint": "npm run lint:app && npm run lint:api",
     "lint:app": "npm run lint --workspace=ecotrack-app",
     "lint:api": "npm run lint --workspace=ecotrack-api",

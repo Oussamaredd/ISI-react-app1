@@ -1,40 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Shield, User } from 'lucide-react';
 import { Button } from '../Button';
 import { useUpdateUserRoles } from '../../hooks/adminHooks';
 import { useToast } from '../../context/ToastContext';
 
-export function UserEditModal({ user, onClose, roles }) {
-  const [selectedRoleIds, setSelectedRoleIds] = useState([]);
+type Role = {
+  id: string;
+  name: string;
+  description?: string | null;
+  permissions?: string[] | null;
+};
+
+type AdminUser = {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  name?: string | null;
+  isActive?: boolean;
+  is_active?: boolean;
+  lastLoginAt?: string | null;
+  last_login?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
+  roles?: Role[];
+};
+
+type UserEditModalProps = {
+  user: AdminUser | null;
+  onClose: () => void;
+  roles: Role[];
+};
+
+const getUserName = (user: AdminUser) => user.displayName ?? user.name ?? user.email;
+const getIsActive = (user: AdminUser) => user.isActive ?? user.is_active ?? false;
+const getLastLogin = (user: AdminUser) => user.lastLoginAt ?? user.last_login ?? null;
+const getCreatedAt = (user: AdminUser) => user.createdAt ?? user.created_at ?? null;
+
+export function UserEditModal({ user, onClose, roles }: UserEditModalProps) {
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { mutate: updateUserRoles } = useUpdateUserRoles();
+  const { mutateAsync: updateUserRoles } = useUpdateUserRoles();
   const { addToast } = useToast();
 
   useEffect(() => {
     if (user?.roles) {
-      setSelectedRoleIds(user.roles.map(role => role.id));
+      setSelectedRoleIds(user.roles.map((role) => role.id));
     }
   }, [user]);
 
-  const handleRoleToggle = (roleId) => {
-    setSelectedRoleIds(prev => 
+  const handleRoleToggle = (roleId: string) => {
+    setSelectedRoleIds((prev) =>
       prev.includes(roleId)
-        ? prev.filter(id => id !== roleId)
+        ? prev.filter((id) => id !== roleId)
         : [...prev, roleId]
     );
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+
+    if (!user) {
+      return;
+    }
 
     try {
       await updateUserRoles({
         userId: user.id,
-        roleIds: selectedRoleIds
+        roleIds: selectedRoleIds,
       });
       
-      addToast(`${user.name}'s roles have been updated successfully.`, 'success');
+      addToast(`${getUserName(user)}'s roles have been updated successfully.`, 'success');
       
       onClose();
     } catch (error) {
@@ -74,10 +111,10 @@ export function UserEditModal({ user, onClose, roles }) {
                   Edit User Roles
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {user.name} • {user.email}
-                </p>
+                    {getUserName(user)} • {user.email}
+                  </p>
+                </div>
               </div>
-            </div>
             <button
               onClick={handleClose}
               disabled={isLoading}
@@ -103,33 +140,29 @@ export function UserEditModal({ user, onClose, roles }) {
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
-                      onClick={() => !role.is_system && handleRoleToggle(role.id)}
+                      onClick={() => handleRoleToggle(role.id)}
                     >
                       <input
                         type="checkbox"
                         checked={selectedRoleIds.includes(role.id)}
                         onChange={() => handleRoleToggle(role.id)}
-                        disabled={role.is_system}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <div className="ml-3 flex-1">
                         <div className="flex items-center">
                           <Shield className="w-4 h-4 text-gray-400 mr-2" />
                           <span className="text-sm font-medium text-gray-900">
-                            {role.display_name}
+                            {role.name}
                           </span>
-                          {role.is_system && (
-                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                              System
-                            </span>
-                          )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {role.description}
-                        </p>
-                        {role.user_count > 0 && (
+                        {role.description && (
                           <p className="text-xs text-gray-400 mt-1">
-                            {role.user_count} user{role.user_count !== 1 ? 's' : ''} assigned
+                            {role.description}
+                          </p>
+                        )}
+                        {Array.isArray(role.permissions) && role.permissions.length > 0 && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'}
                           </p>
                         )}
                       </div>
@@ -145,18 +178,18 @@ export function UserEditModal({ user, onClose, roles }) {
                   <div>
                     <span className="text-gray-500">Account Status:</span>
                     <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                      user.is_active 
+                      getIsActive(user)
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {user.is_active ? 'Active' : 'Inactive'}
+                      {getIsActive(user) ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-500">Last Login:</span>
                     <span className="ml-2 text-gray-900">
-                      {user.last_login 
-                        ? new Date(user.last_login).toLocaleDateString()
+                      {getLastLogin(user)
+                        ? new Date(getLastLogin(user) as string).toLocaleDateString()
                         : 'Never'
                       }
                     </span>
@@ -164,7 +197,7 @@ export function UserEditModal({ user, onClose, roles }) {
                   <div>
                     <span className="text-gray-500">Member Since:</span>
                     <span className="ml-2 text-gray-900">
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {getCreatedAt(user) ? new Date(getCreatedAt(user) as string).toLocaleDateString() : '-'}
                     </span>
                   </div>
                   <div>

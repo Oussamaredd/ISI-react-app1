@@ -13,12 +13,17 @@ import {
 } from 'lucide-react';
 import { Button } from '../Button';
 import { Input } from '../Input';
-import { useSystemSettings, useUpdateSystemSettings } from '../../hooks/adminHooks';
+import {
+  useDispatchTestNotification,
+  useSystemSettings,
+  useUpdateSystemSettings,
+} from '../../hooks/adminHooks';
 import { useToast } from '../../context/ToastContext';
 
 export function SystemSettings() {
   const { data: settingsData, isLoading } = useSystemSettings();
   const { mutateAsync: updateSettings, isPending: isUpdating } = useUpdateSystemSettings();
+  const { mutateAsync: dispatchTestNotification, isPending: isDispatching } = useDispatchTestNotification();
   const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -34,8 +39,38 @@ export function SystemSettings() {
     site_description: 'Professional ticket and hotel management platform',
     timezone: 'UTC',
     date_format: 'MM/DD/YYYY',
-    currency: 'USD'
+    currency: 'USD',
+    ecotrack_thresholds: {
+      defaults: {
+        residential: 80,
+        commercial: 75,
+        industrial: 70,
+      },
+      byZone: {},
+    },
+    notification_channels: [
+      { id: 'ops-email', channel: 'email', recipient: 'ops@example.com', enabled: true },
+    ],
+    notification_templates: {
+      critical_alert: 'Critical alert: {{resource}} in {{zone}} requires immediate action.',
+      warning_alert: 'Warning alert: {{resource}} is approaching threshold in {{zone}}.',
+      info_alert: 'Info update: {{resource}} status changed in {{zone}}.',
+    },
+    severity_channel_routing: {
+      critical: ['email', 'sms'],
+      warning: ['email'],
+      info: ['email'],
+    },
+    chatbot_contract_version: '1.0',
   });
+
+  const [thresholdsJson, setThresholdsJson] = useState('');
+  const [channelsJson, setChannelsJson] = useState('');
+  const [templatesJson, setTemplatesJson] = useState('');
+  const [routingJson, setRoutingJson] = useState('');
+  const [testSeverity, setTestSeverity] = useState<'critical' | 'warning' | 'info'>('warning');
+  const [testRecipient, setTestRecipient] = useState('');
+  const [testMessage, setTestMessage] = useState('Test EcoTrack notification dispatch');
 
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -43,8 +78,20 @@ export function SystemSettings() {
     if (settingsData) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync fetched settings into editable form state
       setFormData(settingsData);
+      setThresholdsJson(JSON.stringify(settingsData.ecotrack_thresholds ?? {}, null, 2));
+      setChannelsJson(JSON.stringify(settingsData.notification_channels ?? [], null, 2));
+      setTemplatesJson(JSON.stringify(settingsData.notification_templates ?? {}, null, 2));
+      setRoutingJson(JSON.stringify(settingsData.severity_channel_routing ?? {}, null, 2));
     }
   }, [settingsData]);
+
+  const parseJson = (value, fallback) => {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return fallback;
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -58,7 +105,13 @@ export function SystemSettings() {
     e.preventDefault();
     
     try {
-      await updateSettings(formData);
+      await updateSettings({
+        ...formData,
+        ecotrack_thresholds: parseJson(thresholdsJson, formData.ecotrack_thresholds),
+        notification_channels: parseJson(channelsJson, formData.notification_channels),
+        notification_templates: parseJson(templatesJson, formData.notification_templates),
+        severity_channel_routing: parseJson(routingJson, formData.severity_channel_routing),
+      });
       setHasChanges(false);
       
       addToast('System settings have been saved successfully.', 'success');
@@ -82,13 +135,51 @@ export function SystemSettings() {
         site_description: 'Professional ticket and hotel management platform',
         timezone: 'UTC',
         date_format: 'MM/DD/YYYY',
-        currency: 'USD'
+        currency: 'USD',
+        ecotrack_thresholds: {
+          defaults: {
+            residential: 80,
+            commercial: 75,
+            industrial: 70,
+          },
+          byZone: {},
+        },
+        notification_channels: [
+          { id: 'ops-email', channel: 'email', recipient: 'ops@example.com', enabled: true },
+        ],
+        notification_templates: {
+          critical_alert: 'Critical alert: {{resource}} in {{zone}} requires immediate action.',
+          warning_alert: 'Warning alert: {{resource}} is approaching threshold in {{zone}}.',
+          info_alert: 'Info update: {{resource}} status changed in {{zone}}.',
+        },
+        severity_channel_routing: {
+          critical: ['email', 'sms'],
+          warning: ['email'],
+          info: ['email'],
+        },
+        chatbot_contract_version: '1.0',
       };
       
       setFormData(defaultSettings);
+      setThresholdsJson(JSON.stringify(defaultSettings.ecotrack_thresholds, null, 2));
+      setChannelsJson(JSON.stringify(defaultSettings.notification_channels, null, 2));
+      setTemplatesJson(JSON.stringify(defaultSettings.notification_templates, null, 2));
+      setRoutingJson(JSON.stringify(defaultSettings.severity_channel_routing, null, 2));
       setHasChanges(true);
       
       addToast('Settings have been reset to default values. Save to apply changes.', 'info');
+    }
+  };
+
+  const handleDispatchTestNotification = async () => {
+    try {
+      await dispatchTestNotification({
+        severity: testSeverity,
+        recipient: testRecipient || undefined,
+        message: testMessage,
+      });
+    } catch (error) {
+      console.error('Error dispatching test notification:', error);
     }
   };
 
@@ -411,6 +502,109 @@ export function SystemSettings() {
                 <option value="GBP">GBP (£)</option>
                 <option value="JPY">JPY (¥)</option>
               </select>
+            </div>
+          </div>
+        </div>
+
+        {/* EcoTrack Alerts & Communications */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2 bg-rose-100 rounded-lg">
+              <Bell className="w-5 h-5 text-rose-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">EcoTrack Alerts & Communications</h3>
+              <p className="text-sm text-gray-600">
+                Configure thresholds, recipient channels, template catalog, and severity routing.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Threshold configuration (container type + zone overrides)
+              </label>
+              <textarea
+                rows={6}
+                value={thresholdsJson}
+                onChange={(e) => {
+                  setThresholdsJson(e.target.value);
+                  setHasChanges(true);
+                }}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notification recipients/channels
+              </label>
+              <textarea
+                rows={5}
+                value={channelsJson}
+                onChange={(e) => {
+                  setChannelsJson(e.target.value);
+                  setHasChanges(true);
+                }}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Communication templates</label>
+              <textarea
+                rows={5}
+                value={templatesJson}
+                onChange={(e) => {
+                  setTemplatesJson(e.target.value);
+                  setHasChanges(true);
+                }}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Severity-to-channel routing</label>
+              <textarea
+                rows={4}
+                value={routingJson}
+                onChange={(e) => {
+                  setRoutingJson(e.target.value);
+                  setHasChanges(true);
+                }}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <select
+                value={testSeverity}
+                onChange={(e) => setTestSeverity(e.target.value as 'critical' | 'warning' | 'info')}
+                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              >
+                <option value="critical">critical</option>
+                <option value="warning">warning</option>
+                <option value="info">info</option>
+              </select>
+              <Input
+                value={testRecipient}
+                onChange={(e) => setTestRecipient(e.target.value)}
+                placeholder="Optional recipient override"
+              />
+              <Input
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                placeholder="Dispatch message"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleDispatchTestNotification}
+                disabled={isDispatching}
+              >
+                {isDispatching ? 'Dispatching...' : 'Dispatch Test'}
+              </Button>
             </div>
           </div>
         </div>

@@ -1,0 +1,114 @@
+openapi: 3.1.0
+info:
+  title: EcoTrack Sprint 0 Contract Draft
+  version: 0.1.0
+  description: Additive contract draft for Sprint 0 domain framing.
+servers:
+  - url: http://localhost:3001/api
+paths:
+  /auth/status:
+    get:
+      tags: [Auth]
+      summary: Get authentication status
+      responses:
+        '200':
+          description: Auth status payload
+  /containers:
+    get:
+      tags: [Containers]
+      summary: List containers
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: zoneId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Container list with pagination
+    post:
+      tags: [Containers]
+      summary: Create container
+      responses:
+        '201':
+          description: Container created
+  /zones:
+    get:
+      tags: [Zones]
+      summary: List zones
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: isActive
+          schema: { type: boolean }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Zone list with pagination
+    post:
+      tags: [Zones]
+      summary: Create zone
+      responses:
+        '201':
+          description: Zone created
+  /tours:
+    get:
+      tags: [Tours]
+      summary: List tours
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: zoneId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Tour list with pagination
+    post:
+      tags: [Tours]
+      summary: Create tour with stops
+      responses:
+        '201':
+          description: Tour created
+  /analytics/summary:
+    get:
+      tags: [Analytics]
+      summary: Retrieve EcoTrack KPI summary counts
+      responses:
+        '200':
+          description: Summary counters
+  /gamification/leaderboard:
+    get:
+      tags: [Gamification]
+      summary: Get points leaderboard
+      responses:
+        '200':
+          description: Ranked profiles
+  /gamification/profiles:
+    post:
+      tags: [Gamification]
+      summary: Upsert profile points/level/badges
+      responses:
+        '201':
+          description: Profile upserted

@@ -7,6 +7,7 @@ import { TicketsRepository } from './tickets.repository.js';
 type TicketFilters = {
   status?: string;
   priority?: string;
+  supportCategory?: string;
   hotelId?: string;
   assigneeId?: string;
   search?: string;

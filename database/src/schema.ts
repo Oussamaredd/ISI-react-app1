@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const hotels = pgTable('hotels', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -42,6 +42,7 @@ export const tickets = pgTable('tickets', {
   id: uuid('id').defaultRandom().primaryKey(),
   title: text('title').notNull(),
   description: text('description'),
+  supportCategory: text('support_category').default('general_help').notNull(),
   status: text('status').default('open').notNull(),
   priority: text('priority').default('medium').notNull(),
   requesterId: uuid('requester_id')
@@ -78,6 +79,168 @@ export const attachments = pgTable('attachments', {
   fileUrl: text('file_url').notNull(),
   contentType: text('content_type'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const zones = pgTable('zones', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  code: text('code').notNull().unique(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const containers = pgTable('containers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  status: text('status').default('available').notNull(),
+  fillLevelPercent: integer('fill_level_percent').default(0).notNull(),
+  latitude: text('latitude'),
+  longitude: text('longitude'),
+  zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const tours = pgTable('tours', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  status: text('status').default('planned').notNull(),
+  scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
+  zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
+  assignedAgentId: uuid('assigned_agent_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const tourStops = pgTable('tour_stops', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tourId: uuid('tour_id')
+    .notNull()
+    .references(() => tours.id, { onDelete: 'cascade' }),
+  containerId: uuid('container_id')
+    .notNull()
+    .references(() => containers.id, { onDelete: 'cascade' }),
+  stopOrder: integer('stop_order').notNull(),
+  status: text('status').default('pending').notNull(),
+  eta: timestamp('eta', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const citizenReports = pgTable('citizen_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+  reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
+  status: text('status').default('submitted').notNull(),
+  description: text('description'),
+  photoUrl: text('photo_url'),
+  latitude: text('latitude'),
+  longitude: text('longitude'),
+  reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const collectionEvents = pgTable('collection_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  tourStopId: uuid('tour_stop_id').references(() => tourStops.id, { onDelete: 'set null' }),
+  containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+  actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+  volumeLiters: integer('volume_liters'),
+  notes: text('notes'),
+  latitude: text('latitude'),
+  longitude: text('longitude'),
+  collectedAt: timestamp('collected_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const gamificationProfiles = pgTable('gamification_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+  points: integer('points').default(0).notNull(),
+  level: integer('level').default(1).notNull(),
+  badges: jsonb('badges').$type<string[]>().default([]).notNull(),
+  challengeProgress: jsonb('challenge_progress').$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const challenges = pgTable('challenges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  targetValue: integer('target_value').notNull(),
+  rewardPoints: integer('reward_points').default(0).notNull(),
+  status: text('status').default('active').notNull(),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const challengeParticipations = pgTable('challenge_participations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  challengeId: uuid('challenge_id')
+    .notNull()
+    .references(() => challenges.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  progress: integer('progress').default(0).notNull(),
+  status: text('status').default('enrolled').notNull(),
+  rewardGrantedAt: timestamp('reward_granted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const anomalyTypes = pgTable('anomaly_types', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const anomalyReports = pgTable('anomaly_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  anomalyTypeId: uuid('anomaly_type_id')
+    .notNull()
+    .references(() => anomalyTypes.id, { onDelete: 'restrict' }),
+  tourId: uuid('tour_id').references(() => tours.id, { onDelete: 'set null' }),
+  tourStopId: uuid('tour_stop_id').references(() => tourStops.id, { onDelete: 'set null' }),
+  reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
+  comments: text('comments'),
+  photoUrl: text('photo_url'),
+  severity: text('severity').default('medium').notNull(),
+  status: text('status').default('reported').notNull(),
+  reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const reportExports = pgTable('report_exports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  requestedByUserId: uuid('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+  periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+  selectedKpis: jsonb('selected_kpis').$type<string[]>().default([]).notNull(),
+  format: text('format').default('pdf').notNull(),
+  status: text('status').default('generated').notNull(),
+  sendEmail: boolean('send_email').default(false).notNull(),
+  emailTo: text('email_to'),
+  fileContent: text('file_content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const roles = pgTable('roles', {
@@ -149,6 +312,13 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   auditLogs: many(auditLogs),
   updatedSettings: many(systemSettings),
   passwordResetTokens: many(passwordResetTokens),
+  assignedTours: many(tours),
+  citizenReports: many(citizenReports),
+  collectionEvents: many(collectionEvents),
+  gamificationProfile: many(gamificationProfiles),
+  challengeParticipations: many(challengeParticipations),
+  anomalyReports: many(anomalyReports),
+  reportExports: many(reportExports),
 }));
 
 export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
@@ -175,6 +345,124 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
   }),
   comments: many(comments),
   attachments: many(attachments),
+}));
+
+export const zonesRelations = relations(zones, ({ many }) => ({
+  containers: many(containers),
+  tours: many(tours),
+}));
+
+export const containersRelations = relations(containers, ({ many, one }) => ({
+  zone: one(zones, {
+    fields: [containers.zoneId],
+    references: [zones.id],
+  }),
+  tourStops: many(tourStops),
+  citizenReports: many(citizenReports),
+  collectionEvents: many(collectionEvents),
+}));
+
+export const toursRelations = relations(tours, ({ many, one }) => ({
+  zone: one(zones, {
+    fields: [tours.zoneId],
+    references: [zones.id],
+  }),
+  assignedAgent: one(users, {
+    fields: [tours.assignedAgentId],
+    references: [users.id],
+  }),
+  stops: many(tourStops),
+}));
+
+export const tourStopsRelations = relations(tourStops, ({ one, many }) => ({
+  tour: one(tours, {
+    fields: [tourStops.tourId],
+    references: [tours.id],
+  }),
+  container: one(containers, {
+    fields: [tourStops.containerId],
+    references: [containers.id],
+  }),
+  collectionEvents: many(collectionEvents),
+  anomalyReports: many(anomalyReports),
+}));
+
+export const citizenReportsRelations = relations(citizenReports, ({ one }) => ({
+  container: one(containers, {
+    fields: [citizenReports.containerId],
+    references: [containers.id],
+  }),
+  reporter: one(users, {
+    fields: [citizenReports.reporterUserId],
+    references: [users.id],
+  }),
+}));
+
+export const collectionEventsRelations = relations(collectionEvents, ({ one }) => ({
+  tourStop: one(tourStops, {
+    fields: [collectionEvents.tourStopId],
+    references: [tourStops.id],
+  }),
+  container: one(containers, {
+    fields: [collectionEvents.containerId],
+    references: [containers.id],
+  }),
+  actor: one(users, {
+    fields: [collectionEvents.actorUserId],
+    references: [users.id],
+  }),
+}));
+
+export const gamificationProfilesRelations = relations(gamificationProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [gamificationProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const challengesRelations = relations(challenges, ({ many }) => ({
+  participations: many(challengeParticipations),
+}));
+
+export const anomalyTypesRelations = relations(anomalyTypes, ({ many }) => ({
+  reports: many(anomalyReports),
+}));
+
+export const anomalyReportsRelations = relations(anomalyReports, ({ one }) => ({
+  anomalyType: one(anomalyTypes, {
+    fields: [anomalyReports.anomalyTypeId],
+    references: [anomalyTypes.id],
+  }),
+  tour: one(tours, {
+    fields: [anomalyReports.tourId],
+    references: [tours.id],
+  }),
+  tourStop: one(tourStops, {
+    fields: [anomalyReports.tourStopId],
+    references: [tourStops.id],
+  }),
+  reporter: one(users, {
+    fields: [anomalyReports.reporterUserId],
+    references: [users.id],
+  }),
+}));
+
+export const reportExportsRelations = relations(reportExports, ({ one }) => ({
+  requestedBy: one(users, {
+    fields: [reportExports.requestedByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const challengeParticipationsRelations = relations(challengeParticipations, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [challengeParticipations.challengeId],
+    references: [challenges.id],
+  }),
+  user: one(users, {
+    fields: [challengeParticipations.userId],
+    references: [users.id],
+  }),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -222,6 +510,18 @@ export type User = typeof users.$inferSelect;
 export type Ticket = typeof tickets.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
+export type Zone = typeof zones.$inferSelect;
+export type Container = typeof containers.$inferSelect;
+export type Tour = typeof tours.$inferSelect;
+export type TourStop = typeof tourStops.$inferSelect;
+export type CitizenReport = typeof citizenReports.$inferSelect;
+export type CollectionEvent = typeof collectionEvents.$inferSelect;
+export type GamificationProfile = typeof gamificationProfiles.$inferSelect;
+export type Challenge = typeof challenges.$inferSelect;
+export type ChallengeParticipation = typeof challengeParticipations.$inferSelect;
+export type AnomalyType = typeof anomalyTypes.$inferSelect;
+export type AnomalyReport = typeof anomalyReports.$inferSelect;
+export type ReportExport = typeof reportExports.$inferSelect;
 export type Role = typeof roles.$inferSelect;
 export type UserRole = typeof userRoles.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;

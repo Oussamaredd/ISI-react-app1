@@ -1,18 +1,15 @@
-# Ticket Management API Documentation
+# EcoTrack API Documentation
 
 ## Overview
 
-The Ticket Management System provides a comprehensive RESTful API for managing tickets, users, hotels, and administrative functions. This API follows REST conventions and uses JSON for all data exchange.
+EcoTrack exposes a REST API for citizen reporting, agent tour execution, manager planning, support workflows, and admin governance.
 
-## Base URL
-
-- **Development**: `http://localhost:3001/api`
-- **Staging**: `https://staging.yourdomain.com/api`
-- **Production**: `https://yourdomain.com/api`
+- Base URL (local): `http://localhost:3001/api`
+- Auth mode: JWT bearer token (`Authorization: Bearer <token>`) with cookie support for web auth flows
+- Response format: JSON
+- Correlation: `X-Request-Id` is returned on responses and reused from `x-request-id` when provided
 
 ## Authentication
-
-### Local Email/Password + JWT (primary frontend flow)
 
 Local auth endpoints:
 
@@ -26,667 +23,155 @@ POST /forgot-password
 POST /reset-password
 ```
 
-Local auth contract:
-
-- `POST /login` returns `{ code }` (short-lived one-time exchange code)
-- `POST /auth/exchange` consumes `code` and returns `{ accessToken, user }`
-- `POST /signup` returns `{ accessToken, user }`
-- frontend stores `accessToken` in `localStorage`
-- protected API calls send `Authorization: Bearer <token>`
-- `POST /forgot-password`:
-  - production: returns `204` and never returns token/url
-  - non-production: may return `{ devResetUrl }` for local testing
-- reset tokens are stored hashed at rest
-
-### Google OAuth (unchanged endpoints)
+OAuth endpoints:
 
 ```text
 GET /auth/google
 GET /auth/google/callback
 ```
 
-When `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` is not configured, these endpoints return `503 Service Unavailable` instead of failing API startup.
+## Core EcoTrack Domain Endpoints
 
-Full local callback URI:
-`http://localhost:3001/api/auth/google/callback`
+### Containers and Zones
 
-Google Cloud Console Authorized redirect URI must exactly match runtime callback URI.
+```text
+GET /containers
+POST /containers
+PUT /containers/:id
 
-Google callback completion contract:
-- API redirects browser to frontend callback route: `${APP_BASE_URL}/auth/callback?code=<exchangeCode>`
-- frontend exchanges `code` via `POST /auth/exchange` to obtain JWT and user profile
-
-### Deprecated/removed local endpoint variants
-
-These are not part of the active API surface:
-
-- `POST /auth/login`
-- `POST /auth/signup`
-- non-canonical reset aliases outside `/forgot-password` and `/reset-password`
-
-## Request Correlation
-
-Every response includes `X-Request-Id`.
-
-- If the client sends `x-request-id`, the API reuses that value.
-- If no request ID is provided, the API generates one.
-- The same `requestId` is reused in API logs and error responses.
-
-## Rate Limiting
-
-API requests are rate-limited to prevent abuse:
-
-- Default global limit: `120` requests per `60s` (`RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW_MS`)
-- Stricter auth limit on abuse-sensitive endpoints:
-  - `POST /login`
-  - `POST /forgot-password`
-  - `POST /reset-password`
-- Readiness/metrics paths are excluded from throttling where required (`/health`, `/api/health`, `/api/metrics`)
-
-## Tickets
-
-### Get All Tickets
-```
-GET /tickets?page=1&limit=20&status=open&priority=high&hotel_id=1
+GET /zones
+POST /zones
+PUT /zones/:id
 ```
 
-**Query Parameters:**
-- `page` (number): Page number (default: 1)
-- `limit` (number): Items per page (default: 20, max: 100)
-- `status` (string): Filter by status (`open`, `in_progress`, `resolved`, `closed`, `cancelled`)
-- `priority` (string): Filter by priority (`low`, `medium`, `high`, `critical`)
-- `hotel_id` (number): Filter by hotel ID
-- `assigned_to` (number): Filter by assigned user ID
-- `created_by` (number): Filter by creator ID
-- `search` (string): Search in title and description
+### Citizen Reporting and Engagement
 
-**Response:**
-```json
-{
-  "tickets": [
-    {
-      "id": 1,
-      "title": "Leaky faucet in room 101",
-      "description": "The faucet in the bathroom is leaking",
-      "priority": "medium",
-      "status": "open",
-      "category": "maintenance",
-      "hotel": {
-        "id": 1,
-        "name": "Grand Hotel"
-      },
-      "assigned_to": null,
-      "created_by": {
-        "id": 1,
-        "name": "John Doe",
-        "email": "john@example.com"
-      },
-      "created_at": "2023-12-01T10:00:00.000Z",
-      "updated_at": "2023-12-01T10:00:00.000Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 50,
-    "pages": 3
-  }
-}
+```text
+GET /citizen-reports
+POST /citizen-reports
+
+GET /citizen/profile
+GET /citizen/history
+GET /citizen/challenges
+POST /citizen/challenges/:challengeId/enroll
+POST /citizen/challenges/:challengeId/progress
+POST /citizen/reports
 ```
 
-### Get Single Ticket
-```
-GET /tickets/{id}
+### Agent Tours and Field Execution
+
+```text
+GET /tours
+POST /tours
+
+GET /tours/agent/me
+POST /tours/:tourId/start
+POST /tours/:tourId/stops/:stopId/validate
+
+GET /tours/anomaly-types
+POST /tours/:tourId/anomalies
+GET /tours/:tourId/activity
 ```
 
-**Response:**
-```json
-{
-  "ticket": {
-    "id": 1,
-    "title": "Leaky faucet in room 101",
-    "description": "The faucet in the bathroom is leaking and causing water damage to the countertop.",
-    "priority": "medium",
-    "status": "open",
-    "category": "maintenance",
-    "hotel": {
-      "id": 1,
-      "name": "Grand Hotel",
-      "address": "123 Main St, City, State"
-    },
-    "assigned_to": {
-      "id": 2,
-      "name": "Jane Smith",
-      "email": "jane@example.com"
-    },
-    "created_by": {
-      "id": 1,
-      "name": "John Doe",
-      "email": "john@example.com"
-    },
-    "comments": [
-      {
-        "id": 1,
-        "content": "I've assigned this to the maintenance team.",
-        "user": {
-          "id": 2,
-          "name": "Jane Smith"
-        },
-        "is_internal": false,
-        "created_at": "2023-12-01T10:30:00.000Z"
-      }
-    ],
-    "attachments": [
-      {
-        "id": 1,
-        "filename": "faucet_leak.jpg",
-        "original_name": "leaky_faucet.jpg",
-        "file_size": 1024000,
-        "mime_type": "image/jpeg",
-        "uploaded_by": {
-          "id": 1,
-          "name": "John Doe"
-        },
-        "created_at": "2023-12-01T10:00:00.000Z"
-      }
-    ],
-    "created_at": "2023-12-01T10:00:00.000Z",
-    "updated_at": "2023-12-01T10:30:00.000Z"
-  }
-}
+### Manager Planning and Reports
+
+```text
+GET /planning/zones
+GET /planning/agents
+POST /planning/optimize-tour
+POST /planning/create-tour
+GET /planning/dashboard
+POST /planning/emergency-collection
+
+POST /planning/reports/generate
+GET /planning/reports/history
+POST /planning/reports/:reportId/regenerate
 ```
 
-### Create Ticket
+### Analytics and Gamification
+
+```text
+GET /analytics/summary
+
+GET /gamification/leaderboard
+POST /gamification/profiles
 ```
+
+## Support and Admin Endpoints
+
+### Support module
+
+```text
+GET /tickets
 POST /tickets
-Content-Type: application/json
+GET /tickets/:id
+PUT /tickets/:id
+DELETE /tickets/:id
 
-{
-  "title": "Broken air conditioner",
-  "description": "The AC unit is not cooling properly",
-  "priority": "high",
-  "category": "maintenance",
-  "hotel_id": 1
-}
+GET /tickets/support/categories
+
+GET /tickets/:id/comments
+POST /tickets/:id/comments
+PUT /tickets/:id/comments/:commentId
+DELETE /tickets/:id/comments/:commentId
+
+GET /tickets/:id/activity
+POST /tickets/:id/assign-hotel
 ```
 
-**Response:**
-```json
-{
-  "ticket": {
-    "id": 2,
-    "title": "Broken air conditioner",
-    "description": "The AC unit is not cooling properly",
-    "priority": "high",
-    "status": "open",
-    "category": "maintenance",
-    "hotel_id": 1,
-    "created_by": 1,
-    "created_at": "2023-12-01T11:00:00.000Z"
-  }
-}
-```
+### Admin module
 
-### Update Ticket
-```
-PUT /tickets/{id}
-Content-Type: application/json
-
-{
-  "status": "in_progress",
-  "priority": "high",
-  "assigned_to": 2
-}
-```
-
-### Delete Ticket
-```
-DELETE /tickets/{id}
-```
-
-## Ticket Comments
-
-### Add Comment
-```
-POST /tickets/{id}/comments
-Content-Type: application/json
-
-{
-  "content": "Working on this issue now.",
-  "is_internal": false
-}
-```
-
-Comment author is always the authenticated caller from the active access token/cookie.
-
-### Update Comment
-```
-PUT /tickets/{ticketId}/comments/{commentId}
-Content-Type: application/json
-
-{
-  "content": "Updated comment content"
-}
-```
-
-Only the comment author or an admin (`admin`/`super_admin`) can update a comment.
-
-### Delete Comment
-```
-DELETE /tickets/{ticketId}/comments/{commentId}
-```
-
-Only the comment author or an admin (`admin`/`super_admin`) can delete a comment.
-
-## Ticket Attachments
-
-### Upload Attachment
-```
-POST /tickets/{id}/attachments
-Content-Type: multipart/form-data
-
-file: [binary file data]
-```
-
-**Response:**
-```json
-{
-  "attachment": {
-    "id": 1,
-    "filename": "document_abc123.pdf",
-    "original_name": "maintenance_report.pdf",
-    "file_size": 2048000,
-    "mime_type": "application/pdf",
-    "created_at": "2023-12-01T11:30:00.000Z"
-  }
-}
-```
-
-### Download Attachment
-```
-GET /tickets/{ticketId}/attachments/{attachmentId}/download
-```
-
-### Delete Attachment
-```
-DELETE /tickets/{ticketId}/attachments/{attachmentId}
-```
-
-## Hotels
-
-### Get All Hotels
-```
-GET /hotels?page=1&limit=20
-```
-
-### Get Single Hotel
-```
-GET /hotels/{id}
-```
-
-### Create Hotel (Admin only)
-```
-POST /hotels
-Content-Type: application/json
-
-{
-  "name": "Grand Hotel",
-  "description": "A luxury hotel downtown",
-  "address": "123 Main St, City, State",
-  "phone": "+1-555-0123",
-  "email": "info@grandhotel.com",
-  "total_rooms": 200
-}
-```
-
-### Update Hotel (Admin only)
-```
-PUT /hotels/{id}
-Content-Type: application/json
-
-{
-  "name": "Updated Hotel Name",
-  "total_rooms": 250
-}
-```
-
-### Delete Hotel (Admin only)
-```
-DELETE /hotels/{id}
-```
-
-## Hotel Analytics
-
-### Get Hotel Overview
-```
-GET /hotels/{id}/analytics?period=30d
-```
-
-**Query Parameters:**
-- `period` (string): Time period (`7d`, `30d`, `90d`, `1y`)
-
-**Response:**
-```json
-{
-  "overview": {
-    "total_tickets": 150,
-    "open_tickets": 12,
-    "resolved_tickets": 135,
-    "avg_resolution_time": 24.5,
-    "categories": {
-      "maintenance": 80,
-      "housekeeping": 35,
-      "food_service": 20,
-      "other": 15
-    },
-    "priorities": {
-      "low": 30,
-      "medium": 80,
-      "high": 35,
-      "critical": 5
-    }
-  },
-  "trends": [
-    {
-      "date": "2023-11-01",
-      "tickets_created": 5,
-      "tickets_resolved": 3
-    }
-  ]
-}
-```
-
-## Users (Admin Only)
-
-### Get All Users
-```
-GET /admin/users?page=1&limit=20&role=user&status=active
-```
-
-### Create User (Admin only)
-```
+```text
+GET /admin/users
 POST /admin/users
-Content-Type: application/json
+PUT /admin/users/:id
+DELETE /admin/users/:id
 
-{
-  "email": "newuser@example.com",
-  "name": "New User",
-  "role": "user"
-}
-```
+GET /admin/roles
+POST /admin/roles
+PUT /admin/roles/:id
+DELETE /admin/roles/:id
 
-### Update User (Admin only)
-```
-PUT /admin/users/{id}
-Content-Type: application/json
-
-{
-  "role": "manager",
-  "is_active": true
-}
-```
-
-### Delete User (Admin only)
-```
-DELETE /admin/users/{id}
-```
-
-## System Administration (Admin Only)
-
-### System Settings
-```
 GET /admin/settings
 PUT /admin/settings
-Content-Type: application/json
+POST /admin/settings/notifications/test
 
-{
-  "app_name": "Ticket System",
-  "maintenance_mode": false,
-  "max_file_size": 5242880
-}
+GET /admin/audit-logs
 ```
 
-### Audit Logs
-```
-GET /admin/audit-logs?page=1&limit=50&action=create&entity_type=ticket
-```
+## Health and Monitoring
 
-**Response:**
-```json
-{
-  "logs": [
-    {
-      "id": 1,
-      "user": {
-        "id": 1,
-        "name": "John Doe"
-      },
-      "action": "create",
-      "entity_type": "ticket",
-      "entity_id": 1,
-      "old_values": null,
-      "new_values": {
-        "title": "New ticket title",
-        "priority": "medium"
-      },
-      "ip_address": "192.168.1.100",
-      "user_agent": "Mozilla/5.0...",
-      "created_at": "2023-12-01T10:00:00.000Z"
-    }
-  ]
-}
-```
-
-## Health & Monitoring
-
-### API Process Liveness (no prefix)
-```
+```text
 GET /health
-```
+GET /health/database
 
-**Response:**
-```json
-{
-  "status": "ok",
-  "service": "EcoTrack API",
-  "timestamp": "2026-02-13T12:00:00.000Z"
-}
-```
-
-### API Health (prefixed)
-```
-GET /api/health
-```
-
-Returns lightweight service status + uptime.
-
-### Database Diagnostic Health
-```
-GET /api/health/database
-```
-
-Returns dependency diagnostic payload including database status.
-
-### Frontend Error Ingestion
-```
 POST /errors
-```
-
-Accepts client-side error logs from the frontend.
-
-**Example Request Body:**
-```json
-{
-  "type": "NETWORK",
-  "message": "Failed to fetch",
-  "context": "AdvancedTicketList",
-  "severity": "high",
-  "status": 503,
-  "timestamp": "2026-02-01T10:00:00.000Z"
-}
-```
-
-**Response (202):**
-```json
-{
-  "accepted": true,
-  "total": 42
-}
-```
-
-### Frontend Metrics Ingestion
-```
 POST /metrics/frontend
-```
-
-Accepts client-side performance metrics from the frontend.
-
-**Example Request Body:**
-```json
-{
-  "type": "navigation",
-  "name": "ttfb",
-  "value": 123.45,
-  "rating": "good",
-  "timestamp": "2026-02-01T10:00:01.000Z"
-}
-```
-
-**Response (202):**
-```json
-{
-  "accepted": true,
-  "total": 128
-}
-```
-
-### Metrics (Prometheus format)
-```
 GET /metrics
 ```
 
-Returns Prometheus-compatible `text/plain` metrics, including:
-- `frontend_errors_total`
-- `frontend_metrics_total`
-- `frontend_errors_by_type_total`
-- `frontend_metrics_by_type_total`
+## OpenAPI References
 
-## Error Responses
+- Sprint 0 contract draft: `docs/openapi/ecotrack-sprint0.yaml`
+- Domain modules reference: `docs/openapi/ecotrack-domain-modules.yaml`
 
-All API errors follow this format:
+## Error Shape
+
+Errors follow a normalized structure:
 
 ```json
 {
   "statusCode": 400,
   "message": "Validation failed",
-  "path": "/api/login",
+  "path": "/api/citizen/reports",
   "method": "POST",
-  "timestamp": "2026-02-13T17:05:00.000Z",
-  "requestId": "d2985962-2e35-428d-8f99-d6714e0ec47f",
-  "details": [
-    "email must be an email"
-  ]
+  "timestamp": "2026-02-23T09:30:00.000Z",
+  "requestId": "f8e6f9e6-0f58-4be6-9f11-c2807ea7f53e",
+  "details": ["containerId must be a UUID"]
 }
 ```
 
-Notes:
+## Notes
 
-- `details` is included for validation errors when available.
-- Unknown runtime errors are returned as `500` with safe messaging in production.
-- The `requestId` matches `X-Request-Id` response header and structured logs.
-
-### Common Status Codes
-
-| Status Code | Description |
-|-------------|-------------|
-| 400 | Invalid request payload or query |
-| 401 | Authentication required |
-| 403 | Insufficient permissions |
-| 404 | Resource not found |
-| 409 | Resource conflict |
-| 429 | Too many requests |
-| 500 | Internal server error |
-
-## SDK Examples
-
-### JavaScript/Node.js
-```javascript
-const API_BASE_URL = 'https://api.yourdomain.com';
-
-// Get current user
-async function getCurrentUser() {
-  const response = await fetch(`${API_BASE_URL}/me`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  return response.json();
-}
-
-// Create a ticket
-async function createTicket(ticketData) {
-  const response = await fetch(`${API_BASE_URL}/tickets`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(ticketData)
-  });
-  return response.json();
-}
-```
-
-### Python
-```python
-import requests
-
-API_BASE_URL = 'https://api.yourdomain.com'
-
-def get_current_user(token):
-    response = requests.get(
-        f'{API_BASE_URL}/me',
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    return response.json()
-
-def create_ticket(token, ticket_data):
-    response = requests.post(
-        f'{API_BASE_URL}/tickets',
-        json=ticket_data,
-        headers={'Authorization': f'Bearer {token}'}
-    )
-    return response.json()
-```
-
-### cURL
-```bash
-# Get all tickets
-curl -X GET "https://api.yourdomain.com/api/tickets" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-
-# Create a ticket
-curl -X POST "https://api.yourdomain.com/api/tickets" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "title": "New ticket",
-    "description": "Ticket description",
-    "priority": "medium"
-  }'
-```
-
-## Changelog
-
-### v1.0.0 (2023-12-01)
-- Initial API release
-- Authentication via Google OAuth
-- Full CRUD operations for tickets
-- Hotel management
-- User administration
-- Analytics endpoints
-- Health monitoring
-
----
-
-For support and questions, contact: api-support@yourdomain.com
+- The platform is currently in the Development specialty scope only.
+- Security/Data specialty features are tracked as future dependencies and are not implemented in this phase.

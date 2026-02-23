@@ -10,6 +10,7 @@ export type Ticket = {
   id: string;
   title: string;
   description?: string | null;
+  supportCategory?: string | null;
   status: TicketStatus;
   priority?: TicketPriority;
   hotelId?: string | null;
@@ -56,6 +57,7 @@ const normalizeTicket = (raw: any): Ticket => ({
   id: String(raw.id ?? ''),
   title: raw.title ?? raw.name ?? 'Untitled ticket',
   description: raw.description ?? null,
+  supportCategory: raw.supportCategory ?? raw.support_category ?? null,
   status: (raw.status ?? 'open') as TicketStatus,
   priority: (raw.priority ?? raw.ticket_priority ?? 'medium') as TicketPriority,
   hotelId: raw.hotelId ?? raw.hotel_id ?? null,
@@ -126,7 +128,13 @@ export const useCreateTicket = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; priority?: TicketPriority; [key: string]: unknown }) => {
+    mutationFn: async (data: {
+      name: string;
+      description?: string;
+      priority?: TicketPriority;
+      supportCategory?: string;
+      [key: string]: unknown;
+    }) => {
       const response = await apiClient.post('/api/tickets', data);
       return response;
     },

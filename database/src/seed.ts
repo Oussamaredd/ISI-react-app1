@@ -1,6 +1,25 @@
 import { and, eq } from 'drizzle-orm';
 import { createDatabaseInstance } from './client.js';
-import { comments, hotels, roles, systemSettings, tickets, userRoles, users } from './schema.js';
+import {
+  anomalyReports,
+  anomalyTypes,
+  challengeParticipations,
+  challenges,
+  citizenReports,
+  collectionEvents,
+  comments,
+  containers,
+  gamificationProfiles,
+  hotels,
+  roles,
+  systemSettings,
+  tickets,
+  tourStops,
+  tours,
+  userRoles,
+  users,
+  zones,
+} from './schema.js';
 
 type RoleSeed = {
   name: string;
@@ -49,7 +68,80 @@ type SettingSeed = {
   isPublic: boolean;
 };
 
-const FULL_ADMIN_PERMISSIONS = [
+type ZoneSeed = {
+  name: string;
+  code: string;
+  description?: string;
+};
+
+type ContainerSeed = {
+  code: string;
+  label: string;
+  status: string;
+  fillLevelPercent: number;
+  zoneCode: string;
+  latitude?: string;
+  longitude?: string;
+};
+
+type TourSeed = {
+  name: string;
+  status: string;
+  zoneCode: string;
+  assignedAgentEmail: string;
+  scheduledForOffsetDays: number;
+  stopContainerCodes: string[];
+};
+
+type CitizenReportSeed = {
+  containerCode: string;
+  reporterEmail: string;
+  status: string;
+  description: string;
+  latitude?: string;
+  longitude?: string;
+};
+
+type GamificationProfileSeed = {
+  email: string;
+  points: number;
+  level: number;
+  badges: string[];
+};
+
+type ChallengeSeed = {
+  code: string;
+  title: string;
+  description: string;
+  targetValue: number;
+  rewardPoints: number;
+  status: string;
+};
+
+type ChallengeParticipationSeed = {
+  challengeCode: string;
+  userEmail: string;
+  progress: number;
+  status: string;
+};
+
+type AnomalyTypeSeed = {
+  code: string;
+  label: string;
+  description: string;
+};
+
+type AnomalyReportSeed = {
+  anomalyTypeCode: string;
+  tourName: string;
+  stopOrder: number;
+  reporterEmail: string;
+  comments: string;
+  photoUrl?: string;
+  severity: string;
+};
+
+const LEGACY_ADMIN_PERMISSIONS = [
   'users.read',
   'users.write',
   'roles.read',
@@ -61,6 +153,22 @@ const FULL_ADMIN_PERMISSIONS = [
   'audit.read',
   'settings.write',
 ];
+
+const ECOTRACK_ADMIN_PERMISSIONS = [
+  'ecotrack.containers.read',
+  'ecotrack.containers.write',
+  'ecotrack.zones.read',
+  'ecotrack.zones.write',
+  'ecotrack.tours.read',
+  'ecotrack.tours.write',
+  'ecotrack.citizenReports.read',
+  'ecotrack.citizenReports.write',
+  'ecotrack.gamification.read',
+  'ecotrack.gamification.write',
+  'ecotrack.analytics.read',
+];
+
+const FULL_ADMIN_PERMISSIONS = [...LEGACY_ADMIN_PERMISSIONS, ...ECOTRACK_ADMIN_PERMISSIONS];
 
 const ROLE_SEEDS: RoleSeed[] = [
   {
@@ -76,12 +184,42 @@ const ROLE_SEEDS: RoleSeed[] = [
   {
     name: 'manager',
     description: 'Manager',
-    permissions: ['users.read', 'hotels.read', 'tickets.read', 'audit.read'],
+    permissions: [
+      'users.read',
+      'hotels.read',
+      'tickets.read',
+      'audit.read',
+      'ecotrack.containers.read',
+      'ecotrack.zones.read',
+      'ecotrack.tours.read',
+      'ecotrack.tours.write',
+      'ecotrack.citizenReports.read',
+      'ecotrack.gamification.read',
+      'ecotrack.analytics.read',
+    ],
   },
   {
     name: 'agent',
     description: 'Agent',
-    permissions: ['tickets.read', 'tickets.write'],
+    permissions: [
+      'tickets.read',
+      'tickets.write',
+      'ecotrack.containers.read',
+      'ecotrack.tours.read',
+      'ecotrack.tours.write',
+      'ecotrack.citizenReports.read',
+      'ecotrack.citizenReports.write',
+    ],
+  },
+  {
+    name: 'citizen',
+    description: 'Citizen',
+    permissions: [
+      'ecotrack.containers.read',
+      'ecotrack.citizenReports.read',
+      'ecotrack.citizenReports.write',
+      'ecotrack.gamification.read',
+    ],
   },
 ];
 
@@ -142,6 +280,17 @@ const USER_SEEDS: UserSeed[] = [
     role: 'agent',
     hotelSlug: 'north-star-hotel',
     assignedRoles: ['agent'],
+    isActive: true,
+    authProvider: 'google',
+    passwordHash: null,
+    googleId: null,
+  },
+  {
+    email: 'citizen@example.com',
+    displayName: 'Citizen User',
+    role: 'citizen',
+    hotelSlug: 'default-hotel',
+    assignedRoles: ['citizen'],
     isActive: true,
     authProvider: 'google',
     passwordHash: null,
@@ -221,6 +370,143 @@ const SETTING_SEEDS: SettingSeed[] = [
     value: false,
     description: 'Maintenance mode flag',
     isPublic: false,
+  },
+];
+
+const ZONE_SEEDS: ZoneSeed[] = [
+  {
+    name: 'Downtown',
+    code: 'ZONE-DOWNTOWN',
+    description: 'City center and nearby public squares',
+  },
+  {
+    name: 'Harbor',
+    code: 'ZONE-HARBOR',
+    description: 'Port and industrial waterfront area',
+  },
+];
+
+const CONTAINER_SEEDS: ContainerSeed[] = [
+  {
+    code: 'CTR-1001',
+    label: 'Main Square - Glass',
+    status: 'available',
+    fillLevelPercent: 35,
+    zoneCode: 'ZONE-DOWNTOWN',
+    latitude: '36.8065',
+    longitude: '10.1815',
+  },
+  {
+    code: 'CTR-1002',
+    label: 'Library Avenue - Plastic',
+    status: 'attention_required',
+    fillLevelPercent: 82,
+    zoneCode: 'ZONE-DOWNTOWN',
+    latitude: '36.8081',
+    longitude: '10.1769',
+  },
+  {
+    code: 'CTR-2001',
+    label: 'Harbor Gate - Mixed',
+    status: 'available',
+    fillLevelPercent: 55,
+    zoneCode: 'ZONE-HARBOR',
+    latitude: '36.8128',
+    longitude: '10.2051',
+  },
+];
+
+const TOUR_SEEDS: TourSeed[] = [
+  {
+    name: 'Downtown Morning Round',
+    status: 'planned',
+    zoneCode: 'ZONE-DOWNTOWN',
+    assignedAgentEmail: 'agent@example.com',
+    scheduledForOffsetDays: 1,
+    stopContainerCodes: ['CTR-1002', 'CTR-1001'],
+  },
+];
+
+const CITIZEN_REPORT_SEEDS: CitizenReportSeed[] = [
+  {
+    containerCode: 'CTR-1002',
+    reporterEmail: 'citizen@example.com',
+    status: 'submitted',
+    description: 'Container is almost full and lids are hard to close.',
+    latitude: '36.8081',
+    longitude: '10.1769',
+  },
+];
+
+const GAMIFICATION_PROFILE_SEEDS: GamificationProfileSeed[] = [
+  {
+    email: 'citizen@example.com',
+    points: 120,
+    level: 2,
+    badges: ['first_report', 'neighborhood_helper'],
+  },
+  {
+    email: 'agent@example.com',
+    points: 45,
+    level: 1,
+    badges: ['first_collection'],
+  },
+];
+
+const CHALLENGE_SEEDS: ChallengeSeed[] = [
+  {
+    code: 'CHL-NEIGHBORHOOD-03',
+    title: 'Neighborhood Reporter Sprint',
+    description: 'Submit 3 validated neighborhood reports this month.',
+    targetValue: 3,
+    rewardPoints: 75,
+    status: 'active',
+  },
+  {
+    code: 'CHL-SMART-ROUTE-05',
+    title: 'Smart Route Support',
+    description: 'Report 5 containers before peak overflow windows.',
+    targetValue: 5,
+    rewardPoints: 120,
+    status: 'active',
+  },
+];
+
+const CHALLENGE_PARTICIPATION_SEEDS: ChallengeParticipationSeed[] = [
+  {
+    challengeCode: 'CHL-NEIGHBORHOOD-03',
+    userEmail: 'citizen@example.com',
+    progress: 1,
+    status: 'enrolled',
+  },
+];
+
+const ANOMALY_TYPE_SEEDS: AnomalyTypeSeed[] = [
+  {
+    code: 'ANOM-BLOCKED-ACCESS',
+    label: 'Blocked access',
+    description: 'Container cannot be reached due to blocked road or parked vehicles.',
+  },
+  {
+    code: 'ANOM-DAMAGED-CONTAINER',
+    label: 'Damaged container',
+    description: 'Container or lid appears damaged and requires intervention.',
+  },
+  {
+    code: 'ANOM-SAFETY-RISK',
+    label: 'Safety risk',
+    description: 'Safety hazard encountered during collection operation.',
+  },
+];
+
+const ANOMALY_REPORT_SEEDS: AnomalyReportSeed[] = [
+  {
+    anomalyTypeCode: 'ANOM-BLOCKED-ACCESS',
+    tourName: 'Downtown Morning Round',
+    stopOrder: 1,
+    reporterEmail: 'agent@example.com',
+    comments: 'Delivery truck blocked container for 20 minutes.',
+    severity: 'medium',
   },
 ];
 
@@ -449,6 +735,350 @@ export async function seedDatabase() {
             updatedAt: now,
           },
         });
+      }
+
+      const zoneIds = new Map<string, string>();
+      for (const seed of ZONE_SEEDS) {
+        await tx
+          .insert(zones)
+          .values({
+            name: seed.name,
+            code: seed.code,
+            description: seed.description ?? null,
+            isActive: true,
+          })
+          .onConflictDoUpdate({
+            target: zones.code,
+            set: {
+              name: seed.name,
+              description: seed.description ?? null,
+              updatedAt: now,
+            },
+          });
+
+        const [row] = await tx.select().from(zones).where(eq(zones.code, seed.code)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve zone: ${seed.code}`);
+        }
+
+        zoneIds.set(seed.code, row.id);
+      }
+
+      const containerIds = new Map<string, string>();
+      for (const seed of CONTAINER_SEEDS) {
+        const zoneId = zoneIds.get(seed.zoneCode);
+        if (!zoneId) {
+          throw new Error(`Zone not found for container ${seed.code}: ${seed.zoneCode}`);
+        }
+
+        await tx
+          .insert(containers)
+          .values({
+            code: seed.code,
+            label: seed.label,
+            status: seed.status,
+            fillLevelPercent: seed.fillLevelPercent,
+            zoneId,
+            latitude: seed.latitude ?? null,
+            longitude: seed.longitude ?? null,
+          })
+          .onConflictDoUpdate({
+            target: containers.code,
+            set: {
+              label: seed.label,
+              status: seed.status,
+              fillLevelPercent: seed.fillLevelPercent,
+              zoneId,
+              latitude: seed.latitude ?? null,
+              longitude: seed.longitude ?? null,
+              updatedAt: now,
+            },
+          });
+
+        const [row] = await tx.select().from(containers).where(eq(containers.code, seed.code)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve container: ${seed.code}`);
+        }
+
+        containerIds.set(seed.code, row.id);
+      }
+
+      for (const seed of TOUR_SEEDS) {
+        const zoneId = zoneIds.get(seed.zoneCode);
+        const assignedAgentId = userIds.get(seed.assignedAgentEmail);
+        if (!zoneId || !assignedAgentId) {
+          throw new Error(`Missing references for tour seed: ${seed.name}`);
+        }
+
+        const scheduledFor = new Date(now);
+        scheduledFor.setDate(now.getDate() + seed.scheduledForOffsetDays);
+
+        const [tourRow] = await tx
+          .insert(tours)
+          .values({
+            name: seed.name,
+            status: seed.status,
+            zoneId,
+            assignedAgentId,
+            scheduledFor,
+          })
+          .onConflictDoNothing()
+          .returning({ id: tours.id });
+
+        const resolvedTour =
+          tourRow ?? (await tx.select({ id: tours.id }).from(tours).where(eq(tours.name, seed.name)).limit(1))[0];
+
+        if (!resolvedTour) {
+          throw new Error(`Failed to resolve tour: ${seed.name}`);
+        }
+
+        await tx.delete(tourStops).where(eq(tourStops.tourId, resolvedTour.id));
+
+        for (let index = 0; index < seed.stopContainerCodes.length; index += 1) {
+          const containerCode = seed.stopContainerCodes[index];
+          const containerId = containerIds.get(containerCode);
+
+          if (!containerId) {
+            throw new Error(`Missing container for tour stop: ${containerCode}`);
+          }
+
+          await tx.insert(tourStops).values({
+            tourId: resolvedTour.id,
+            containerId,
+            stopOrder: index + 1,
+            status: 'pending',
+          });
+        }
+      }
+
+      for (const seed of CITIZEN_REPORT_SEEDS) {
+        const containerId = containerIds.get(seed.containerCode);
+        const reporterUserId = userIds.get(seed.reporterEmail);
+
+        if (!containerId || !reporterUserId) {
+          throw new Error(`Missing references for citizen report seed: ${seed.containerCode}`);
+        }
+
+        const [existingReport] = await tx
+          .select()
+          .from(citizenReports)
+          .where(
+            and(
+              eq(citizenReports.containerId, containerId),
+              eq(citizenReports.reporterUserId, reporterUserId),
+              eq(citizenReports.description, seed.description),
+            ),
+          )
+          .limit(1);
+
+        if (!existingReport) {
+          await tx.insert(citizenReports).values({
+            containerId,
+            reporterUserId,
+            status: seed.status,
+            description: seed.description,
+            latitude: seed.latitude ?? null,
+            longitude: seed.longitude ?? null,
+          });
+        }
+      }
+
+      for (const seed of GAMIFICATION_PROFILE_SEEDS) {
+        const userId = userIds.get(seed.email);
+        if (!userId) {
+          throw new Error(`Missing user for gamification profile seed: ${seed.email}`);
+        }
+
+        await tx
+          .insert(gamificationProfiles)
+          .values({
+            userId,
+            points: seed.points,
+            level: seed.level,
+            badges: seed.badges,
+            challengeProgress: {},
+          })
+          .onConflictDoUpdate({
+            target: gamificationProfiles.userId,
+            set: {
+              points: seed.points,
+              level: seed.level,
+              badges: seed.badges,
+              updatedAt: now,
+            },
+          });
+      }
+
+      const challengeIds = new Map<string, string>();
+      for (const seed of CHALLENGE_SEEDS) {
+        await tx
+          .insert(challenges)
+          .values({
+            code: seed.code,
+            title: seed.title,
+            description: seed.description,
+            targetValue: seed.targetValue,
+            rewardPoints: seed.rewardPoints,
+            status: seed.status,
+          })
+          .onConflictDoUpdate({
+            target: challenges.code,
+            set: {
+              title: seed.title,
+              description: seed.description,
+              targetValue: seed.targetValue,
+              rewardPoints: seed.rewardPoints,
+              status: seed.status,
+              updatedAt: now,
+            },
+          });
+
+        const [row] = await tx.select().from(challenges).where(eq(challenges.code, seed.code)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve challenge: ${seed.code}`);
+        }
+
+        challengeIds.set(seed.code, row.id);
+      }
+
+      for (const seed of CHALLENGE_PARTICIPATION_SEEDS) {
+        const challengeId = challengeIds.get(seed.challengeCode);
+        const userId = userIds.get(seed.userEmail);
+
+        if (!challengeId || !userId) {
+          throw new Error(
+            `Missing references for challenge participation seed: ${seed.challengeCode}/${seed.userEmail}`,
+          );
+        }
+
+        const [existingParticipation] = await tx
+          .select()
+          .from(challengeParticipations)
+          .where(
+            and(
+              eq(challengeParticipations.challengeId, challengeId),
+              eq(challengeParticipations.userId, userId),
+            ),
+          )
+          .limit(1);
+
+        if (existingParticipation) {
+          await tx
+            .update(challengeParticipations)
+            .set({
+              progress: seed.progress,
+              status: seed.status,
+              updatedAt: now,
+            })
+            .where(eq(challengeParticipations.id, existingParticipation.id));
+        } else {
+          await tx.insert(challengeParticipations).values({
+            challengeId,
+            userId,
+            progress: seed.progress,
+            status: seed.status,
+          });
+        }
+      }
+
+      const anomalyTypeIds = new Map<string, string>();
+      for (const seed of ANOMALY_TYPE_SEEDS) {
+        await tx
+          .insert(anomalyTypes)
+          .values({
+            code: seed.code,
+            label: seed.label,
+            description: seed.description,
+            isActive: true,
+          })
+          .onConflictDoUpdate({
+            target: anomalyTypes.code,
+            set: {
+              label: seed.label,
+              description: seed.description,
+              isActive: true,
+              updatedAt: now,
+            },
+          });
+
+        const [row] = await tx.select().from(anomalyTypes).where(eq(anomalyTypes.code, seed.code)).limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve anomaly type: ${seed.code}`);
+        }
+
+        anomalyTypeIds.set(seed.code, row.id);
+      }
+
+      for (const seed of ANOMALY_REPORT_SEEDS) {
+        const anomalyTypeId = anomalyTypeIds.get(seed.anomalyTypeCode);
+        const reporterUserId = userIds.get(seed.reporterEmail);
+
+        const [tourRow] = await tx.select().from(tours).where(eq(tours.name, seed.tourName)).limit(1);
+        const [stopRow] = tourRow
+          ? await tx
+              .select()
+              .from(tourStops)
+              .where(and(eq(tourStops.tourId, tourRow.id), eq(tourStops.stopOrder, seed.stopOrder)))
+              .limit(1)
+          : [];
+
+        if (!anomalyTypeId || !reporterUserId || !tourRow || !stopRow) {
+          throw new Error(`Missing references for anomaly report seed: ${seed.anomalyTypeCode}`);
+        }
+
+        const [existingReport] = await tx
+          .select()
+          .from(anomalyReports)
+          .where(
+            and(
+              eq(anomalyReports.anomalyTypeId, anomalyTypeId),
+              eq(anomalyReports.tourStopId, stopRow.id),
+              eq(anomalyReports.reporterUserId, reporterUserId),
+            ),
+          )
+          .limit(1);
+
+        if (existingReport) {
+          await tx
+            .update(anomalyReports)
+            .set({
+              comments: seed.comments,
+              photoUrl: seed.photoUrl ?? null,
+              severity: seed.severity,
+              updatedAt: now,
+            })
+            .where(eq(anomalyReports.id, existingReport.id));
+        } else {
+          await tx.insert(anomalyReports).values({
+            anomalyTypeId,
+            tourId: tourRow.id,
+            tourStopId: stopRow.id,
+            reporterUserId,
+            comments: seed.comments,
+            photoUrl: seed.photoUrl ?? null,
+            severity: seed.severity,
+            status: 'reported',
+          });
+        }
+      }
+
+      const [firstTourStop] = await tx.select().from(tourStops).limit(1);
+      if (firstTourStop) {
+        const [existingCollectionEvent] = await tx
+          .select()
+          .from(collectionEvents)
+          .where(eq(collectionEvents.tourStopId, firstTourStop.id))
+          .limit(1);
+
+        if (!existingCollectionEvent) {
+          await tx.insert(collectionEvents).values({
+            tourStopId: firstTourStop.id,
+            containerId: firstTourStop.containerId,
+            actorUserId: userIds.get('agent@example.com') ?? null,
+            volumeLiters: 120,
+            notes: 'Seeded initial collection event',
+          });
+        }
       }
     });
   } finally {

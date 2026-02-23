@@ -29,6 +29,12 @@ Special case:
 | Path | Component | Notes |
 | --- | --- | --- |
 | `/app/dashboard` | `Dashboard` | Main overview |
+| `/app/citizen/report` | `CitizenReportPage` | Citizen overflow report creation |
+| `/app/citizen/profile` | `CitizenProfilePage` | Citizen impact, badges, and history |
+| `/app/citizen/challenges` | `CitizenChallengesPage` | Challenge enrollment and progress |
+| `/app/agent/tour` | `AgentTourPage` | Agent tour start/stop validation/anomaly workflow |
+| `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization and assignment |
+| `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history |
 | `/app/tickets` | `TicketListPage` | Basic ticket list with delete action |
 | `/app/tickets/advanced` | `AdvancedTicketList` | Search and filtering |
 | `/app/tickets/create` | `CreateTickets` | Ticket creation form |

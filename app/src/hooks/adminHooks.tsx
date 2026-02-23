@@ -463,6 +463,49 @@ export function useUpdateSystemSettings() {
   });
 }
 
+export function useDispatchTestNotification() {
+  const { addToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      severity: 'critical' | 'warning' | 'info';
+      message: string;
+      channel?: 'email' | 'sms' | 'push';
+      recipient?: string;
+    }) => {
+      const response = await authFetch(`${API_BASE}/api/admin/settings/notifications/test`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to dispatch test notification');
+      }
+
+      const payloadJson = await response.json();
+      return payloadJson.data ?? payloadJson;
+    },
+    onSuccess: () => {
+      addToast({
+        type: 'success',
+        title: 'Notification Dispatched',
+        message: 'Test notification has been dispatched and logged.',
+      });
+    },
+    onError: () => {
+      addToast({
+        type: 'error',
+        title: 'Dispatch Failed',
+        message: 'Unable to dispatch test notification.',
+      });
+    },
+  });
+}
+
 // Helper functions
 // Hotel Management Hooks
 export function useAdminHotels(filters = {}) {

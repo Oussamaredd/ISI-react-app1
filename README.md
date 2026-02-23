@@ -1,4 +1,4 @@
-# Ticket Management System
+# EcoTrack Platform
 
 Four-layer monorepo:
 
@@ -126,6 +126,8 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run dev` - host/native app + api dev workflow
 - `npm run build` - build database, app, api
 - `npm run test` - app + api tests
+- `npm run test:e2e` - key citizen/agent/manager journey tests
+- `npm run test:coverage` - coverage-gated validation for app + api
 - `npm run typecheck` - app + api + database type checks
 - `npm run lint` - lint + architecture boundaries
 - `npm run db:migrate` - run Drizzle migrations

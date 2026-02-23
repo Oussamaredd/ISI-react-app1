@@ -10,6 +10,15 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [supportCategory, setSupportCategory] = useState<
+    | "general_help"
+    | "container_overflow"
+    | "collection_delay"
+    | "damaged_container"
+    | "route_request"
+    | "billing"
+    | "other"
+  >("general_help");
   const createTicketMutation = useCreateTicket();
   const { isPending: isCreating } = createTicketMutation;
 
@@ -18,15 +27,17 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
     if (!title.trim() || isCreating) return;
 
     try {
-      await createTicketMutation.mutateAsync({
-        name: title.trim(),
-        description: description.trim(),
-        priority,
-      });
+        await createTicketMutation.mutateAsync({
+          name: title.trim(),
+          description: description.trim(),
+          priority,
+          supportCategory,
+        });
 
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setSupportCategory("general_help");
 
       if (onSuccess) {
         onSuccess();
@@ -70,6 +81,38 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
             rows={4}
             className="create-input create-textarea"
           />
+        </div>
+
+        <div className="create-field">
+          <label htmlFor="supportCategory" className="create-label">
+            Support Category
+          </label>
+          <select
+            id="supportCategory"
+            value={supportCategory}
+            onChange={(e) =>
+              setSupportCategory(
+                e.target.value as
+                  | "general_help"
+                  | "container_overflow"
+                  | "collection_delay"
+                  | "damaged_container"
+                  | "route_request"
+                  | "billing"
+                  | "other"
+              )
+            }
+            disabled={isCreating}
+            className="create-input"
+          >
+            <option value="general_help">General Help</option>
+            <option value="container_overflow">Container Overflow</option>
+            <option value="collection_delay">Collection Delay</option>
+            <option value="damaged_container">Damaged Container</option>
+            <option value="route_request">Route Request</option>
+            <option value="billing">Billing</option>
+            <option value="other">Other</option>
+          </select>
         </div>
 
         <div className="create-field">

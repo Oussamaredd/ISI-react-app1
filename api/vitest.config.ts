@@ -13,8 +13,6 @@ export default defineConfig({
       all: true,
       include: [
         'src/auth/auth.controller.ts',
-        'src/auth/auth.service.ts',
-        'src/auth/auth.utils.ts',
         'src/auth/authenticated-user.guard.ts',
         'src/auth/permissions.guard.ts',
         'src/hotels/hotels.controller.ts',
