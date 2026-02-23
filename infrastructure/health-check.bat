@@ -1,11 +1,16 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
-echo React App 1 - Service Health Check
+
+set "SCRIPT_DIR=%~dp0"
+set "COMPOSE_FILE=%SCRIPT_DIR%docker-compose.yml"
+set "CANONICAL_ENV=%SCRIPT_DIR%environments\.env.docker"
+
+echo EcoTrack - Service Health Check
 echo.
 
 echo Checking running containers...
-docker compose ps
+docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" ps
 
 echo.
 echo Testing migration step...
@@ -37,7 +42,7 @@ if %errorlevel% equ 0 (
 )
 
 echo Testing database connection...
-docker compose exec -T db pg_isready -U postgres -d ticketdb >nul 2>&1
+docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" exec -T db pg_isready -U postgres -d ticketdb >nul 2>&1
 if %errorlevel% equ 0 (
     echo Database - HEALTHY
 ) else (
@@ -45,6 +50,6 @@ if %errorlevel% equ 0 (
 )
 
 echo.
-echo For detailed logs: docker compose logs -f
+echo For detailed logs: docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" logs -f
 echo.
 pause

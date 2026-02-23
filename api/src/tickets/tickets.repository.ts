@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { type DatabaseClient, comments, hotels, tickets, users } from 'ecotrack-database';
 
@@ -10,6 +10,7 @@ import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 type TicketFilters = {
   status?: string;
   priority?: string;
+  supportCategory?: string;
   hotelId?: string;
   assigneeId?: string;
   search?: string;
@@ -23,10 +24,21 @@ type CommentWithAuthor = {
   authorId: string;
   body: string;
   createdAt: Date;
+  updatedAt: Date;
   authorDisplayName: string;
   authorEmail: string;
   authorRole: string;
 };
+
+type CommentActor = {
+  id: string;
+  role?: string;
+  roles?: Array<{ name: string }>;
+};
+
+const ADMIN_ROLE_NAMES = new Set(['admin', 'super_admin']);
+
+const normalizeRole = (value?: string | null) => value?.trim().toLowerCase();
 
 @Injectable()
 export class TicketsRepository {
@@ -70,11 +82,12 @@ export class TicketsRepository {
 
     const [ticket] = await this.db
       .insert(tickets)
-      .values({
-        title,
-        description: dto.description,
-        priority: dto.priority ?? 'medium',
-        status: 'open',
+        .values({
+          title,
+          description: dto.description,
+          priority: dto.priority ?? 'medium',
+          supportCategory: dto.supportCategory ?? 'general_help',
+          status: 'open',
         requesterId,
         hotelId,
         assigneeId: dto.assigneeId ?? null,
@@ -95,6 +108,7 @@ export class TicketsRepository {
         authorId: comments.authorId,
         body: comments.body,
         createdAt: comments.createdAt,
+        updatedAt: comments.updatedAt,
         authorDisplayName: users.displayName,
         authorEmail: users.email,
         authorRole: users.role,
@@ -115,9 +129,9 @@ export class TicketsRepository {
     return { comments: commentsRows.map((row) => this.formatComment(row)), total };
   }
 
-  async addComment(ticketId: string, body: string) {
-    const ticket = await this.assertTicketExists(ticketId);
-    const authorId = ticket.requesterId;
+  async addComment(ticketId: string, body: string, actor: CommentActor) {
+    await this.assertTicketExists(ticketId);
+    const authorId = actor.id;
 
     const [comment] = await this.db
       .insert(comments)
@@ -136,12 +150,21 @@ export class TicketsRepository {
     return enriched ?? comment;
   }
 
-  async updateComment(ticketId: string, commentId: string, body: string) {
+  async updateComment(ticketId: string, commentId: string, body: string, actor: CommentActor) {
     await this.assertTicketExists(ticketId);
+
+    const existing = await this.getCommentWithAuthor(commentId, ticketId);
+    if (!existing) {
+      throw new NotFoundException(`Comment ${commentId} not found`);
+    }
+
+    if (!this.canManageComment(actor, existing.authorId)) {
+      throw new ForbiddenException('Insufficient permissions to edit this comment');
+    }
 
     const [comment] = await this.db
       .update(comments)
-      .set({ body })
+      .set({ body, updatedAt: new Date() })
       .where(and(eq(comments.id, commentId), eq(comments.ticketId, ticketId)))
       .returning({ id: comments.id });
 
@@ -153,12 +176,16 @@ export class TicketsRepository {
     return enriched ?? comment;
   }
 
-  async deleteComment(ticketId: string, commentId: string) {
+  async deleteComment(ticketId: string, commentId: string, actor: CommentActor) {
     await this.assertTicketExists(ticketId);
 
     const existing = await this.getCommentWithAuthor(commentId, ticketId);
     if (!existing) {
       throw new NotFoundException(`Comment ${commentId} not found`);
+    }
+
+    if (!this.canManageComment(actor, existing.authorId)) {
+      throw new ForbiddenException('Insufficient permissions to delete this comment');
     }
 
     await this.db
@@ -260,6 +287,7 @@ export class TicketsRepository {
     if (dto.title !== undefined) payload.title = dto.title;
     if (dto.description !== undefined) payload.description = dto.description;
     if (dto.priority !== undefined) payload.priority = dto.priority;
+    if (dto.supportCategory !== undefined) payload.supportCategory = dto.supportCategory;
     if (dto.status !== undefined) payload.status = dto.status;
     if (dto.assigneeId !== undefined) payload.assigneeId = dto.assigneeId;
 
@@ -302,6 +330,10 @@ export class TicketsRepository {
     const priority = this.normalizePriorityFilter(filters.priority);
     if (priority) {
       conditions.push(eq(tickets.priority, priority));
+    }
+
+    if (filters.supportCategory) {
+      conditions.push(eq(tickets.supportCategory, filters.supportCategory));
     }
 
     if (filters.hotelId) {
@@ -377,7 +409,7 @@ export class TicketsRepository {
 
   private formatComment(row: CommentWithAuthor) {
     const createdAt = row.createdAt;
-    const updatedAt = row.createdAt;
+    const updatedAt = row.updatedAt;
 
     return {
       id: row.id,
@@ -409,6 +441,7 @@ export class TicketsRepository {
         authorId: comments.authorId,
         body: comments.body,
         createdAt: comments.createdAt,
+        updatedAt: comments.updatedAt,
         authorDisplayName: users.displayName,
         authorEmail: users.email,
         authorRole: users.role,
@@ -426,5 +459,21 @@ export class TicketsRepository {
       throw new NotFoundException(`Ticket ${ticketId} not found`);
     }
     return ticket;
+  }
+
+  private canManageComment(actor: CommentActor, commentAuthorId: string) {
+    if (actor.id === commentAuthorId) {
+      return true;
+    }
+
+    const primaryRole = normalizeRole(actor.role);
+    if (primaryRole && ADMIN_ROLE_NAMES.has(primaryRole)) {
+      return true;
+    }
+
+    return (actor.roles ?? []).some((role) => {
+      const roleName = normalizeRole(role?.name);
+      return Boolean(roleName && ADMIN_ROLE_NAMES.has(roleName));
+    });
   }
 }

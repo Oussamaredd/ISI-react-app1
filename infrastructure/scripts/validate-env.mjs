@@ -4,6 +4,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
+const LEGACY_FRONTEND_PATHS = new Set([
+  '/auth',
+  '/dashboard',
+  '/tickets',
+  '/tickets/advanced',
+  '/tickets/create',
+  '/tickets/details',
+  '/tickets/treat',
+  '/admin',
+]);
 
 const WORKFLOW_RULES = {
   'host-dev': {
@@ -14,6 +24,8 @@ const WORKFLOW_RULES = {
       'SESSION_SECRET',
       'JWT_SECRET',
       'JWT_EXPIRES_IN',
+      'JWT_ACCESS_SECRET',
+      'JWT_ACCESS_EXPIRES_IN',
       'CORS_ORIGINS',
       'VITE_API_BASE_URL',
     ],
@@ -29,6 +41,8 @@ const WORKFLOW_RULES = {
       'SESSION_SECRET',
       'JWT_SECRET',
       'JWT_EXPIRES_IN',
+      'JWT_ACCESS_SECRET',
+      'JWT_ACCESS_EXPIRES_IN',
       'CORS_ORIGINS',
       'MIGRATE_COMMAND',
       'ENABLE_SEED_DATA',
@@ -45,6 +59,9 @@ const WORKFLOW_RULES = {
       'SESSION_SECRET',
       'JWT_SECRET',
       'JWT_EXPIRES_IN',
+      'JWT_ACCESS_SECRET',
+      'JWT_ACCESS_EXPIRES_IN',
+      'GOOGLE_CALLBACK_URL',
     ],
   },
   'deploy-staging': {
@@ -57,6 +74,9 @@ const WORKFLOW_RULES = {
       'SESSION_SECRET',
       'JWT_SECRET',
       'JWT_EXPIRES_IN',
+      'JWT_ACCESS_SECRET',
+      'JWT_ACCESS_EXPIRES_IN',
+      'GOOGLE_CALLBACK_URL',
       'WEBHOOK_URL',
       'WEBHOOK_SECRET',
     ],
@@ -71,6 +91,9 @@ const WORKFLOW_RULES = {
       'SESSION_SECRET',
       'JWT_SECRET',
       'JWT_EXPIRES_IN',
+      'JWT_ACCESS_SECRET',
+      'JWT_ACCESS_EXPIRES_IN',
+      'GOOGLE_CALLBACK_URL',
       'SMTP_HOST',
       'SMTP_PORT',
       'SMTP_USER',
@@ -155,6 +178,57 @@ function checkDatabaseNamePolicy(entries, sourceLabel, errors) {
     if (postgresDb !== 'ticketdb') {
       errors.push(`${sourceLabel}: POSTGRES_DB must be ticketdb.`);
     }
+  }
+}
+
+function normalizePathname(pathname) {
+  const trimmed = pathname.replace(/\/+$/, '');
+  return trimmed.length > 0 ? trimmed : '/';
+}
+
+function checkFrontendRoutePolicy(entries, sourceLabel, errors) {
+  for (const key of ['APP_BASE_URL', 'APP_URL', 'CLIENT_ORIGIN']) {
+    if (!entries.has(key)) {
+      continue;
+    }
+
+    const value = String(entries.get(key) ?? '').trim();
+    if (!value) {
+      continue;
+    }
+
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch {
+      errors.push(`${sourceLabel}: ${key} must be a valid URL when provided.`);
+      continue;
+    }
+
+    const normalizedPath = normalizePathname(parsed.pathname);
+    if (LEGACY_FRONTEND_PATHS.has(normalizedPath)) {
+      errors.push(
+        `${sourceLabel}: ${key} must target the frontend origin root, not legacy route '${normalizedPath}'.`,
+      );
+    }
+  }
+
+  if (!entries.has('VITE_BASE')) {
+    return;
+  }
+
+  const rawBase = String(entries.get('VITE_BASE') ?? '').trim();
+  if (!rawBase) {
+    return;
+  }
+
+  const withLeadingSlash = rawBase.startsWith('/') ? rawBase : `/${rawBase}`;
+  const normalizedBase = normalizePathname(withLeadingSlash);
+
+  if (LEGACY_FRONTEND_PATHS.has(normalizedBase)) {
+    errors.push(
+      `${sourceLabel}: VITE_BASE must not use removed legacy route path '${normalizedBase}'.`,
+    );
   }
 }
 
@@ -253,6 +327,7 @@ function main() {
     }
 
     checkDatabaseNamePolicy(entries, file, errors);
+    checkFrontendRoutePolicy(entries, file, errors);
     checkGoogleCallbackPolicy(entries, file, errors);
   }
 

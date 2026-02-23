@@ -111,7 +111,7 @@ services:
     container_name: logstash
     restart: unless-stopped
     volumes:
-      - ../api/src/monitoring/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./tooling/monitoring/elk/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     ports:
       - "5044:5044"
       - "5001:5001"
@@ -130,7 +130,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     volumes:
-      - ./infrastructure/monitoring/elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - ./tooling/monitoring/elk/kibana.yml:/usr/share/kibana/config/kibana.yml
     depends_on:
       - elasticsearch
     networks:
@@ -142,7 +142,7 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - ../api/src/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - ./tooling/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"

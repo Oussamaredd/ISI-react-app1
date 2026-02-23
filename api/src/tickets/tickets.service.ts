@@ -7,11 +7,18 @@ import { TicketsRepository } from './tickets.repository.js';
 type TicketFilters = {
   status?: string;
   priority?: string;
+  supportCategory?: string;
   hotelId?: string;
   assigneeId?: string;
   search?: string;
   limit?: number;
   offset?: number;
+};
+
+type CommentActor = {
+  id: string;
+  role?: string;
+  roles?: Array<{ name: string }>;
 };
 
 @Injectable()
@@ -34,16 +41,16 @@ export class TicketsService {
     return this.ticketsRepository.listComments(ticketId, pagination);
   }
 
-  async addComment(ticketId: string, body: string) {
-    return this.ticketsRepository.addComment(ticketId, body);
+  async addComment(ticketId: string, body: string, actor: CommentActor) {
+    return this.ticketsRepository.addComment(ticketId, body, actor);
   }
 
-  async updateComment(ticketId: string, commentId: string, body: string) {
-    return this.ticketsRepository.updateComment(ticketId, commentId, body);
+  async updateComment(ticketId: string, commentId: string, body: string, actor: CommentActor) {
+    return this.ticketsRepository.updateComment(ticketId, commentId, body, actor);
   }
 
-  async deleteComment(ticketId: string, commentId: string) {
-    return this.ticketsRepository.deleteComment(ticketId, commentId);
+  async deleteComment(ticketId: string, commentId: string, actor: CommentActor) {
+    return this.ticketsRepository.deleteComment(ticketId, commentId, actor);
   }
 
   async listActivity(ticketId: string) {

@@ -4,6 +4,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 
 ## Start Here
 - `../README.md` - repository quick start and canonical command surface
+- `ROADMAP.md` - development roadmap and progress tracking (canonical)
 - `ARCHITECTURE_OVERVIEW.md` - layer boundaries and architecture contract
 - `ENVIRONMENT_SETUP.md` - host/Docker/deploy environment setup
 
@@ -17,12 +18,17 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
+- `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
+- `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
 - `runbooks/OAUTH_CALLBACK_REMEDIATION.md` - OAuth callback incident/remediation runbook
 
 ## Product and API
 - `API_DOCUMENTATION.md` - API contract and examples
 - `FRONTEND_ROUTES.md` - route map
+- `openapi/` - OpenAPI reference specs for roadmap phases
+- `guides/` - end-user quick guides (citizen/agent/manager)
 - `features/` - feature-level behavior notes
+- `specs/` - source requirement inputs and planning references
 
 ## Historical Baselines
 - `baselines/` - captured validation outputs used during remediation phases
@@ -46,6 +52,8 @@ Validate:
 npm run lint
 npm run typecheck
 npm run test
+npm run test:e2e
+npm run test:coverage
 npm run validate-env:all
 ```
 

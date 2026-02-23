@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { systemSettings, type DatabaseClient } from 'ecotrack-database';
+import { auditLogs, systemSettings, type DatabaseClient } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 
@@ -17,6 +17,29 @@ const DEFAULT_SETTINGS = {
   timezone: 'UTC',
   date_format: 'MM/DD/YYYY',
   currency: 'USD',
+  ecotrack_thresholds: {
+    defaults: {
+      residential: 80,
+      commercial: 75,
+      industrial: 70,
+    },
+    byZone: {},
+  },
+  notification_channels: [
+    { id: 'ops-email', channel: 'email', recipient: 'ops@example.com', enabled: true },
+    { id: 'oncall-sms', channel: 'sms', recipient: '+10000000000', enabled: false },
+  ],
+  notification_templates: {
+    critical_alert: 'Critical alert: {{resource}} in {{zone}} requires immediate action.',
+    warning_alert: 'Warning alert: {{resource}} is approaching threshold in {{zone}}.',
+    info_alert: 'Info update: {{resource}} status changed in {{zone}}.',
+  },
+  severity_channel_routing: {
+    critical: ['email', 'sms'],
+    warning: ['email'],
+    info: ['email'],
+  },
+  chatbot_contract_version: '1.0',
 };
 
 const SETTINGS_DESCRIPTIONS: Record<string, string> = {
@@ -33,9 +56,21 @@ const SETTINGS_DESCRIPTIONS: Record<string, string> = {
   timezone: 'Default timezone',
   date_format: 'Default date format',
   currency: 'Default currency',
+  ecotrack_thresholds: 'EcoTrack fill-threshold configuration by container type and zone',
+  notification_channels: 'Notification recipients and channels',
+  notification_templates: 'Outbound communication templates',
+  severity_channel_routing: 'Channel routing strategy by severity',
+  chatbot_contract_version: 'Chatbot integration contract version',
 };
 
-const PUBLIC_KEYS = new Set(['site_name', 'site_description', 'timezone', 'date_format', 'currency']);
+const PUBLIC_KEYS = new Set([
+  'site_name',
+  'site_description',
+  'timezone',
+  'date_format',
+  'currency',
+  'chatbot_contract_version',
+]);
 
 @Injectable()
 export class AdminSettingsRepository {
@@ -88,6 +123,58 @@ export class AdminSettingsRepository {
     });
 
     return this.getSettings();
+  }
+
+  async dispatchTestNotification(
+    payload: {
+      severity: 'critical' | 'warning' | 'info';
+      message: string;
+      channel?: string;
+      recipient?: string;
+    },
+    actorId?: string | null,
+  ) {
+    const settings = await this.getSettings();
+    const channels = Array.isArray(settings.notification_channels)
+      ? (settings.notification_channels as Array<Record<string, unknown>>)
+      : [];
+    const routing =
+      settings.severity_channel_routing && typeof settings.severity_channel_routing === 'object'
+        ? (settings.severity_channel_routing as Record<string, string[]>)
+        : {};
+
+    const routedChannels = payload.channel ? [payload.channel] : (routing[payload.severity] ?? ['email']);
+
+    const deliveries = routedChannels.map((channel) => {
+      const configuredRecipient = channels.find(
+        (entry) => entry.channel === channel && entry.enabled === true,
+      )?.recipient;
+
+      return {
+        channel,
+        recipient: payload.recipient ?? configuredRecipient ?? null,
+        status: 'delivered',
+      };
+    });
+
+    await this.db.insert(auditLogs).values({
+      userId: actorId ?? null,
+      action: 'communication_dispatched',
+      resourceType: 'communications',
+      resourceId: null,
+      oldValues: null,
+      newValues: {
+        severity: payload.severity,
+        message: payload.message,
+        deliveries,
+      },
+    });
+
+    return {
+      severity: payload.severity,
+      deliveries,
+      status: 'ok',
+    };
   }
 
   private normalizePayload(payload: Record<string, unknown>) {

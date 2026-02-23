@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from './schema.js';
@@ -13,9 +17,39 @@ export type DatabaseInstance = {
   dispose: () => Promise<void>;
 };
 
+function resolveDatabaseUrl(explicitUrl?: string): string | undefined {
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const envCandidates = [
+    path.resolve(moduleDir, '.env'),
+    path.resolve(moduleDir, '..', '.env'),
+    path.resolve(moduleDir, '..', '..', '.env'),
+  ];
+
+  for (const envPath of envCandidates) {
+    if (!fs.existsSync(envPath)) {
+      continue;
+    }
+
+    dotenv.config({ path: envPath });
+    if (process.env.DATABASE_URL) {
+      return process.env.DATABASE_URL;
+    }
+  }
+
+  return undefined;
+}
+
 export function createDatabaseInstance(config: DatabaseConfig = {}): DatabaseInstance {
   const env = parseDatabaseEnv({
-    DATABASE_URL: config.url ?? process.env.DATABASE_URL,
+    DATABASE_URL: resolveDatabaseUrl(config.url),
   });
 
   const sql = postgres(env.DATABASE_URL, {

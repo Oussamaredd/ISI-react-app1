@@ -24,8 +24,40 @@ export class UsersService {
     return this.usersRepository.findById(id);
   }
 
+  async findByGoogleId(googleId: string) {
+    return this.usersRepository.findByGoogleId(googleId);
+  }
+
   async ensureUserForAuth(authUser: AuthUser) {
     return this.usersRepository.ensureUserForAuth(authUser);
+  }
+
+  async createLocalUser(params: { email: string; passwordHash: string; displayName?: string }) {
+    return this.usersRepository.createLocalUser(params);
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string) {
+    return this.usersRepository.updatePasswordHash(userId, passwordHash);
+  }
+
+  async updateUserProfile(userId: string, params: { displayName: string }) {
+    return this.usersRepository.updateUserProfile(userId, params);
+  }
+
+  async createPasswordResetToken(params: { userId: string; tokenHash: string; expiresAt: Date }) {
+    return this.usersRepository.createPasswordResetToken(params);
+  }
+
+  async findValidPasswordResetTokenByHash(tokenHash: string) {
+    return this.usersRepository.findValidPasswordResetTokenByHash(tokenHash);
+  }
+
+  async consumePasswordResetToken(tokenId: string) {
+    return this.usersRepository.consumePasswordResetToken(tokenId);
+  }
+
+  async consumeAllPasswordResetTokensForUser(userId: string) {
+    return this.usersRepository.consumeAllPasswordResetTokensForUser(userId);
   }
 
   async listUsers(filters: UserFilters = {}) {

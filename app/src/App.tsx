@@ -1,6 +1,5 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { AuthProvider } from "./hooks/useAuth";
 import { ToastProvider } from "./context/ToastContext";
 import { ErrorHandlingSetup } from "./components/ErrorHandlingSetup";
@@ -25,7 +24,6 @@ export default function App() {
           </ToastProvider>
         </ErrorHandlingSetup>
       </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
 }

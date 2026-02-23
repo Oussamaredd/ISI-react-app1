@@ -159,6 +159,22 @@ Execution notes:
   - `http://localhost:<legacy-api-port>/auth/google/callback` remains unreachable (expected for legacy path).
 - Browser-interactive OAuth callback/cookie verification still requires manual run against the Google auth screen.
 
+## Auth Readiness and Startup Race Hardening (February 13, 2026)
+
+- Added a fast API liveness probe endpoint: `GET http://localhost:3001/health`.
+- Kept deeper dependency diagnostics under `GET http://localhost:3001/api/health/database`.
+- Frontend login now polls `/health` before enabling `Continue with Google` and `Sign in`.
+- Frontend callback applies a short validation delay, then shows a success state with a green checkmark before redirecting to `/app`.
+- Root `npm run dev` now gates app startup with `infrastructure/scripts/wait-for-api-ready.mjs` so Vite starts only after API readiness.
+
+Quick probes:
+
+```powershell
+curl -i http://localhost:3001/health
+curl -i http://localhost:3001/api/health
+curl -i http://localhost:3001/api/health/database
+```
+
 ## Definition of Done
 - [x] Runtime callback URI matches actual API host/port/path.
 - [ ] Google Console redirect URI list matches runtime callback URI.

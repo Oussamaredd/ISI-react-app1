@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import LoginButton from "../../components/LoginButton";
+import BrandLogo from "../../components/branding/BrandLogo";
 
 const getNextLabel = (search: string) => {
   const next = new URLSearchParams(search).get("next");
@@ -13,6 +14,9 @@ export default function AuthPage() {
   return (
     <section className="auth-page">
       <div className="auth-card">
+        <Link to="/" className="auth-brand-link" aria-label="EcoTrack home">
+          <BrandLogo imageClassName="auth-brand-logo" textClassName="auth-brand-text" />
+        </Link>
         <p className="auth-eyebrow">Secure Sign-in</p>
         <h1>Authenticate to access your workspace</h1>
         <p>

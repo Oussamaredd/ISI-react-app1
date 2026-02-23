@@ -8,10 +8,18 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().int().positive().max(65535).default(3001),
   API_HOST: z.string().optional(),
   PORT: z.coerce.number().int().positive().max(65535).optional(),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().optional(),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().optional(),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
+  LOG_FORMAT: z.enum(['json', 'pretty']).optional(),
   CORS_ORIGINS: z.string().optional(),
+  APP_BASE_URL: z.string().url().optional(),
+  APP_URL: z.string().url().optional(),
   CLIENT_ORIGIN: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().url().optional(),
+  JWT_ACCESS_SECRET: z.string().optional(),
+  JWT_ACCESS_EXPIRES_IN: z.string().optional(),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
 });
 

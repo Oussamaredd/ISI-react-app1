@@ -3,6 +3,12 @@
 ## Mission & Scope
 Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. Work monorepo-first across `app`, `api`, `database`, `infrastructure`, and `docs`. Preserve the four-layer architecture contract. Use `docs/ARCHITECTURE_OVERVIEW.md` and `docs/ENV.md` for deeper detail.
 
+## Temporary Specialty Scope Freeze (Development Only)
+- Until explicitly lifted, project implementation scope is `Development` specialty only.
+- Do not plan or implement `Cyber-Security` or `Data Science` specialty tracks.
+- If a requested feature depends on Security/Data deliverables, document it as a dependency/handoff item and continue with Dev-owned work only.
+- Keep interfaces ready for future Security/Data integration, but do not add specialty-specific pipelines, controls, or models in this phase.
+
 ## Repo Map
 - `app`: frontend UI, routing, state, and API consumption only.
 - `api`: NestJS controllers, services, guards, repositories, and modules.
@@ -66,6 +72,11 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 - Do not hardcode URLs, API endpoints, keys, or environment-specific values in source code.
 - Prefer environment variables, config modules, dependency injection, or props over inline configuration.
 - Avoid deep prop drilling for config and endpoint values; prefer shared config modules or context/providers.
+
+## Autonomy Rules (No-permission actions)
+- Do not ask for my permission before editing any example/template environment files used for onboarding or documentation (e.g., `*.env.example`, sample env templates). If changes are needed for the task, update them directly and report what changed.
+- Do not ask for my permission before running any validation commands (tests/build/lint/typecheck/migrate/validate-env). Run the required commands automatically based on the Path-to-Command Matrix and include pass/fail output in the report.
+- Exception: if a command is destructive or could target non-dev/prod resources, do not run it—report the blocker and what would have been run instead.
 
 ## Response Format Contract
 - Always provide: concise summary, changed files, commands run with pass/fail, and known risks or follow-ups.

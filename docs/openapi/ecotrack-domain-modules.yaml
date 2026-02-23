@@ -1,0 +1,87 @@
+openapi: 3.1.0
+info:
+  title: EcoTrack Domain Modules Reference
+  version: 0.2.0
+  description: Reference index for post-Sprint 0 EcoTrack domain endpoints.
+servers:
+  - url: http://localhost:3001/api
+paths:
+  /citizen/reports:
+    post:
+      tags: [Citizen]
+      summary: Submit a citizen overflow report
+      responses:
+        '201':
+          description: Citizen report accepted
+  /citizen/profile:
+    get:
+      tags: [Citizen]
+      summary: Get citizen profile with gamification summary
+      responses:
+        '200':
+          description: Citizen profile payload
+  /citizen/challenges:
+    get:
+      tags: [Citizen]
+      summary: List available and enrolled challenges
+      responses:
+        '200':
+          description: Challenge list
+  /tours/agent/me:
+    get:
+      tags: [Tours]
+      summary: Get currently assigned tour for authenticated agent
+      responses:
+        '200':
+          description: Agent tour payload
+  /tours/{tourId}/stops/{stopId}/validate:
+    post:
+      tags: [Tours]
+      summary: Validate collection at a tour stop
+      parameters:
+        - in: path
+          name: tourId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: stopId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Validation persisted and next stop computed
+  /planning/optimize-tour:
+    post:
+      tags: [Planning]
+      summary: Generate optimized route candidates by zone and threshold
+      responses:
+        '200':
+          description: Route candidate payload with metrics
+  /planning/reports/generate:
+    post:
+      tags: [Planning]
+      summary: Generate manager report for selected period and KPIs
+      responses:
+        '201':
+          description: Report generation accepted
+  /tickets/support/categories:
+    get:
+      tags: [Support]
+      summary: List EcoTrack support categories and chatbot contract metadata
+      responses:
+        '200':
+          description: Support category catalog
+  /admin/settings/notifications/test:
+    post:
+      tags: [Admin]
+      summary: Dispatch test notification using active channel/template settings
+      responses:
+        '201':
+          description: Test notification queued
+  /analytics/summary:
+    get:
+      tags: [Analytics]
+      summary: Retrieve EcoTrack KPI summary
+      responses:
+        '200':
+          description: Summary counters

@@ -9,8 +9,9 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "npm run build:database && concurrently --kill-others-on-fail -n app,api \"npm:dev:app\" \"npm:dev:api\"",
+    "dev": "npm run build:database && concurrently --kill-others-on-fail -n api,app \"npm:dev:api\" \"npm:dev:app:wait-api\"",
     "dev:app": "npm run dev --workspace=ecotrack-app",
+    "dev:app:wait-api": "node ./infrastructure/scripts/wait-for-api-ready.mjs --url http://localhost:3001/health --timeout-ms 90000 && npm run dev:app",
     "dev:api": "npm run dev --workspace=ecotrack-api",
     "dev:database": "npm run watch --workspace=ecotrack-database",
     "dev:infra": "npm run infra:up",
@@ -21,6 +22,8 @@
     "test": "npm run test:app && npm run test:api",
     "test:app": "npm run test --workspace=ecotrack-app",
     "test:api": "npm run test --workspace=ecotrack-api",
+    "test:e2e": "npm run test:e2e --workspace=ecotrack-app",
+    "test:coverage": "npm run test:coverage --workspace=ecotrack-app && npm run test:coverage --workspace=ecotrack-api",
     "lint": "npm run lint:app && npm run lint:api",
     "lint:app": "npm run lint --workspace=ecotrack-app",
     "lint:api": "npm run lint --workspace=ecotrack-api",

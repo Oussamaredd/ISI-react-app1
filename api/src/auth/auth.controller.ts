@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { Body, ConflictException, Controller, Get, Post, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 
@@ -6,6 +6,8 @@ import { UsersService } from '../users/users.service.js';
 
 import { AuthService } from './auth.service.js';
 import type { AuthUser } from './auth.types.js';
+import { ExchangeCodeDto } from './exchange-code.dto.js';
+import { GoogleOAuthEnabledGuard } from './google-oauth-enabled.guard.js';
 
 @Controller('auth')
 export class AuthController {
@@ -16,7 +18,7 @@ export class AuthController {
 
   @Get('status')
   async getStatus(@Req() req: Request) {
-    const user = this.authService.getAuthUserFromCookie(req.headers.cookie);
+    const user = this.authService.getAuthUserFromRequest(req);
 
     if (!user) {
       return { authenticated: false };
@@ -28,7 +30,7 @@ export class AuthController {
 
   @Get('me')
   async getCurrentUser(@Req() req: Request) {
-    const user = this.authService.getAuthUserFromCookie(req.headers.cookie);
+    const user = this.authService.getAuthUserFromRequest(req);
     if (!user) {
       throw new UnauthorizedException();
     }
@@ -38,22 +40,47 @@ export class AuthController {
   }
 
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleOAuthEnabledGuard, AuthGuard('google'))
   googleAuth() {}
 
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  googleAuthCallback(@Req() req: Request, @Res() res: Response) {
+  @UseGuards(GoogleOAuthEnabledGuard, AuthGuard('google'))
+  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const user = req.user as AuthUser | undefined;
 
     if (!user) {
-      return res.redirect(this.authService.getAuthRedirectUrl(false));
+      return res.redirect(
+        this.authService.getAuthCallbackUrl({
+          errorMessage: 'Unable to complete Google sign-in.',
+        }),
+      );
     }
 
-    const token = this.authService.createAuthToken(user);
-    res.cookie(this.authService.getAuthCookieName(), token, this.authService.getAuthCookieOptions());
+    try {
+      await this.authService.ensureGoogleSignInAllowed(user);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        return res.redirect(
+          this.authService.getAuthCallbackUrl({
+            errorMessage: error.message,
+          }),
+        );
+      }
+      throw error;
+    }
 
-    return res.redirect(this.authService.getAuthRedirectUrl(true));
+    const exchangeCode = this.authService.issueExchangeCode(user);
+
+    return res.redirect(
+      this.authService.getAuthCallbackUrl({
+        code: exchangeCode,
+      }),
+    );
+  }
+
+  @Post('exchange')
+  async exchangeCode(@Body() dto: ExchangeCodeDto) {
+    return this.authService.exchangeCode(dto.code);
   }
 
   @Post('logout')
@@ -73,6 +100,7 @@ export class AuthController {
 
       return {
         ...user,
+        provider: dbUser.authProvider === 'google' ? 'google' : 'local',
         role: dbUser.role ?? null,
         roles: roles.map((role) => ({ id: role.id, name: role.name })),
         isActive: dbUser.isActive ?? true,

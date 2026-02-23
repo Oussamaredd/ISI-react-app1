@@ -24,8 +24,7 @@ export default [
   {
     ignores: [
       'dist/**',
-      'src/components/admin/UserManagement.tsx',
-      'src/components/admin/UserEditModal.tsx',
+      'coverage/**',
       'src/tests/errorHandling.test.tsx',
     ],
   },

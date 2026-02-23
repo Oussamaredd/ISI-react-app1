@@ -40,6 +40,7 @@ describe("CreateTicket", () => {
         name: "New Ticket",
         description: "Needs attention",
         priority: "high",
+        supportCategory: "general_help",
       });
     });
   });

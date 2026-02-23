@@ -68,7 +68,9 @@ export function AuditLogs() {
       'comment_added': 'bg-emerald-100 text-emerald-800',
       'comment_updated': 'bg-sky-100 text-sky-800',
       'comment_deleted': 'bg-rose-100 text-rose-800',
-      'system_settings_updated': 'bg-gray-100 text-gray-800'
+      'system_settings_updated': 'bg-gray-100 text-gray-800',
+      'communication_dispatched': 'bg-violet-100 text-violet-800',
+      'manager_alert_anomaly_reported': 'bg-red-100 text-red-800',
     };
 
     const colorClass = colorMap[action] || 'bg-gray-100 text-gray-800';
@@ -86,7 +88,8 @@ export function AuditLogs() {
       'roles': Activity,
       'hotels': FileText,
       'tickets': FileText,
-      'system': Activity
+      'system': Activity,
+      'communications': Activity,
     };
 
     const Icon = iconMap[resourceType] || FileText;
@@ -215,6 +218,7 @@ export function AuditLogs() {
                 <option value="hotel_updated">Hotel Updated</option>
                 <option value="hotel_deleted">Hotel Deleted</option>
                 <option value="system_settings_updated">System Settings Updated</option>
+                <option value="communication_dispatched">Communication Dispatched</option>
               </select>
             </div>
 
@@ -233,6 +237,7 @@ export function AuditLogs() {
                 <option value="hotels">Hotels</option>
                 <option value="tickets">Tickets</option>
                 <option value="system">System</option>
+                <option value="communications">Communications</option>
               </select>
             </div>
 

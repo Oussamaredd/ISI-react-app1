@@ -1,8 +1,9 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
+import { scrollPageToTop } from "../lib/scrollPageToTop";
 
 export default function RouteScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
   React.useEffect(() => {
     const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "";
@@ -10,10 +11,12 @@ export default function RouteScrollToTop() {
       return;
     }
 
-    if (typeof window.scrollTo === "function") {
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (pathname === "/" && hash) {
+      return;
     }
-  }, [pathname]);
+
+    scrollPageToTop("auto");
+  }, [hash, pathname]);
 
   return null;
 }

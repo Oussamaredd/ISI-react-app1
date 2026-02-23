@@ -1,12 +1,13 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   InternalServerErrorException,
+  Post,
   Put,
   Req,
   UseGuards,
-  BadRequestException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 
@@ -16,6 +17,7 @@ import { AdminGuard } from './admin.guard.js';
 import { AdminSettingsService } from './admin.settings.service.js';
 import type { AdminUserContext } from './admin.types.js';
 import { getRequestMetadata } from './admin.utils.js';
+import { DispatchTestNotificationDto } from './dto/dispatch-test-notification.dto.js';
 
 @Controller('admin/settings')
 @UseGuards(AdminGuard)
@@ -63,6 +65,23 @@ export class AdminSettingsController {
         throw error;
       }
       throw new InternalServerErrorException('Unable to update settings');
+    }
+  }
+
+  @Post('notifications/test')
+  async dispatchTestNotification(
+    @Body() body: DispatchTestNotificationDto,
+    @AdminUser() adminUser: AdminUserContext,
+  ) {
+    try {
+      const result = await this.settingsService.dispatchTestNotification(body, adminUser?.id ?? null);
+      return { data: result };
+    } catch (error) {
+      console.error('Failed to dispatch test notification', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Unable to dispatch test notification');
     }
   }
 }

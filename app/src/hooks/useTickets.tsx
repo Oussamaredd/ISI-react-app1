@@ -1,7 +1,6 @@
 // client/src/hooks/useTickets.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
-import React, { createContext, useContext } from 'react';
 import { useAuth } from './useAuth';
 
 export type TicketStatus = 'open' | 'closed' | 'completed' | 'in_progress' | 'OPEN' | 'COMPLETED';
@@ -11,6 +10,7 @@ export type Ticket = {
   id: string;
   title: string;
   description?: string | null;
+  supportCategory?: string | null;
   status: TicketStatus;
   priority?: TicketPriority;
   hotelId?: string | null;
@@ -57,6 +57,7 @@ const normalizeTicket = (raw: any): Ticket => ({
   id: String(raw.id ?? ''),
   title: raw.title ?? raw.name ?? 'Untitled ticket',
   description: raw.description ?? null,
+  supportCategory: raw.supportCategory ?? raw.support_category ?? null,
   status: (raw.status ?? 'open') as TicketStatus,
   priority: (raw.priority ?? raw.ticket_priority ?? 'medium') as TicketPriority,
   hotelId: raw.hotelId ?? raw.hotel_id ?? null,
@@ -127,7 +128,13 @@ export const useCreateTicket = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; priority?: TicketPriority; [key: string]: unknown }) => {
+    mutationFn: async (data: {
+      name: string;
+      description?: string;
+      priority?: TicketPriority;
+      supportCategory?: string;
+      [key: string]: unknown;
+    }) => {
       const response = await apiClient.post('/api/tickets', data);
       return response;
     },
@@ -288,55 +295,3 @@ export const useDashboard = () => {
 export const useCurrentUser = () => {
   return useAuth();
 };
-
-// React Query context for sharing state
-const TicketsContext = createContext(null);
-
-export const TicketsProvider = ({ children }) => {
-  const [tickets, setTickets] = React.useState([]);
-  const [hotels, setHotels] = React.useState([]);
-  const [currentPage, setCurrentPage] = React.useState(1);
-
-  // Fetch functions
-  const refreshTickets = React.useCallback(async () => {
-    try {
-      const response = await apiClient.get('/api/tickets');
-      setTickets(response || []);
-    } catch (error) {
-      console.error('Failed to refresh tickets:', error);
-    }
-  }, []);
-
-  const refreshHotels = React.useCallback(async () => {
-    try {
-      const response = await apiClient.get('/api/hotels');
-      setHotels(response || []);
-    } catch (error) {
-      console.error('Failed to refresh hotels:', error);
-    }
-  }, []);
-
-  return (
-    <TicketsContext.Provider value={{
-      tickets,
-      hotels,
-      refreshTickets,
-      refreshHotels,
-      currentPage,
-      setCurrentPage,
-      user: null // This should come from auth context
-    }}>
-      {children}
-    </TicketsContext.Provider>
-  );
-};
-
-export const useTicketsContext = () => {
-  const context = useContext(TicketsContext);
-  if (!context) {
-    throw new Error('useTicketsContext must be used within a TicketsProvider');
-  }
-  return context;
-};
-
-export default TicketsProvider;

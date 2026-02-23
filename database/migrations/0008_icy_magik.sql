@@ -1,0 +1,1 @@
+ALTER TABLE "tickets" ADD COLUMN "support_category" text DEFAULT 'general_help' NOT NULL;

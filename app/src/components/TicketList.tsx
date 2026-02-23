@@ -1,7 +1,7 @@
 // client/src/components/TicketList.tsx
 import React from "react";
 import { Link } from "react-router-dom";
-import { useTickets, Ticket } from "../hooks/useTickets";
+import { useTickets, useDeleteTicket, Ticket } from "../hooks/useTickets";
 
 interface TicketItemProps {
   ticket: Ticket;
@@ -57,7 +57,30 @@ function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
 
 export default function TicketList() {
   const { data, isLoading, error } = useTickets();
+  const { mutateAsync: deleteTicket, isPending: isDeletingTicket } = useDeleteTicket();
+  const [deletingTicketId, setDeletingTicketId] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const tickets = (data as any)?.tickets || data || [];
+
+  const handleDelete = async (id: string) => {
+    if (isDeletingTicket) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeletingTicketId(id);
+    try {
+      await deleteTicket(id);
+    } catch (deleteFailure) {
+      const message =
+        deleteFailure instanceof Error
+          ? deleteFailure.message
+          : "Failed to delete ticket. Please try again.";
+      setDeleteError(message);
+    } finally {
+      setDeletingTicketId(null);
+    }
+  };
 
   if (isLoading) {
     return <div>Loading tickets...</div>;
@@ -69,6 +92,11 @@ export default function TicketList() {
 
   return (
     <div>
+      {deleteError ? (
+        <div role="alert" className="ticket-delete-error">
+          {deleteError}
+        </div>
+      ) : null}
       {tickets.length === 0 ? (
         <p>
           No tickets yet. <Link to="/app/tickets/create">Create your first ticket!</Link>
@@ -79,10 +107,8 @@ export default function TicketList() {
             <TicketItem
               key={ticket.id}
               ticket={ticket}
-              onDelete={(id) => {
-                void id; // TODO: wire delete mutation
-              }}
-              isDeleting={false}
+              onDelete={handleDelete}
+              isDeleting={isDeletingTicket && deletingTicketId === ticket.id}
             />
           ))}
         </ul>

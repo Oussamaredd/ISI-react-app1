@@ -1,4 +1,6 @@
 // API client with centralized configuration and error handling
+import { withAuthHeader } from './authToken';
+
 const rawApiBase =
   import.meta.env.VITE_API_BASE_URL ??
   // Temporary alias support during migration to VITE_API_BASE_URL.
@@ -16,33 +18,48 @@ const handleApiError = (error) => {
   throw error;
 };
 
+const parseJsonResponse = async (response: Response) => {
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
 // Generic API wrapper
 export const apiClient = {
   get: async (url, options: any = {}) => {
     try {
       const response = await fetch(`${API_BASE}${url}`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
         ...options,
+        headers: {
+          ...Object.fromEntries(
+            withAuthHeader({
+              'Content-Type': 'application/json',
+              ...options.headers,
+            }).entries(),
+          ),
+        },
       });
       
       if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let error = { error: `HTTP ${response.status}` };
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            error = await response.json();
-          } catch {
-            // Keep default error
-          }
-        }
+        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
+          error: `HTTP ${response.status}`,
+        };
         throw new Error(error.error || `HTTP ${response.status}`);
       }
       
-      return response.json();
+      return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
     }
@@ -53,28 +70,26 @@ export const apiClient = {
       const response = await fetch(`${API_BASE}${url}`, {
         method: 'POST',
         credentials: 'include',
+        ...options,
         headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
+          ...Object.fromEntries(
+            withAuthHeader({
+              'Content-Type': 'application/json',
+              ...options.headers,
+            }).entries(),
+          ),
         },
         body: JSON.stringify(data),
-        ...options,
       });
       
       if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let error = { error: `HTTP ${response.status}` };
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            error = await response.json();
-          } catch {
-            // Keep default error
-          }
-        }
+        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
+          error: `HTTP ${response.status}`,
+        };
         throw new Error(error.error || `HTTP ${response.status}`);
       }
       
-      return response.json();
+      return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
     }
@@ -85,28 +100,26 @@ export const apiClient = {
       const response = await fetch(`${API_BASE}${url}`, {
         method: 'PUT',
         credentials: 'include',
+        ...options,
         headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
+          ...Object.fromEntries(
+            withAuthHeader({
+              'Content-Type': 'application/json',
+              ...options.headers,
+            }).entries(),
+          ),
         },
         body: JSON.stringify(data),
-        ...options,
       });
       
       if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let error = { error: `HTTP ${response.status}` };
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            error = await response.json();
-          } catch {
-            // Keep default error
-          }
-        }
+        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
+          error: `HTTP ${response.status}`,
+        };
         throw new Error(error.error || `HTTP ${response.status}`);
       }
       
-      return response.json();
+      return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
     }
@@ -114,26 +127,22 @@ export const apiClient = {
 
   delete: async (url, options = {}) => {
     try {
+      const { headers: optionHeaders, ...restOptions } = options as RequestInit;
       const response = await fetch(`${API_BASE}${url}`, {
         method: 'DELETE',
         credentials: 'include',
-        ...options,
+        headers: Object.fromEntries(withAuthHeader(optionHeaders).entries()),
+        ...restOptions,
       });
       
       if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        let error = { error: `HTTP ${response.status}` };
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            error = await response.json();
-          } catch {
-            // Keep default error
-          }
-        }
+        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
+          error: `HTTP ${response.status}`,
+        };
         throw new Error(error.error || `HTTP ${response.status}`);
       }
       
-      return response.json();
+      return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
     }

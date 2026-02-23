@@ -5,18 +5,21 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpException,
   Inject,
   InternalServerErrorException,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
   Put,
   Query,
+  Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
+import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 
@@ -41,6 +44,57 @@ const normalizeSearch = (value?: string) => {
   return trimmed ? trimmed : undefined;
 };
 
+const SUPPORT_CATEGORY_DEFINITIONS = [
+  {
+    key: 'general_help',
+    label: 'General Help',
+    aliases: ['general', 'help', 'information'],
+  },
+  {
+    key: 'container_overflow',
+    label: 'Container Overflow',
+    aliases: ['overflow', 'bin_overflow'],
+  },
+  {
+    key: 'collection_delay',
+    label: 'Collection Delay',
+    aliases: ['delay', 'pickup_delay'],
+  },
+  {
+    key: 'damaged_container',
+    label: 'Damaged Container',
+    aliases: ['damage', 'broken_bin'],
+  },
+  {
+    key: 'route_request',
+    label: 'Route Request',
+    aliases: ['route', 'schedule_request'],
+  },
+  {
+    key: 'billing',
+    label: 'Billing',
+    aliases: ['invoice', 'payment'],
+  },
+  {
+    key: 'other',
+    label: 'Other',
+    aliases: ['misc', 'legacy_other'],
+  },
+] as const;
+
+const SUPPORT_CATEGORY_ALIAS_MAP = new Map<string, string>(
+  SUPPORT_CATEGORY_DEFINITIONS.flatMap((entry) => [
+    [entry.key, entry.key],
+    ...entry.aliases.map((alias) => [alias, entry.key] as const),
+  ]),
+);
+
+const normalizeSupportCategory = (value?: string) => {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  return SUPPORT_CATEGORY_ALIAS_MAP.get(normalized) ?? undefined;
+};
+
 @Controller('tickets')
 @UseGuards(AuthenticatedUserGuard, PermissionsGuard)
 @RequirePermissions('tickets.read')
@@ -53,6 +107,8 @@ export class TicketsController {
     @Query('offset') offsetParam?: string,
     @Query('status') status?: string,
     @Query('priority') priority?: string,
+    @Query('support_category') supportCategorySnake?: string,
+    @Query('supportCategory') supportCategoryCamel?: string,
     @Query('hotel_id') hotelIdParam?: string,
     @Query('hotelId') hotelIdCamel?: string,
     @Query('assignee_id') assigneeIdParam?: string,
@@ -68,6 +124,7 @@ export class TicketsController {
     const hotelId = normalizeUuid(hotelIdParam ?? hotelIdCamel);
     const assigneeId = normalizeUuid(assigneeIdParam ?? assigneeIdCamel);
     const search = normalizeSearch(qParam ?? searchParam);
+    const supportCategory = normalizeSupportCategory(supportCategorySnake ?? supportCategoryCamel);
 
     try {
       const { tickets, total } = await this.ticketsService.findAll({
@@ -75,6 +132,7 @@ export class TicketsController {
         offset,
         status,
         priority,
+        supportCategory,
         hotelId,
         assigneeId,
         search,
@@ -84,6 +142,29 @@ export class TicketsController {
       console.error('Failed to fetch tickets', error);
       throw new InternalServerErrorException('Unable to fetch tickets');
     }
+  }
+
+  @Get('support/categories')
+  async supportCategories() {
+    return {
+      categories: SUPPORT_CATEGORY_DEFINITIONS,
+      chatbotContract: {
+        version: '1.0',
+        input: {
+          message: 'string',
+          context: {
+            category: 'optional support category key',
+            ticketId: 'optional ticket uuid',
+          },
+        },
+        output: {
+          categorySuggestion: 'support category key',
+          confidence: 'number between 0 and 1',
+          responseText: 'assistant reply text',
+          escalationRecommended: 'boolean',
+        },
+      },
+    };
   }
 
   @Get(':id')
@@ -112,6 +193,9 @@ export class TicketsController {
         pagination: { total, page, pageSize, hasNext },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       console.error('Failed to fetch comments', error);
       throw new InternalServerErrorException('Unable to fetch comments');
     }
@@ -122,14 +206,19 @@ export class TicketsController {
   async addComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: CreateCommentDto,
+    @Req() request: RequestWithAuthUser,
   ) {
     const body = (dto.body ?? dto.content ?? '').trim();
     if (!body) {
       throw new BadRequestException('Comment body is required');
     }
+    const actor = this.requireActor(request);
     try {
-      return await this.ticketsService.addComment(id, body);
+      return await this.ticketsService.addComment(id, body, actor);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       console.error('Failed to add comment', error);
       throw new InternalServerErrorException('Unable to add comment');
     }
@@ -141,16 +230,18 @@ export class TicketsController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
     @Body() dto: UpdateCommentDto,
+    @Req() request: RequestWithAuthUser,
   ) {
     const body = (dto.body ?? dto.content ?? '').trim();
     if (!body) {
       throw new BadRequestException('Comment body is required');
     }
+    const actor = this.requireActor(request);
     try {
-      return await this.ticketsService.updateComment(id, commentId, body);
+      return await this.ticketsService.updateComment(id, commentId, body, actor);
     } catch (error) {
       console.error('Failed to update comment', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to update comment');
@@ -162,12 +253,14 @@ export class TicketsController {
   async deleteComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
+    @Req() request: RequestWithAuthUser,
   ) {
+    const actor = this.requireActor(request);
     try {
-      return await this.ticketsService.deleteComment(id, commentId);
+      return await this.ticketsService.deleteComment(id, commentId, actor);
     } catch (error) {
       console.error('Failed to delete comment', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to delete comment');
@@ -181,7 +274,7 @@ export class TicketsController {
       return { activity };
     } catch (error) {
       console.error('Failed to fetch activity', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to fetch activity');
@@ -205,11 +298,24 @@ export class TicketsController {
       return await this.ticketsService.assignHotel(id, dto.hotelId);
     } catch (error) {
       console.error('Failed to assign hotel', error);
-      if (error instanceof NotFoundException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new InternalServerErrorException('Unable to assign hotel');
     }
+  }
+
+  private requireActor(request: RequestWithAuthUser) {
+    const authUser = request.authUser;
+    if (!authUser) {
+      throw new UnauthorizedException();
+    }
+
+    return {
+      id: authUser.id,
+      role: authUser.role,
+      roles: authUser.roles,
+    };
   }
 
   @Put(':id')

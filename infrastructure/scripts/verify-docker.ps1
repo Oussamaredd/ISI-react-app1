@@ -31,7 +31,7 @@ Write-Host '3) Checking service definitions...' -ForegroundColor Yellow
 $fullConfig = docker compose @composeArgs --profile core --profile obs --profile quality config
 $services = @('db', 'migrate', 'backend', 'frontend', 'elasticsearch', 'logstash', 'kibana', 'prometheus', 'grafana')
 foreach ($service in $services) {
-  if ($fullConfig -match "(?m)^\s*$service:") {
+  if ($fullConfig -match "(?m)^\s*${service}:") {
     Write-Host "OK: service '$service' is defined" -ForegroundColor Green
   } else {
     Write-Host "FAIL: service '$service' not found" -ForegroundColor Red
@@ -53,7 +53,7 @@ if ($fullConfig -match 'ticket-management-network') {
 Write-Host ''
 Write-Host '5) Checking volumes...' -ForegroundColor Yellow
 foreach ($volume in @('db_data', 'es_data', 'prometheus-data', 'grafana-storage')) {
-  if ($fullConfig -match "(?m)^\s*$volume:") {
+  if ($fullConfig -match "(?m)^\s*${volume}:") {
     Write-Host "OK: volume '$volume' is defined" -ForegroundColor Green
   } else {
     Write-Host "WARN: volume '$volume' not found" -ForegroundColor Yellow
@@ -63,7 +63,7 @@ foreach ($volume in @('db_data', 'es_data', 'prometheus-data', 'grafana-storage'
 # Test 6: key env variables rendered
 Write-Host ''
 Write-Host '6) Checking rendered env variables...' -ForegroundColor Yellow
-foreach ($needle in @('DATABASE_URL=', 'POSTGRES_USER=', 'POSTGRES_DB=')) {
+foreach ($needle in @('DATABASE_URL:', 'POSTGRES_USER:', 'POSTGRES_DB:')) {
   if ($fullConfig -match [regex]::Escape($needle)) {
     Write-Host "OK: found '$needle' in rendered config" -ForegroundColor Green
   } else {

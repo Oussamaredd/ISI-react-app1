@@ -23,13 +23,50 @@ const ALL_PLATFORM_PERMISSIONS = [
   'tickets.write',
   'audit.read',
   'settings.write',
+  'ecotrack.containers.read',
+  'ecotrack.containers.write',
+  'ecotrack.zones.read',
+  'ecotrack.zones.write',
+  'ecotrack.tours.read',
+  'ecotrack.tours.write',
+  'ecotrack.citizenReports.read',
+  'ecotrack.citizenReports.write',
+  'ecotrack.gamification.read',
+  'ecotrack.gamification.write',
+  'ecotrack.analytics.read',
 ];
 
 const FALLBACK_ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ALL_PLATFORM_PERMISSIONS,
   admin: ALL_PLATFORM_PERMISSIONS,
-  manager: ['users.read', 'hotels.read', 'tickets.read', 'audit.read'],
-  agent: ['tickets.read', 'tickets.write'],
+  manager: [
+    'users.read',
+    'hotels.read',
+    'tickets.read',
+    'audit.read',
+    'ecotrack.containers.read',
+    'ecotrack.zones.read',
+    'ecotrack.tours.read',
+    'ecotrack.tours.write',
+    'ecotrack.citizenReports.read',
+    'ecotrack.gamification.read',
+    'ecotrack.analytics.read',
+  ],
+  agent: [
+    'tickets.read',
+    'tickets.write',
+    'ecotrack.containers.read',
+    'ecotrack.tours.read',
+    'ecotrack.tours.write',
+    'ecotrack.citizenReports.read',
+    'ecotrack.citizenReports.write',
+  ],
+  citizen: [
+    'ecotrack.containers.read',
+    'ecotrack.citizenReports.read',
+    'ecotrack.citizenReports.write',
+    'ecotrack.gamification.read',
+  ],
   user: ['tickets.read', 'tickets.write'],
 };
 
@@ -47,7 +84,7 @@ export class AuthenticatedUserGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<RequestWithAuthUser>();
-    const authUser = this.authService.getAuthUserFromCookie(request.headers.cookie);
+    const authUser = this.authService.getAuthUserFromRequest(request);
 
     if (!authUser) {
       throw new UnauthorizedException();

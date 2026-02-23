@@ -2,6 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { useToast } from '../context/ToastContext';
 import { API_BASE } from '../services/api';
+import { withAuthHeader } from '../services/authToken';
+
+const authFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
+  fetch(input, {
+    credentials: 'include',
+    ...init,
+    headers: Object.fromEntries(withAuthHeader(init.headers).entries()),
+  });
 
 // User Management Hooks
 export function useUsers(filters = {}) {
@@ -19,7 +27,7 @@ export function useUsers(filters = {}) {
   return useQuery({
     queryKey: ['admin-users', filters],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/users?${params}`,
         { credentials: 'include' }
       );
@@ -43,7 +51,7 @@ export function useUser(userId) {
   return useQuery({
     queryKey: ['admin-user', userId],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/users/${userId}`,
         { credentials: 'include' }
       );
@@ -67,7 +75,7 @@ export function useUpdateUserRoles() {
 
   return useMutation({
     mutationFn: async ({ userId, roleIds }: { userId: string; roleIds: string[] }) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/users/${userId}/roles`,
         {
           method: 'PUT',
@@ -112,7 +120,7 @@ export function useUpdateUserStatus() {
 
   return useMutation({
     mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/users/${userId}/status`,
         {
           method: 'PUT',
@@ -158,7 +166,7 @@ export function useRoles() {
   return useQuery({
     queryKey: ['admin-roles'],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/roles`,
         { credentials: 'include' }
       );
@@ -181,7 +189,7 @@ export function useAvailablePermissions() {
   return useQuery({
     queryKey: ['admin-permissions'],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/roles/permissions`,
         { credentials: 'include' }
       );
@@ -205,7 +213,7 @@ export function useCreateRole() {
 
   return useMutation({
     mutationFn: async (roleData: Record<string, unknown>) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/roles`,
         {
           method: 'POST',
@@ -250,7 +258,7 @@ export function useUpdateRole() {
 
   return useMutation({
     mutationFn: async ({ roleId, ...roleData }: { roleId: string; [key: string]: unknown }) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/roles/${roleId}`,
         {
           method: 'PUT',
@@ -296,7 +304,7 @@ export function useDeleteRole() {
 
   return useMutation({
     mutationFn: async (roleId: string) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/roles/${roleId}`,
         {
           method: 'DELETE',
@@ -347,7 +355,7 @@ export function useAuditLogs(filters = {}) {
   return useQuery({
     queryKey: ['admin-audit-logs', filters],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/audit-logs?${params}`,
         { credentials: 'include' }
       );
@@ -370,7 +378,7 @@ export function useAuditStats() {
   return useQuery({
     queryKey: ['admin-audit-stats'],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/audit-logs/stats`,
         { credentials: 'include' }
       );
@@ -394,7 +402,7 @@ export function useSystemSettings() {
   return useQuery({
     queryKey: ['admin-system-settings'],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/settings`,
         { credentials: 'include' }
       );
@@ -417,7 +425,7 @@ export function useUpdateSystemSettings() {
 
   return useMutation({
     mutationFn: async (settings: Record<string, unknown>) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/settings`,
         {
           method: 'PUT',
@@ -455,6 +463,49 @@ export function useUpdateSystemSettings() {
   });
 }
 
+export function useDispatchTestNotification() {
+  const { addToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      severity: 'critical' | 'warning' | 'info';
+      message: string;
+      channel?: 'email' | 'sms' | 'push';
+      recipient?: string;
+    }) => {
+      const response = await authFetch(`${API_BASE}/api/admin/settings/notifications/test`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to dispatch test notification');
+      }
+
+      const payloadJson = await response.json();
+      return payloadJson.data ?? payloadJson;
+    },
+    onSuccess: () => {
+      addToast({
+        type: 'success',
+        title: 'Notification Dispatched',
+        message: 'Test notification has been dispatched and logged.',
+      });
+    },
+    onError: () => {
+      addToast({
+        type: 'error',
+        title: 'Dispatch Failed',
+        message: 'Unable to dispatch test notification.',
+      });
+    },
+  });
+}
+
 // Helper functions
 // Hotel Management Hooks
 export function useAdminHotels(filters = {}) {
@@ -472,7 +523,7 @@ export function useAdminHotels(filters = {}) {
   return useQuery({
     queryKey: ['admin-hotels', filters],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels?${params}`,
         { credentials: 'include' }
       );
@@ -495,7 +546,7 @@ export function useAdminHotel(hotelId) {
   return useQuery({
     queryKey: ['admin-hotel', hotelId],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels/${hotelId}`,
         { credentials: 'include' }
       );
@@ -518,7 +569,7 @@ export function useHotelStats() {
   return useQuery({
     queryKey: ['admin-hotel-stats'],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels/stats`,
         { credentials: 'include' }
       );
@@ -541,7 +592,7 @@ export function useTopHotels(limit = 10) {
   return useQuery({
     queryKey: ['admin-top-hotels', limit],
     queryFn: async () => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels/top?limit=${limit}`,
         { credentials: 'include' }
       );
@@ -564,7 +615,7 @@ export function useCreateHotel() {
 
   return useMutation({
     mutationFn: async (hotelData: Record<string, unknown>) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels`,
         {
           method: 'POST',
@@ -610,7 +661,7 @@ export function useUpdateHotel() {
 
   return useMutation({
     mutationFn: async ({ hotelId, ...hotelData }: { hotelId: string; [key: string]: unknown }) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels/${hotelId}`,
         {
           method: 'PUT',
@@ -657,7 +708,7 @@ export function useDeleteHotel() {
 
   return useMutation({
     mutationFn: async (hotelId: string) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels/${hotelId}`,
         {
           method: 'DELETE',
@@ -699,7 +750,7 @@ export function useToggleHotelAvailability() {
 
   return useMutation({
     mutationFn: async (hotelId: string) => {
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/api/admin/hotels/${hotelId}/toggle`,
         {
           method: 'PATCH',
@@ -743,7 +794,7 @@ export async function getUsers(filters = {}) {
     }
   });
 
-  const response = await fetch(
+  const response = await authFetch(
     `${API_BASE}/api/admin/users?${params}`,
     {
       credentials: 'include',
@@ -760,3 +811,4 @@ export async function getUsers(filters = {}) {
       return payload.data ?? payload;
 
 }
+

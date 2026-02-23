@@ -30,4 +30,23 @@ export class CreateTicketDto {
   @IsIn(['low', 'medium', 'high'])
   @IsOptional()
   priority?: 'low' | 'medium' | 'high';
+
+  @IsIn([
+    'general_help',
+    'container_overflow',
+    'collection_delay',
+    'damaged_container',
+    'route_request',
+    'billing',
+    'other',
+  ])
+  @IsOptional()
+  supportCategory?:
+    | 'general_help'
+    | 'container_overflow'
+    | 'collection_delay'
+    | 'damaged_container'
+    | 'route_request'
+    | 'billing'
+    | 'other';
 }

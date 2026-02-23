@@ -1,79 +1,101 @@
-// client/src/hooks/useAuth.tsx
-import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+
 import { API_BASE } from '../services/api';
+import { authApi, type AuthSuccess, type AuthUser } from '../services/authApi';
+import { clearAccessToken, getAccessToken, setAccessToken, withAuthHeader } from '../services/authToken';
 
-const AuthContext = createContext(null);
+type AuthContextValue = {
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (session: AuthSuccess) => void;
+  logout: () => Promise<void>;
+  refreshAuth: () => Promise<void>;
+  getAuthHeaders: () => Record<string, string>;
+};
 
-const normalizedApiBase = API_BASE.replace(/\/$/, '');
-const AUTH_BASE_URL = normalizedApiBase.endsWith('/api') ? normalizedApiBase : `${normalizedApiBase}/api`;
-const AUTH_STATUS_URL = `${AUTH_BASE_URL}/auth/status`;
-const AUTH_LOGOUT_URL = `${AUTH_BASE_URL}/auth/logout`;
+const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_CHECK_TIMEOUT_MS = 6000;
 const AUTH_CHECK_RETRIES = 2;
 const AUTH_RETRY_DELAY_MS = 300;
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
 
-  const checkAuthStatus = useCallback(async () => {
-    // Abort any in-flight request (React StrictMode mounts twice in dev)
+  const applyAuthenticatedState = useCallback((nextUser: AuthUser | null) => {
+    setUser(nextUser);
+    setIsAuthenticated(Boolean(nextUser));
+  }, []);
+
+  const refreshAuth = useCallback(async () => {
     abortControllerRef.current?.abort();
+    const lifecycleController = new AbortController();
+    abortControllerRef.current = lifecycleController;
+    const token = getAccessToken();
+    const isAuthCallbackRoute =
+      typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/callback');
 
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+    if (!isMountedRef.current || lifecycleController.signal.aborted) {
+      return;
+    }
 
-    if (!isMountedRef.current || controller.signal.aborted) {
+    if (isAuthCallbackRoute && !token) {
+      applyAuthenticatedState(null);
+      setIsLoading(false);
       return;
     }
 
     for (let attempt = 1; attempt <= AUTH_CHECK_RETRIES + 1; attempt += 1) {
-      if (!isMountedRef.current || controller.signal.aborted) {
+      if (!isMountedRef.current || lifecycleController.signal.aborted) {
         return;
       }
 
-      const timeoutId = window.setTimeout(() => controller.abort(), AUTH_CHECK_TIMEOUT_MS);
+      const requestController = new AbortController();
+      const abortFromLifecycle = () => {
+        requestController.abort();
+      };
+      lifecycleController.signal.addEventListener('abort', abortFromLifecycle, { once: true });
+      const timeoutId = window.setTimeout(() => requestController.abort(), AUTH_CHECK_TIMEOUT_MS);
 
       try {
-        const response = await fetch(AUTH_STATUS_URL, {
-          credentials: 'include',
-          signal: controller.signal
-        });
+        const response = await fetch(
+          `${API_BASE}/api/me`,
+          {
+            credentials: 'include',
+            signal: requestController.signal,
+            headers: Object.fromEntries(withAuthHeader().entries()),
+          },
+        );
 
         window.clearTimeout(timeoutId);
+        lifecycleController.signal.removeEventListener('abort', abortFromLifecycle);
 
-        if (!isMountedRef.current || controller.signal.aborted) {
+        if (!isMountedRef.current || lifecycleController.signal.aborted) {
           return;
         }
 
         if (response.ok) {
-          const statusData = await response.json();
-          const authenticated = Boolean(statusData?.authenticated ?? statusData?.user);
-          setUser(authenticated ? statusData?.user ?? null : null);
-          setIsAuthenticated(authenticated);
+          const payload = (await response.json()) as { user?: AuthUser };
+          applyAuthenticatedState(payload.user ?? null);
           setIsLoading(false);
           return;
         }
 
         if (response.status === 401 || response.status === 403) {
-          setUser(null);
-          setIsAuthenticated(false);
+          if (getAccessToken()) {
+            clearAccessToken();
+          }
+          applyAuthenticatedState(null);
           setIsLoading(false);
           return;
         }
-
-        console.error('Auth check failed with status:', response.status);
-      } catch (error) {
+      } catch {
         window.clearTimeout(timeoutId);
-
-        if (controller.signal.aborted || !isMountedRef.current) {
-          return;
-        }
-
-        console.error('Auth check failed:', error);
+        lifecycleController.signal.removeEventListener('abort', abortFromLifecycle);
       }
 
       if (attempt <= AUTH_CHECK_RETRIES) {
@@ -81,21 +103,19 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    setUser(null);
-    setIsAuthenticated(false);
+    applyAuthenticatedState(null);
     setIsLoading(false);
-  }, []);
+  }, [applyAuthenticatedState]);
 
-  // Check authentication status on mount and page changes
   useEffect(() => {
     isMountedRef.current = true;
-    checkAuthStatus();
+    void refreshAuth();
 
     return () => {
       isMountedRef.current = false;
       abortControllerRef.current?.abort();
     };
-  }, [checkAuthStatus]);
+  }, [refreshAuth]);
 
   useEffect(() => {
     if (!isLoading && window.location.search.includes('auth=')) {
@@ -103,59 +123,66 @@ export const AuthProvider = ({ children }) => {
     }
   }, [isLoading]);
 
-  const login = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-  };
-
-  const logout = async () => {
-    try {
-      await fetch(AUTH_LOGOUT_URL, { method: 'POST', credentials: 'include' });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-    }
-  };
-
-  const getAuthHeaders = async () => {
-    const token = localStorage.getItem('authToken');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const value = {
-    user,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-    getAuthHeaders
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+  const login = useCallback(
+    (session: AuthSuccess) => {
+      setAccessToken(session.accessToken);
+      applyAuthenticatedState(session.user);
+    },
+    [applyAuthenticatedState],
   );
+
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // No-op: local session is always cleared client-side.
+    } finally {
+      clearAccessToken();
+      applyAuthenticatedState(null);
+    }
+  }, [applyAuthenticatedState]);
+
+  const getAuthHeaders = useCallback((): Record<string, string> => {
+    const token = getAccessToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isAuthenticated,
+      isLoading,
+      login,
+      logout,
+      refreshAuth,
+      getAuthHeaders,
+    }),
+    [getAuthHeaders, isAuthenticated, isLoading, login, logout, refreshAuth, user],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
   if (!context) {
-    // Fallback for when context isn't available yet
-    return { user: null, isAuthenticated: false, isLoading: true, login: () => {}, logout: () => {}, getAuthHeaders: async () => ({}) };
+    return {
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      login: (_session: AuthSuccess) => undefined,
+      logout: async () => undefined,
+      refreshAuth: async () => undefined,
+      getAuthHeaders: () => ({}),
+    };
   }
+
   return context;
 };
 
 export const useCurrentUser = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    // Fallback for when context isn't available yet
-    return { user: null, isAuthenticated: false, isLoading: true, error: null };
-  }
-  return { user: context.user, isAuthenticated: context.isAuthenticated, isLoading: context.isLoading, error: null };
+  const { user, isAuthenticated, isLoading } = useAuth();
+  return { user, isAuthenticated, isLoading, error: null };
 };
 
 export default AuthProvider;

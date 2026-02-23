@@ -1,28 +1,32 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../auth/auth.service.js';
 
 describe('AuthService', () => {
   const originalEnv = { ...process.env };
 
-  const baseUser = {
-    provider: 'google' as const,
-    id: 'google-user-42',
-    email: 'user@example.com',
-    name: 'Test User',
-    avatarUrl: 'https://example.com/avatar.png',
+  const usersServiceMock = {
+    findByEmail: vi.fn(),
+    createLocalUser: vi.fn(),
+    getRolesForUser: vi.fn(),
+    ensureUserForAuth: vi.fn(),
+    updateUserProfile: vi.fn(),
+    findById: vi.fn(),
+    createPasswordResetToken: vi.fn(),
+    consumeAllPasswordResetTokensForUser: vi.fn(),
+    findValidPasswordResetTokenByHash: vi.fn(),
+    updatePasswordHash: vi.fn(),
+    consumePasswordResetToken: vi.fn(),
   };
 
   beforeEach(() => {
+    vi.clearAllMocks();
     process.env = { ...originalEnv };
-    delete process.env.JWT_SECRET;
-    delete process.env.SESSION_SECRET;
-    delete process.env.JWT_EXPIRES_IN;
-    delete process.env.AUTH_COOKIE_NAME;
-    delete process.env.SESSION_MAX_AGE;
-    delete process.env.SESSION_SECURE;
-    delete process.env.CLIENT_ORIGIN;
-    delete process.env.CORS_ORIGINS;
+    process.env.JWT_SECRET = 'oauth-secret';
+    process.env.JWT_ACCESS_SECRET = 'local-secret';
+    process.env.JWT_ACCESS_EXPIRES_IN = '15m';
+    process.env.CLIENT_ORIGIN = 'http://localhost:5173';
     delete process.env.NODE_ENV;
   });
 
@@ -30,77 +34,182 @@ describe('AuthService', () => {
     process.env = originalEnv;
   });
 
-  it('throws when creating token without JWT/SESSION secret', () => {
-    const service = new AuthService();
-    expect(() => service.createAuthToken(baseUser)).toThrow(
-      'JWT_SECRET (or SESSION_SECRET) is required for auth tokens.',
+  it('creates and parses local bearer token from Authorization header', () => {
+    const service = new AuthService(usersServiceMock as any);
+
+    const token = service.createLocalAccessToken({
+      id: 'user-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+    });
+
+    const decoded = service.getAuthUserFromAuthorizationHeader(`Bearer ${token}`);
+    expect(decoded).toEqual({
+      id: 'user-1',
+      provider: 'local',
+      email: 'local@example.com',
+      name: 'Local User',
+      avatarUrl: null,
+    });
+  });
+
+  it('blocks local signup when email already belongs to Google account', async () => {
+    usersServiceMock.findByEmail.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      authProvider: 'google',
+      passwordHash: null,
+      displayName: 'Google User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      hotelId: 'hotel-1',
+    });
+
+    const service = new AuthService(usersServiceMock as any);
+
+    await expect(service.signupLocal('local@example.com', 'Password123!')).rejects.toBeInstanceOf(
+      ConflictException,
     );
   });
 
-  it('creates and decodes auth token', () => {
-    process.env.JWT_SECRET = 'test-secret';
-    process.env.JWT_EXPIRES_IN = '1h';
+  it('returns Unauthorized for invalid local login credentials', async () => {
+    const { default: bcryptPkg } = await import('bcryptjs');
+    const validPasswordHash = await bcryptPkg.hash('Password123!', 10);
 
-    const service = new AuthService();
-    const token = service.createAuthToken(baseUser);
-    const decoded = service.getAuthUserFromToken(token);
-
-    expect(typeof token).toBe('string');
-    expect(decoded).toEqual({
-      id: 'google-user-42',
-      provider: 'google',
-      email: 'user@example.com',
-      name: 'Test User',
-      avatarUrl: 'https://example.com/avatar.png',
+    usersServiceMock.findByEmail.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      authProvider: 'local',
+      passwordHash: validPasswordHash,
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      hotelId: 'hotel-1',
     });
+
+    const service = new AuthService(usersServiceMock as any);
+    await expect(service.loginLocal('local@example.com', 'WrongPass123!')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
-  it('returns null for invalid token payloads', () => {
-    process.env.JWT_SECRET = 'test-secret';
-    const service = new AuthService();
+  it('returns dev reset URL outside production and stores only token hash', async () => {
+    usersServiceMock.findByEmail.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      authProvider: 'local',
+    });
 
-    expect(service.getAuthUserFromToken('invalid-token')).toBeNull();
+    const service = new AuthService(usersServiceMock as any);
+    const response = await service.createPasswordReset('local@example.com');
+
+    expect(response.statusCode).toBe(200);
+    expect((response.body as any).devResetUrl).toContain('/reset-password?token=');
+
+    const createCall = usersServiceMock.createPasswordResetToken.mock.calls[0]?.[0];
+    expect(createCall.tokenHash).toBeTypeOf('string');
+    expect(createCall.tokenHash).not.toContain('http');
   });
 
-  it('extracts auth user from cookie using default cookie name', () => {
-    process.env.JWT_SECRET = 'cookie-secret';
-    const service = new AuthService();
-    const token = service.createAuthToken(baseUser);
-
-    const user = service.getAuthUserFromCookie(`foo=bar; auth_token=${encodeURIComponent(token)}`);
-    expect(user?.id).toBe(baseUser.id);
-  });
-
-  it('extracts auth user from cookie using custom cookie name', () => {
-    process.env.JWT_SECRET = 'cookie-secret';
-    process.env.AUTH_COOKIE_NAME = 'session';
-    const service = new AuthService();
-    const token = service.createAuthToken(baseUser);
-
-    const user = service.getAuthUserFromCookie(`session=${encodeURIComponent(token)}`);
-    expect(user?.email).toBe(baseUser.email);
-  });
-
-  it('builds cookie options from environment', () => {
-    process.env.JWT_SECRET = 'test-secret';
-    process.env.SESSION_MAX_AGE = '7200';
+  it('returns 204 in production for forgot-password without reset URL', async () => {
     process.env.NODE_ENV = 'production';
-    const service = new AuthService();
-
-    expect(service.getAuthCookieOptions()).toEqual({
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: true,
-      maxAge: 7200,
+    usersServiceMock.findByEmail.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      authProvider: 'local',
     });
+
+    const service = new AuthService(usersServiceMock as any);
+    const response = await service.createPasswordReset('local@example.com');
+
+    expect(response).toEqual({ statusCode: 204 });
   });
 
-  it('builds redirect URLs for authenticated and unauthenticated states', () => {
-    process.env.JWT_SECRET = 'test-secret';
-    process.env.CLIENT_ORIGIN = 'https://app.example.com/dashboard';
-    const service = new AuthService();
+  it('issues a one-time exchange code for local login and exchanges it for JWT + user', async () => {
+    const { default: bcryptPkg } = await import('bcryptjs');
+    const validPasswordHash = await bcryptPkg.hash('Password123!', 10);
 
-    expect(service.getAuthRedirectUrl(true)).toBe('https://app.example.com/dashboard?auth=true');
-    expect(service.getAuthRedirectUrl(false)).toBe('https://app.example.com/dashboard?auth=false');
+    usersServiceMock.findByEmail.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      authProvider: 'local',
+      passwordHash: validPasswordHash,
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      hotelId: 'hotel-1',
+    });
+
+    usersServiceMock.ensureUserForAuth.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      hotelId: 'hotel-1',
+    });
+    usersServiceMock.getRolesForUser.mockResolvedValueOnce([{ id: 'role-1', name: 'agent' }]);
+
+    const service = new AuthService(usersServiceMock as any);
+    const loginResponse = await service.loginLocal('local@example.com', 'Password123!');
+    expect(loginResponse.code).toBeTypeOf('string');
+
+    const session = await service.exchangeCode(loginResponse.code);
+    expect(session.accessToken).toBeTypeOf('string');
+    expect(session.user).toMatchObject({
+      id: 'u-1',
+      provider: 'local',
+      roles: [{ id: 'role-1', name: 'agent' }],
+    });
+
+    await expect(service.exchangeCode(loginResponse.code)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('updates current user profile display name for local bearer user', async () => {
+    const service = new AuthService(usersServiceMock as any);
+    const accessToken = service.createLocalAccessToken({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+    });
+
+    usersServiceMock.ensureUserForAuth.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      hotelId: 'hotel-1',
+    });
+    usersServiceMock.updateUserProfile.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Updated Name',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      hotelId: 'hotel-1',
+    });
+    usersServiceMock.getRolesForUser.mockResolvedValueOnce([{ id: 'role-1', name: 'agent' }]);
+
+    await expect(
+      service.updateCurrentUserProfile(
+        { headers: { authorization: `Bearer ${accessToken}` } } as any,
+        { displayName: 'Updated Name' },
+      ),
+    ).resolves.toMatchObject({
+      id: 'u-1',
+      displayName: 'Updated Name',
+      roles: [{ id: 'role-1', name: 'agent' }],
+    });
   });
 });

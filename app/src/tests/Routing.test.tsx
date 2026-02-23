@@ -7,6 +7,15 @@ const mockUseCurrentUser = vi.fn();
 
 vi.mock("../hooks/useAuth", () => ({
   useCurrentUser: () => mockUseCurrentUser(),
+  useAuth: () => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshAuth: vi.fn(),
+    getAuthHeaders: () => ({}),
+  }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
@@ -77,30 +86,52 @@ describe("Routing Matrix", () => {
     });
   });
 
-  test("`/auth` renders auth page when unauthenticated", async () => {
-    renderRoute("/auth");
-    expect(await screen.findByText(/Authenticate to access your workspace/i)).toBeInTheDocument();
+  test("`/login` renders login page when unauthenticated", async () => {
+    renderRoute("/login");
+    expect(await screen.findByRole("heading", { name: /Welcome back/i })).toBeInTheDocument();
   });
 
-  test("`/auth` redirects to `/app/dashboard` when authenticated", async () => {
+  test("`/signup` renders signup page when unauthenticated", async () => {
+    renderRoute("/signup");
+    expect(await screen.findByRole("heading", { name: /Create your account/i })).toBeInTheDocument();
+  });
+
+  test("`/forgot-password` renders forgot-password page when unauthenticated", async () => {
+    renderRoute("/forgot-password");
+    expect(await screen.findByRole("heading", { name: /Reset your password/i })).toBeInTheDocument();
+  });
+
+  test("`/reset-password` renders reset-password page when unauthenticated", async () => {
+    renderRoute("/reset-password");
+    expect(await screen.findByRole("heading", { name: /Choose a new password/i })).toBeInTheDocument();
+  });
+
+  test("`/auth/callback` renders callback status page", async () => {
+    renderRoute("/auth/callback?error=Sign-in%20failed");
+    expect(await screen.findByRole("heading", { name: /Sign-in failed\./i })).toBeInTheDocument();
+  });
+
+  test("guest auth routes redirect to `/app/dashboard` when authenticated", async () => {
     setAuthState({
       user: { id: "123", name: "Test User" },
       isLoading: false,
       isAuthenticated: true,
     });
 
-    const { getLocation } = renderRoute("/auth");
-
-    await waitFor(() => {
-      expect(getLocation()?.pathname).toBe("/app/dashboard");
-    });
+    for (const route of ["/login", "/signup", "/forgot-password", "/reset-password"]) {
+      const { getLocation, unmount } = renderRoute(route);
+      await waitFor(() => {
+        expect(getLocation()?.pathname).toBe("/app/dashboard");
+      });
+      unmount();
+    }
   });
 
-  test("`/app/*` redirects unauthenticated users to `/auth`", async () => {
+  test("`/app/*` redirects unauthenticated users to `/login`", async () => {
     const { getLocation } = renderRoute("/app/dashboard");
 
     await waitFor(() => {
-      expect(getLocation()?.pathname).toBe("/auth");
+      expect(getLocation()?.pathname).toBe("/login");
     });
 
     expect(getLocation()?.search).toContain("next=");
@@ -129,26 +160,15 @@ describe("Routing Matrix", () => {
     expect(await screen.findByRole("heading", { name: /Support operations playbook/i })).toBeInTheDocument();
   });
 
-  test("legacy app routes redirect to `/app/*`", async () => {
-    setAuthState({
-      user: { id: "123", name: "Test User" },
-      isLoading: false,
-      isAuthenticated: true,
-    });
-
-    const routes = [
-      ["/dashboard", "/app/dashboard"],
-      ["/tickets", "/app/tickets"],
-      ["/tickets/advanced", "/app/tickets/advanced"],
-      ["/tickets/create", "/app/tickets/create"],
-      ["/admin", "/app/admin"],
-    ];
-
-    for (const [legacyPath, newPath] of routes) {
-      const { getLocation, unmount } = renderRoute(legacyPath);
+  test("removed legacy routes fall back to landing when unauthenticated", async () => {
+    for (const route of ["/auth", "/dashboard", "/tickets", "/admin"]) {
+      const { getLocation, unmount } = renderRoute(route);
       await waitFor(() => {
-        expect(getLocation()?.pathname).toBe(newPath);
+        expect(getLocation()?.pathname).toBe("/");
       });
+      expect(
+        await screen.findByRole("heading", { name: /Bridge every ticket handoff/i }),
+      ).toBeInTheDocument();
       unmount();
     }
   });

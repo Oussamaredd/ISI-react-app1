@@ -30,7 +30,7 @@ describe('Tickets query parsing and pagination', () => {
   };
 
   const authServiceMock = {
-    getAuthUserFromCookie: vi.fn(),
+    getAuthUserFromRequest: vi.fn(),
   };
 
   const usersServiceMock = {
@@ -67,7 +67,7 @@ describe('Tickets query parsing and pagination', () => {
     vi.clearAllMocks();
     vi.spyOn(AuthenticatedUserGuard.prototype, 'canActivate').mockResolvedValue(true as any);
     vi.spyOn(PermissionsGuard.prototype, 'canActivate').mockReturnValue(true as any);
-    authServiceMock.getAuthUserFromCookie.mockReturnValue(null);
+    authServiceMock.getAuthUserFromRequest.mockReturnValue(null);
     usersServiceMock.ensureUserForAuth.mockResolvedValue(null);
     usersServiceMock.getRolesForUser.mockResolvedValue([]);
     mockService.findAll.mockResolvedValue({ tickets: [], total: 0 });
