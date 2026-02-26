@@ -1,4 +1,4 @@
-// client/src/pages/TicketDetails.tsx
+﻿// client/src/pages/TicketDetails.tsx
 import React, { useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useAuth';
@@ -66,17 +66,17 @@ const hasAdminRole = (user: CurrentUser | null | undefined) => {
 // Activity type icons and colors
 const getActivityConfig = (type: string) => {
   const configs = {
-    creation: { icon: '🎫', color: '#007bff', label: 'Created' },
-    status_change: { icon: '🔄', color: '#ffc107', label: 'Status Changed' },
-    hotel_assignment: { icon: '🏨', color: '#28a745', label: 'Hotel Assigned' },
-    comment_added: { icon: '💬', color: '#17a2b8', label: 'Comment Added' },
-    comment_updated: { icon: '✏️', color: '#6c757d', label: 'Comment Updated' },
-    comment_deleted: { icon: '🗑️', color: '#dc3545', label: 'Comment Deleted' },
-    ticket_updated: { icon: '📝', color: '#6610f2', label: 'Updated' },
-    ticket_deleted: { icon: '🗑️', color: '#dc3545', label: 'Deleted' },
+    creation: { icon: 'ðŸŽ«', color: '#007bff', label: 'Created' },
+    status_change: { icon: 'ðŸ”„', color: '#ffc107', label: 'Status Changed' },
+    scope_assignment: { icon: 'ðŸ§­', color: '#28a745', label: 'Scope Assigned' },
+    comment_added: { icon: 'ðŸ’¬', color: '#17a2b8', label: 'Comment Added' },
+    comment_updated: { icon: 'âœï¸', color: '#6c757d', label: 'Comment Updated' },
+    comment_deleted: { icon: 'ðŸ—‘ï¸', color: '#dc3545', label: 'Comment Deleted' },
+    ticket_updated: { icon: 'ðŸ“', color: '#6610f2', label: 'Updated' },
+    ticket_deleted: { icon: 'ðŸ—‘ï¸', color: '#dc3545', label: 'Deleted' },
   };
   
-  return configs[type] || { icon: '❓', color: '#6c757d', label: 'Unknown' };
+  return configs[type] || { icon: 'â“', color: '#6c757d', label: 'Unknown' };
 };
 
 const ActivityItem: React.FC<{ activity: Activity; isOwnComment?: boolean }> = ({ activity, isOwnComment }) => {
@@ -133,9 +133,9 @@ const ActivityItem: React.FC<{ activity: Activity; isOwnComment?: boolean }> = (
               <strong>{activity.metadata?.new_status || 'Unknown'}</strong>
             </>
           )}
-          {activity.type === 'hotel_assignment' && (
+          {activity.type === 'scope_assignment' && (
             <>
-              assigned to <strong>{activity.metadata?.hotel_name || 'Unknown Hotel'}</strong>
+              assigned to <strong>{activity.metadata?.scope_label || activity.metadata?.support_category || 'Unknown Scope'}</strong>
             </>
           )}
           {activity.type === 'comment_added' && (
@@ -220,7 +220,7 @@ const CommentSection: React.FC<{
         borderBottom: '1px solid #e9ecef',
         color: '#495057'
       }}>
-        💬 Comments ({pagination.total})
+        ðŸ’¬ Comments ({pagination.total})
       </h3>
       
       {/* Add Comment Form */}
@@ -588,7 +588,7 @@ export default function TicketDetails() {
   const title = (ticket as any).title || (ticket as any).name || 'Untitled ticket';
   const status = (ticket.status || 'open').toString().toUpperCase();
   const priority = (ticket.priority || 'medium').toString().toUpperCase();
-  const hotelLabel = (ticket as any).hotelName || (ticket as any).hotel_name || (ticket as any).hotelId || 'Unassigned';
+  const scopeLabel = (ticket as any).supportCategory || (ticket as any).support_category || 'Unassigned';
   const createdAt = (ticket as any).createdAt || (ticket as any).created_at;
   const updatedAt = (ticket as any).updatedAt || (ticket as any).updated_at;
 
@@ -615,7 +615,7 @@ export default function TicketDetails() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
           >
-            ← Back to Tickets
+            â† Back to Tickets
           </Link>
         </div>
 
@@ -634,7 +634,7 @@ export default function TicketDetails() {
             color: '#212529', 
             margin: '0 0 0.5rem 0' 
           }}>
-            <span aria-hidden="true" style={{ marginRight: '0.5rem' }}>🎫</span>
+            <span aria-hidden="true" style={{ marginRight: '0.5rem' }}>ðŸŽ«</span>
             <span>{title}</span>
           </h1>
           
@@ -665,12 +665,12 @@ export default function TicketDetails() {
             </div>
             
             <div>
-              <h3 style={{ color: '#6c757d', marginBottom: '0.5rem' }}>Hotel</h3>
+              <h3 style={{ color: '#6c757d', marginBottom: '0.5rem' }}>Scope</h3>
               <p style={{ 
                 fontSize: '1rem', 
                 color: '#495057' 
               }}>
-                {hotelLabel || <span style={{ color: '#6c757d', fontStyle: 'italic' }}>Unassigned</span>}
+                {scopeLabel || <span style={{ color: '#6c757d', fontStyle: 'italic' }}>Unassigned</span>}
               </p>
             </div>
             
@@ -713,7 +713,7 @@ export default function TicketDetails() {
             borderBottom: '1px solid #e9ecef',
             color: '#495057'
           }}>
-            📋 Activity Timeline
+            ðŸ“‹ Activity Timeline
           </h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -739,3 +739,5 @@ export default function TicketDetails() {
     </div>
   );
 }
+
+

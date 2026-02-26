@@ -39,10 +39,14 @@ Database package runtime note:
 
 ## API Readiness Endpoint
 
-- Fast readiness probe: `GET /health` (returns HTTP `200` when the API process is listening)
-- Diagnostics endpoint: `GET /api/health/database` (includes database status details)
+- Fast liveness probe: `GET /health` (returns HTTP `200` when the API process is listening)
+- API liveness alias: `GET /api/health` and `GET /api/health/live`
+- Readiness probe (load-balancer/container ready-state): `GET /api/health/ready`
+  - returns HTTP `200` when dependencies are ready
+  - returns HTTP `503` when readiness dependencies fail
+- Diagnostics alias: `GET /api/health/database`
 - Frontend sign-in readiness checks should target `VITE_API_BASE_URL + /health`
-- Local `npm run dev` now starts API first and waits on `http://localhost:3001/health` before launching the app dev server
+- Local `npm run dev` waits on `http://localhost:3001/health` before launching the app dev server, then continues startup even if the wait probe times out
 
 ## Auth Exchange Flow
 

@@ -1,11 +1,10 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Ticket, useTickets } from "../hooks/useTickets";
 import "../styles/AdvancedTicketList.css";
 
 interface Filters {
   status: string;
-  hotel_id: string;
   assignee_id: string;
   q: string;
   page: number;
@@ -44,7 +43,18 @@ const getStatusClassName = (status: string) => {
   return "advanced-ticket-status-completed";
 };
 
-const TicketRow: React.FC<{ ticket: Ticket; hotelName?: string }> = ({ ticket, hotelName }) => {
+const toDisplaySupportCategory = (supportCategory?: string | null) => {
+  if (!supportCategory) {
+    return "General Help";
+  }
+
+  return supportCategory
+    .replace(/_/g, " ")
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+};
+
+const TicketRow: React.FC<{ ticket: Ticket }> = ({ ticket }) => {
   const status = (ticket.status || "open").toString().toUpperCase();
   const priority = (ticket.priority || "medium").toString().toUpperCase();
   const priorityClassName = getPriorityClassName(priority);
@@ -61,9 +71,7 @@ const TicketRow: React.FC<{ ticket: Ticket; hotelName?: string }> = ({ ticket, h
       <td>
         <span className={`advanced-ticket-status ${statusClassName}`}>{status}</span>
       </td>
-      <td className="advanced-ticket-hotel-cell">
-        {hotelName || ticket.hotelId || <span className="advanced-ticket-unassigned">Unassigned</span>}
-      </td>
+      <td className="advanced-ticket-category-cell">{toDisplaySupportCategory(ticket.supportCategory)}</td>
       <td>
         <Link
           to={`/app/tickets/${ticket.id}/treat`}
@@ -80,8 +88,7 @@ const TicketRow: React.FC<{ ticket: Ticket; hotelName?: string }> = ({ ticket, h
 const SearchAndFilters: React.FC<{
   filters: Filters;
   onFiltersChange: (filters: Partial<Filters>) => void;
-  hotels: any[];
-}> = ({ filters, onFiltersChange, hotels }) => {
+}> = ({ filters, onFiltersChange }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleSearch = (event: React.FormEvent) => {
@@ -96,7 +103,6 @@ const SearchAndFilters: React.FC<{
   const clearFilters = () => {
     onFiltersChange({
       status: "",
-      hotel_id: "",
       assignee_id: "",
       q: SEARCH_PLACEHOLDER,
       page: 1,
@@ -159,22 +165,6 @@ const SearchAndFilters: React.FC<{
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="advanced-ticket-field">
-              <label className="advanced-ticket-label">Hotel</label>
-              <select
-                value={filters.hotel_id}
-                onChange={(event) => handleFilterChange("hotel_id", event.target.value)}
-                className="advanced-ticket-select"
-              >
-                <option value="">All Hotels</option>
-                {hotels.map((hotel) => (
-                  <option key={hotel.id} value={hotel.id.toString()}>
-                    {hotel.name}
                   </option>
                 ))}
               </select>
@@ -297,7 +287,6 @@ export default function AdvancedTicketList() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<Filters>({
     status: searchParams.get("status") || "",
-    hotel_id: searchParams.get("hotel_id") || "",
     assignee_id: searchParams.get("assignee_id") || "",
     q: searchParams.get("q") || SEARCH_PLACEHOLDER,
     page: parsePositiveNumber(searchParams.get("page"), 1),
@@ -307,7 +296,6 @@ export default function AdvancedTicketList() {
 
   const apiFilters = {
     status: filters.status || undefined,
-    hotel_id: filters.hotel_id || undefined,
     assignee_id: filters.assignee_id || undefined,
     q: normalizedQuery || undefined,
     limit: filters.pageSize,
@@ -315,23 +303,11 @@ export default function AdvancedTicketList() {
   };
 
   const ticketsResult = useTickets(apiFilters);
-  const hotelsResult = useTickets(false);
   const isLoading = ticketsResult?.isLoading ?? false;
   const error = ticketsResult?.error ?? null;
   const ticketsData = (ticketsResult?.data ?? {}) as any;
   const tickets = Array.isArray(ticketsData.tickets) ? ticketsData.tickets : [];
   const total = Number.isFinite(ticketsData.total) ? ticketsData.total : tickets.length;
-  const hotelsData = (hotelsResult?.data ?? {}) as any;
-  const hotels = Array.isArray(hotelsData.hotels) ? hotelsData.hotels : [];
-  const hotelLookup = useMemo(() => {
-    return hotels.reduce((acc: Record<string, string>, hotel: any) => {
-      const id = String(hotel.id ?? hotel.hotel_id ?? "");
-      if (id) {
-        acc[id] = hotel.name ?? hotel.hotel_name ?? "";
-      }
-      return acc;
-    }, {});
-  }, [hotels]);
 
   useEffect(() => {
     if (error) {
@@ -354,7 +330,7 @@ export default function AdvancedTicketList() {
   }, [error, filters, normalizedQuery, searchParams, setSearchParams]);
 
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
-  const hasActiveFilters = Boolean(normalizedQuery || filters.status || filters.hotel_id);
+  const hasActiveFilters = Boolean(normalizedQuery || filters.status);
 
   const handleFiltersChange = (newFilters: Partial<Filters>) => {
     setFilters((current) => {
@@ -393,11 +369,7 @@ export default function AdvancedTicketList() {
         <p>Search, filter, and manage your tickets</p>
       </header>
 
-      <SearchAndFilters
-        filters={{ ...filters, total }}
-        onFiltersChange={handleFiltersChange}
-        hotels={hotels}
-      />
+      <SearchAndFilters filters={{ ...filters, total }} onFiltersChange={handleFiltersChange} />
 
       {isLoading && (
         <section className="advanced-ticket-card advanced-ticket-loading">
@@ -413,7 +385,7 @@ export default function AdvancedTicketList() {
           {tickets.length === 0 ? (
             <div className="advanced-ticket-empty-state">
               <div className="advanced-ticket-empty-icon" aria-hidden="true">
-                🎫
+                ??
               </div>
               <div className="advanced-ticket-empty-title">No tickets found</div>
               <div className="advanced-ticket-empty-copy">
@@ -425,7 +397,6 @@ export default function AdvancedTicketList() {
                       onClick={() =>
                         handleFiltersChange({
                           status: "",
-                          hotel_id: "",
                           q: "",
                           page: 1,
                         })
@@ -454,17 +425,13 @@ export default function AdvancedTicketList() {
                     <th>Ticket Name</th>
                     <th>Priority</th>
                     <th>Ticket Status</th>
-                    <th>Hotel Name</th>
+                    <th>Support Category</th>
                     <th>Treat</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tickets.map((ticket) => (
-                    <TicketRow
-                      key={ticket.id}
-                      ticket={ticket}
-                      hotelName={ticket.hotelId ? hotelLookup[String(ticket.hotelId)] : undefined}
-                    />
+                    <TicketRow key={ticket.id} ticket={ticket} />
                   ))}
                 </tbody>
               </table>
@@ -485,4 +452,3 @@ export default function AdvancedTicketList() {
     </section>
   );
 }
-

@@ -4,8 +4,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/tests/**/*.test.ts'],
-    hookTimeout: 30000,
-    testTimeout: 20000,
+    // Nest integration-style suites can starve each other under file-level parallelism on Windows CI/dev.
+    // Keep API tests deterministic for full monorepo runs.
+    fileParallelism: false,
+    hookTimeout: 60000,
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
@@ -15,9 +18,10 @@ export default defineConfig({
         'src/auth/auth.controller.ts',
         'src/auth/authenticated-user.guard.ts',
         'src/auth/permissions.guard.ts',
-        'src/hotels/hotels.controller.ts',
         'src/tickets/tickets.controller.ts',
         'src/monitoring/monitoring.controller.ts',
+        'src/common/http/pagination.ts',
+        'src/common/request-id.ts',
       ],
       exclude: ['src/tests/**'],
       thresholds: {

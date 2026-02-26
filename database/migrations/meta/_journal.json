@@ -64,6 +64,13 @@
       "when": 1771514311714,
       "tag": "0008_icy_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771887416451,
+      "tag": "0009_sticky_nico_minoru",
+      "breakpoints": true
     }
   ]
 }

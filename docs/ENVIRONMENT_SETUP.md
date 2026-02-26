@@ -48,6 +48,13 @@ Templates to keep in source control:
 - `infrastructure/environments/.env.staging.example`
 - `infrastructure/environments/.env.production.example`
 
+## GitHub Pages CD Build Inputs
+
+- Frontend deploy base path is derived from repository name in CD:
+  - `VITE_BASE=/<repository-name>/`
+- Configure repository variable `VITE_API_BASE_URL` in GitHub Actions for deploy builds.
+- `VITE_API_BASE_URL` must not use `localhost` for Pages deployment.
+
 ## Canonical Keys
 
 - `DATABASE_URL`

@@ -8,7 +8,6 @@ type TicketFilters = {
   status?: string;
   priority?: string;
   supportCategory?: string;
-  hotelId?: string;
   assigneeId?: string;
   search?: string;
   limit?: number;
@@ -55,10 +54,6 @@ export class TicketsService {
 
   async listActivity(ticketId: string) {
     return this.ticketsRepository.listActivity(ticketId);
-  }
-
-  async assignHotel(ticketId: string, hotelId: string) {
-    return this.ticketsRepository.assignHotel(ticketId, hotelId);
   }
 
   async update(id: string, dto: UpdateTicketDto) {

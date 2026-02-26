@@ -40,8 +40,11 @@ const PASSWORD_RESET_EXPIRY_MINUTES = 30;
 const ACCESS_TOKEN_TYPE = 'access';
 const LEGACY_LOCAL_TOKEN_TYPE = 'local_access';
 const OAUTH_TOKEN_TYPE = 'oauth_session';
+const STREAM_SESSION_TOKEN_TYPE = 'planning_stream_session';
+const WEBSOCKET_SESSION_TOKEN_TYPE = 'planning_ws_session';
 const EXCHANGE_CODE_BYTES = 24;
 const EXCHANGE_CODE_TTL_MS = 60_000;
+const STREAM_SESSION_TTL_MS = 120_000;
 
 type LocalAuthSuccess = {
   accessToken: string;
@@ -53,7 +56,6 @@ type LocalAuthSuccess = {
     role: string;
     roles: Array<{ id: string; name: string }>;
     isActive: boolean;
-    hotelId: string;
     provider: 'local' | 'google';
   };
 };
@@ -240,10 +242,35 @@ export class AuthService {
     return this.getLocalAuthUserFromToken(token);
   }
 
-  getAuthUserFromRequest(request: Pick<Request, 'headers'>) {
+  getAuthUserFromRequest(
+    request: Pick<Request, 'headers'> & {
+      query?: Request['query'];
+      path?: string;
+      originalUrl?: string;
+      url?: string;
+    },
+  ) {
     const bearerUser = this.getAuthUserFromAuthorizationHeader(request.headers.authorization);
     if (bearerUser) {
       return bearerUser;
+    }
+
+    const rawStreamSessionToken = request.query?.stream_session ?? request.query?.session_token;
+    const streamSessionToken =
+      typeof rawStreamSessionToken === 'string'
+        ? rawStreamSessionToken
+        : Array.isArray(rawStreamSessionToken)
+          ? rawStreamSessionToken[0]
+          : undefined;
+
+    if (typeof streamSessionToken === 'string' && streamSessionToken.trim().length > 0) {
+      const streamSessionUser = this.getAuthUserFromStreamSessionToken(
+        streamSessionToken.trim(),
+        request.path ?? request.originalUrl ?? request.url,
+      );
+      if (streamSessionUser) {
+        return streamSessionUser;
+      }
     }
 
     return this.getAuthUserFromCookie(request.headers.cookie);
@@ -390,6 +417,52 @@ export class AuthService {
     return code;
   }
 
+  issuePlanningStreamSession(userId: string) {
+    return this.issuePlanningRealtimeSession(userId, STREAM_SESSION_TOKEN_TYPE);
+  }
+
+  issuePlanningWebSocketSession(userId: string) {
+    return this.issuePlanningRealtimeSession(userId, WEBSOCKET_SESSION_TOKEN_TYPE);
+  }
+
+  getAuthUserFromPlanningWebSocketSessionToken(token: string) {
+    return this.getAuthUserFromPlanningSessionTokenByType(token, WEBSOCKET_SESSION_TOKEN_TYPE);
+  }
+
+  private issuePlanningRealtimeSession(
+    userId: string,
+    tokenType: typeof STREAM_SESSION_TOKEN_TYPE | typeof WEBSOCKET_SESSION_TOKEN_TYPE,
+  ) {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      throw new UnauthorizedException();
+    }
+
+    const secret = this.localAccessJwtSecret;
+    if (!secret) {
+      throw new Error('JWT_ACCESS_SECRET (or JWT_SECRET/SESSION_SECRET fallback) is required.');
+    }
+
+    const expiresAt = Date.now() + STREAM_SESSION_TTL_MS;
+    const token = sign(
+      {
+        sub: normalizedUserId,
+        provider: 'local',
+        tokenType,
+      } satisfies AuthTokenPayload,
+      secret,
+      {
+        expiresIn: Math.floor(STREAM_SESSION_TTL_MS / 1000),
+      },
+    );
+
+    return {
+      token,
+      expiresAt: new Date(expiresAt).toISOString(),
+      expiresInSeconds: Math.floor(STREAM_SESSION_TTL_MS / 1000),
+    };
+  }
+
   async exchangeCode(code: string): Promise<LocalAuthSuccess> {
     const normalizedCode = code.trim();
     if (!normalizedCode) {
@@ -477,7 +550,6 @@ export class AuthService {
       avatarUrl: string | null;
       role: string;
       isActive: boolean;
-      hotelId: string;
     },
     roles: Array<{ id: string; name: string }>,
     provider: 'local' | 'google',
@@ -490,7 +562,6 @@ export class AuthService {
       role: user.role,
       roles: roles.map((role) => ({ id: role.id, name: role.name })),
       isActive: user.isActive,
-      hotelId: user.hotelId,
       provider,
     };
   }
@@ -502,6 +573,56 @@ export class AuthService {
         this.exchangeCodeStore.delete(code);
       }
     }
+  }
+
+  private getAuthUserFromStreamSessionToken(token: string, requestPath?: string) {
+    if (!this.isPlanningStreamPath(requestPath)) {
+      return null;
+    }
+
+    return this.getAuthUserFromPlanningSessionTokenByType(token, STREAM_SESSION_TOKEN_TYPE);
+  }
+
+  private getAuthUserFromPlanningSessionTokenByType(
+    token: string,
+    tokenType: typeof STREAM_SESSION_TOKEN_TYPE | typeof WEBSOCKET_SESSION_TOKEN_TYPE,
+  ) {
+
+    const secret = this.localAccessJwtSecret;
+    if (!secret) {
+      return null;
+    }
+
+    try {
+      const decoded = verify(token, secret);
+      if (typeof decoded === 'string') {
+        return null;
+      }
+
+      const payload = decoded as AuthTokenPayload;
+      if (payload.tokenType !== tokenType || !payload.sub) {
+        return null;
+      }
+
+      return {
+        id: payload.sub,
+        provider: 'local',
+        email: null,
+        name: null,
+        avatarUrl: null,
+      } satisfies AuthUser;
+    } catch {
+      return null;
+    }
+  }
+
+  private isPlanningStreamPath(pathname?: string) {
+    if (!pathname) {
+      return false;
+    }
+
+    const sanitized = pathname.split('?')[0] ?? '';
+    return /\/planning\/stream\/?$/.test(sanitized);
   }
 
   private normalizeEmail(email: string) {

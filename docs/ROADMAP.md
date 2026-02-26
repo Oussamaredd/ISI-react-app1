@@ -48,7 +48,7 @@ Status scale:
 | Auth flows (signup/login/reset/me) and token exchange | DONE | `api/src/auth/local-auth.controller.ts`, `api/src/auth/auth.controller.ts`, `app/src/pages/auth/LoginPage.tsx` |
 | Protected routes and role-based app shell | DONE | `app/src/routes/AppRouter.tsx`, `app/src/routes/guards/RequireAuth.tsx` |
 | Support ticket workflows (CRUD + comments + activity) | DONE | `api/src/tickets/tickets.controller.ts`, `app/src/pages/TicketDetails.tsx`, `app/src/pages/AdvancedTicketList.tsx` |
-| Admin center (users/hotels/settings/audit logs) | DONE | `app/src/pages/AdminDashboard.tsx`, `api/src/admin/admin.users.controller.ts`, `api/src/admin/admin.settings.controller.ts` |
+| Admin center (users/roles/tickets/settings/audit logs) | DONE | `app/src/pages/AdminDashboard.tsx`, `api/src/admin/admin.users.controller.ts`, `api/src/admin/admin.settings.controller.ts` |
 | Operational dashboard | PARTIAL | `app/src/pages/Dashboard.tsx`, `api/src/dashboard/dashboard.controller.ts` |
 | Health and metrics endpoints | PARTIAL | `api/src/health/health.controller.ts`, `api/src/monitoring/monitoring.controller.ts` |
 | CI/CD + quality gates | DONE | `.github/workflows/CI.yml`, `.github/workflows/CD.yml` |
@@ -324,7 +324,7 @@ Use this section during sprint planning/review.
 | --- | --- | --- | --- | --- |
 | US-DEV-001 |  | 0 | DONE | Domain entities, schema, API layers, DTOs, and seed fixtures delivered additively |
 | US-DEV-002 |  | 0 | DONE | OpenAPI draft, list pagination/filtering, standardized errors, and contract tests added |
-| US-DEV-003 |  | 0 | DONE | Role matrix mapped to citizen/agent/manager/admin with EcoTrack permission aliases |
+| US-DEV-003 |  | 0 | DONE | Route-level citizen/agent/manager/admin guards are now enforced with explicit authz helpers |
 | US-DEV-101 |  | 1 | DONE | Citizen report flow, duplicate prevention, geolocation, and confirmation implemented |
 | US-DEV-102 |  | 1 | DONE | Citizen profile/history APIs and impact/gamification widgets implemented |
 | US-DEV-103 |  | 1 | DONE | Challenge catalog, enrollment/progress tracking, and reward computation implemented |
@@ -332,11 +332,122 @@ Use this section during sprint planning/review.
 | US-DEV-202 |  | 3 | DONE | Stop validation endpoints/UI with QR fallback, persisted collection events, and auto-advance |
 | US-DEV-203 |  | 3 | DONE | Anomaly type catalog/reporting with manager alert audit event and tour activity integration |
 | US-DEV-301 |  | 4 | DONE | Manager wizard, optimization heuristic, route adjustment, and assignment workflow implemented |
-| US-DEV-302 |  | 4 | DONE | Parallel EcoTrack KPIs, critical map/thresholds, and emergency trigger flow implemented |
+| US-DEV-302 |  | 4 | DONE | Dashboard/planning polling and live freshness indicators are enabled for near-real-time monitoring |
 | US-DEV-303 |  | 6 | DONE | Report generation, PDF download, email option, and report history/regeneration implemented |
 | US-DEV-401 |  | 5 | DONE | Support categories/aliases, FAQ app nav wiring, and chatbot contract published |
-| US-DEV-402 |  | 5 | DONE | Threshold and recipient/channel management delivered in admin settings with dashboard metrics |
+| US-DEV-402 |  | 5 | DONE | Admin ticket management, add-user flow, advanced filters, and audit CSV export are implemented |
 | US-DEV-403 |  | 5 | DONE | Citizen report actions award points/badges and feed existing leaderboard/profile UX |
 | US-DEV-501 |  | 6 | DONE | Keyboard/screen-reader/responsive checks automated for citizen, agent, and manager key flows |
 | US-DEV-502 |  | 6 | DONE | CI now runs key-journey E2E coverage with API contract expansion and >=60% coverage gate |
 | US-DEV-503 |  | 7 | DONE | Docs updated to EcoTrack wording with OpenAPI refs and citizen/agent/manager quick guides |
+
+## 6) UI Completion Execution Plan (Live)
+
+Purpose: close remaining UI delivery gaps with parallel work packages so multiple agents can execute safely at the same time.
+
+### 6.1 Sprint Plan (Execution-First)
+
+| Sprint | Goal | Work packages | Parallel lanes |
+| --- | --- | --- | --- |
+| Sprint 8 | Admin core completion | `UI-ADM-001`, `UI-ADM-002`, `UI-ADM-003` | 3 agents in parallel |
+| Sprint 9 | Governance and role enforcement | `UI-AUD-001`, `UI-AUTH-001`, `UI-AUTH-002` | 2-3 agents in parallel |
+| Sprint 10 | Real-time UX + closure | `UI-RT-001`, `UI-RT-002`, `UI-QA-001`, `UI-DOC-001` | 2 agents + 1 QA/doc lane |
+
+### 6.2 Agent Dispatch Board
+
+Status scale for this board:
+- `TODO`: not started
+- `IN_PROGRESS`: active implementation
+- `BLOCKED`: waiting on dependency
+- `DONE`: implemented and validated
+
+| Task ID | Sprint | Owner lane | Scope | Primary files | Depends on | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| UI-ADM-001 | 8 | Agent-A | Replace admin ticket placeholder with functional management UI (list/search/filter/pagination/actions) | `app/src/pages/AdminDashboard.tsx`, `app/src/hooks/useTickets.tsx` | None | DONE |
+| UI-ADM-002 | 8 | Agent-B | Implement Add User flow (modal/form validation/submission/feedback) | `app/src/components/admin/UserManagement.tsx`, `app/src/hooks/adminHooks.tsx` | None | DONE |
+| UI-ADM-003 | 8 | Agent-C | Enable advanced user filters and URL-persisted filter state | `app/src/components/admin/UserManagement.tsx` | None | DONE |
+| UI-AUD-001 | 9 | Agent-A | Implement audit log export honoring current filter set (CSV minimum) | `app/src/components/admin/AuditLogs.tsx`, `app/src/hooks/adminHooks.tsx` | Sprint 8 merge (preferred), not required | DONE |
+| UI-AUTH-001 | 9 | Agent-B | Extend auth helpers for citizen/agent access checks | `app/src/utils/authz.ts` | None | DONE |
+| UI-AUTH-002 | 9 | Agent-B | Enforce citizen/agent route guards in router | `app/src/routes/AppRouter.tsx` | `UI-AUTH-001` | DONE |
+| UI-RT-001 | 10 | Agent-C | Add near-real-time polling and freshness indicators for manager/dashboard surfaces | `app/src/hooks/usePlanning.tsx`, `app/src/hooks/useTickets.tsx`, `app/src/pages/Dashboard.tsx` | Sprint 9 merge (preferred), not required | DONE |
+| UI-RT-002 | 10 | Agent-C | Optional push updates (WebSocket/SSE) with polling fallback | app/api event integration points, `docs/specs/realtime-dashboard-push-contract.md` | SSE stream is live with short-lived stateless stream sessions, replay-aware reconnect, keepalive, periodic snapshots, and polling fallback across multi-instance deployments | DONE |
+| UI-QA-001 | 10 | Agent-QA | Add/extend tests for new admin flows, route guards, and refresh logic | `app/src/tests/**` | Sprint 8/9/10 feature tasks | DONE |
+| UI-DOC-001 | 10 | Agent-Docs | Update roadmap/story status, routes/features docs, and operator notes | `docs/ROADMAP.md`, `docs/FRONTEND_ROUTES.md`, `docs/features/*.md` | Sprint 8/9/10 feature tasks | DONE |
+
+### 6.3 Task Acceptance Criteria (per package)
+
+#### UI-ADM-001
+- Admin Ticket tab no longer shows placeholder text.
+- Admin can search/filter/paginate tickets and trigger allowed actions.
+- Loading/error/empty states are visible and accessible.
+
+#### UI-ADM-002
+- "Add User" is enabled and creates users through API.
+- Form validation prevents invalid payload submission.
+- Success/error feedback is visible and user list refreshes.
+
+#### UI-ADM-003
+- "More Filters" is enabled and applied to list queries.
+- Filter state is persisted in URL query params.
+- Reset action clears filters and resets to page 1.
+
+#### UI-AUD-001
+- Export action downloads logs (CSV minimum) for current filter scope.
+- No placeholder toast remains for export.
+
+#### UI-AUTH-001 and UI-AUTH-002
+- Citizen and agent access checks are explicit and tested.
+- Unauthorized role access is blocked at route level.
+
+#### UI-RT-001
+- Dashboard/planning views refresh automatically via polling.
+- UI indicates last refresh/live status.
+
+#### UI-QA-001
+- Tests cover happy path + major error path for each new flow.
+- No net regression in app test suite.
+
+#### UI-DOC-001
+- Story statuses reflect actual implementation state.
+- New behavior and commands are documented in docs pages.
+
+### 6.4 Parallel Execution Rules for Agents
+
+- One task ID per branch/PR.
+- Keep each PR scoped to one work package whenever possible.
+- Do not modify unrelated modules while executing a task.
+- Rebase frequently against the main branch between sprint lanes.
+- Mark task `IN_PROGRESS` at start and `DONE` only after required checks pass.
+
+### 6.5 Validation Gate by Task (App Scope)
+
+Run for each work package touching `app/**`:
+
+```bash
+npm run lint --workspace=ecotrack-app
+npm run typecheck --workspace=ecotrack-app
+npm run test --workspace=ecotrack-app
+```
+
+If a task crosses layers (app + api/database/env/CI), run full monorepo validation set per AGENTS rules.
+
+## 7) WebSocket Step Plan (Next)
+
+Reference spec: `docs/specs/websocket-realtime-step-plan.md`
+
+### 7.1 Sprint 11 Candidate Scope
+
+| Sprint | Goal | Work packages | Parallel lanes |
+| --- | --- | --- | --- |
+| Sprint 11 | WebSocket transport rollout with fallback preservation | `WS-RT-001`, `WS-RT-002`, `WS-RT-003`, `WS-RT-004`, `WS-QA-001`, `WS-DOC-001` | 3 feature agents + QA + docs |
+
+### 7.2 WebSocket Dispatch Board
+
+| Task ID | Sprint | Owner lane | Scope | Primary files | Depends on | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| WS-RT-001 | 11 | Agent-A | Add planning WebSocket gateway and authenticated session handshake | `api/src/planning/**`, `api/src/auth/**` | `UI-RT-002` | DONE |
+| WS-RT-002 | 11 | Agent-A | Bridge existing planning realtime events into gateway broadcasts | `api/src/planning/planning.service.ts`, `api/src/planning/**` | `WS-RT-001` | DONE |
+| WS-RT-003 | 11 | Agent-B | Add frontend WebSocket hook and transport priority (`WS -> SSE -> polling`) | `app/src/hooks/**`, `app/src/pages/Dashboard.tsx` | `WS-RT-001` | DONE |
+| WS-RT-004 | 11 | Agent-C | Add reconnect resilience and connection-state telemetry | `app/src/hooks/**`, `api/src/planning/**` | `WS-RT-003` | DONE |
+| WS-QA-001 | 11 | Agent-QA | Add API/app tests for ws auth, broadcasts, and fallback behavior | `api/src/tests/**`, `app/src/tests/**` | `WS-RT-001..004` | DONE |
+| WS-DOC-001 | 11 | Agent-Docs | Update roadmap/features/runbooks for final transport stack | `docs/ROADMAP.md`, `docs/features/Dashboard.md`, `docs/specs/*.md` | `WS-RT-001..004`, `WS-QA-001` | DONE |

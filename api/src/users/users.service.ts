@@ -8,6 +8,9 @@ type UserFilters = {
   search?: string;
   role?: string;
   isActive?: boolean;
+  authProvider?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
   page?: number;
   limit?: number;
 };
@@ -32,7 +35,13 @@ export class UsersService {
     return this.usersRepository.ensureUserForAuth(authUser);
   }
 
-  async createLocalUser(params: { email: string; passwordHash: string; displayName?: string }) {
+  async createLocalUser(params: {
+    email: string;
+    passwordHash: string;
+    displayName?: string;
+    roleIds?: string[];
+    isActive?: boolean;
+  }) {
     return this.usersRepository.createLocalUser(params);
   }
 

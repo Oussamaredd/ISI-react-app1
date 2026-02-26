@@ -2,11 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../services/api';
 
+const PLANNING_METADATA_REFETCH_INTERVAL_MS = 30_000;
+const PLANNING_DASHBOARD_REFETCH_INTERVAL_MS = 20_000;
+
 export const usePlanningZones = () =>
   useQuery({
     queryKey: ['planning-zones'],
     queryFn: async () => apiClient.get('/api/planning/zones'),
     staleTime: 5 * 60 * 1000,
+    refetchInterval: PLANNING_METADATA_REFETCH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
 export const usePlanningAgents = () =>
@@ -14,6 +19,8 @@ export const usePlanningAgents = () =>
     queryKey: ['planning-agents'],
     queryFn: async () => apiClient.get('/api/planning/agents'),
     staleTime: 60_000,
+    refetchInterval: PLANNING_METADATA_REFETCH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
   });
 
 export const useOptimizeTourPlan = () =>
@@ -50,6 +57,8 @@ export const usePlanningDashboard = (enabled = true) =>
     queryFn: async () => apiClient.get('/api/planning/dashboard'),
     enabled,
     staleTime: 30_000,
+    refetchInterval: enabled ? PLANNING_DASHBOARD_REFETCH_INTERVAL_MS : false,
+    refetchIntervalInBackground: false,
   });
 
 export const useEmergencyCollection = () => {

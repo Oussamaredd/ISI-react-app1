@@ -4,7 +4,6 @@ import {
   Settings, 
   FileText, 
   Activity,
-  Hotel,
   Ticket,
   LogOut
 } from 'lucide-react';
@@ -12,7 +11,7 @@ import { Button } from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import { useUsers } from '../hooks/adminHooks';
 import { UserManagement } from '../components/admin/UserManagement';
-import { HotelManagement as HotelManagementComponent } from '../components/admin/HotelManagement';
+import { AdminTicketManagement } from '../components/admin/AdminTicketManagement';
 import { SystemSettings as SystemSettingsComponent } from '../components/admin/SystemSettings';
 import { AuditLogs } from '../components/admin/AuditLogs';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +29,6 @@ export function AdminDashboard() {
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Settings },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'hotels', label: 'Hotel Management', icon: Hotel },
     { id: 'tickets', label: 'Ticket Management', icon: Ticket },
     { id: 'audit', label: 'Audit Logs', icon: FileText },
     { id: 'system', label: 'System Settings', icon: Activity },
@@ -51,8 +49,6 @@ export function AdminDashboard() {
         return <OverviewSection usersData={usersData} usersLoading={usersLoading} />;
       case 'users':
         return <UserManagement />;
-      case 'hotels':
-        return <HotelManagement />;
       case 'tickets':
         return <TicketManagement />;
       case 'audit':
@@ -154,15 +150,15 @@ function OverviewSection({ usersData, usersLoading }) {
           color="blue"
         />
         <StatCard
-          title="Active Hotels"
-          value="12"
-          icon={Hotel}
+          title="Open Tickets"
+          value="-"
+          icon={Ticket}
           color="green"
         />
         <StatCard
-          title="Open Tickets"
-          value="24"
-          icon={Ticket}
+          title="Resolved Tickets"
+          value="-"
+          icon={FileText}
           color="yellow"
         />
         <StatCard
@@ -233,17 +229,8 @@ function StatCard({ title, value, icon: Icon, color }) {
   );
 }
 
-function HotelManagement() {
-  return <HotelManagementComponent />;
-}
-
 function TicketManagement() {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Ticket Management</h2>
-      <p className="text-gray-600">Ticket management interface will be implemented here...</p>
-    </div>
-  );
+  return <AdminTicketManagement />;
 }
 
 function AuditLogsSection() {

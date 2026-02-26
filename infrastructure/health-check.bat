@@ -33,12 +33,20 @@ if %errorlevel% equ 0 (
     echo Frontend - UNHEALTHY
 )
 
-echo Testing backend...
-curl -s http://localhost:3001/api/health >nul 2>&1
+echo Testing backend liveness...
+curl -s http://localhost:3001/health >nul 2>&1
 if %errorlevel% equ 0 (
-    echo Backend - HEALTHY
+    echo Backend liveness - HEALTHY
 ) else (
-    echo Backend - UNHEALTHY
+    echo Backend liveness - UNHEALTHY
+)
+
+echo Testing backend readiness...
+curl -s http://localhost:3001/api/health/ready >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Backend readiness - HEALTHY
+) else (
+    echo Backend readiness - UNHEALTHY
 )
 
 echo Testing database connection...

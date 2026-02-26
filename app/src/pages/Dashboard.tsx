@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEmergencyCollection, usePlanningDashboard } from "../hooks/usePlanning";
+import { usePlanningRealtimeSocket } from "../hooks/usePlanningRealtimeSocket";
+import { usePlanningRealtimeStream } from "../hooks/usePlanningRealtimeStream";
 import { useCurrentUser } from "../hooks/useAuth";
 import { useDashboard, type DashboardData } from "../hooks/useTickets";
 import { hasAdminAccess, hasManagerAccess } from "../utils/authz";
@@ -162,7 +164,7 @@ export default function Dashboard() {
         id: string;
         name: string;
         status: string;
-        hotelName: string;
+        contextLabel: string;
         lastUpdate: string | null;
       }>;
     }
@@ -171,42 +173,62 @@ export default function Dashboard() {
       id: String(ticket.id ?? ""),
       name: ticket.name || "Untitled ticket",
       status: ticket.status || "open",
-      hotelName: ticket.hotelName || "Unassigned",
+      contextLabel: "Support ticket",
       lastUpdate: ticket.updatedAt || ticket.createdAt || null,
     }));
-  }, [dashboardData]);
-
-  const hotelWorkload = React.useMemo(() => {
-    if (!Array.isArray(dashboardData?.hotels)) {
-      return [] as Array<{ id: string; name: string; ticketCount: number }>;
-    }
-
-    return dashboardData.hotels
-      .map((hotel) => ({
-        id: String(hotel.id ?? ""),
-        name: hotel.name || "Unnamed hotel",
-        ticketCount: toNumber(hotel.ticketCount),
-      }))
-      .sort((a, b) => b.ticketCount - a.ticketCount)
-      .slice(0, 5);
   }, [dashboardData]);
 
   const peakActivity = recentActivity.reduce(
     (maxValue, item) => Math.max(maxValue, item.created, item.updated),
     1,
   );
-  const peakHotelLoad = hotelWorkload.reduce(
-    (maxValue, item) => Math.max(maxValue, item.ticketCount),
-    1,
-  );
-
   const userDisplayName =
     user?.displayName || user?.name || user?.email || "EcoTrack operator";
   const firstName = userDisplayName.split(" ")[0] || "Operator";
   const canAccessAdmin = hasAdminAccess(user);
   const canAccessManager = hasManagerAccess(user);
   const planningDashboardQuery = usePlanningDashboard(canAccessManager);
+  const realtimeSocket = usePlanningRealtimeSocket(canAccessManager);
+  const realtimeStream = usePlanningRealtimeStream(
+    canAccessManager && realtimeSocket.connectionState !== "connected",
+  );
   const emergencyCollectionMutation = useEmergencyCollection();
+
+  const isSyncing = dashboardQuery.isFetching || (canAccessManager && planningDashboardQuery.isFetching);
+
+  const streamState =
+    realtimeSocket.connectionState === "connected"
+      ? "ws-connected"
+      : realtimeStream.connectionState;
+  const syncStateLabel =
+    streamState === "ws-connected"
+      ? "WebSocket live"
+      : streamState === "connected"
+      ? "Live stream"
+      : streamState === "reconnecting"
+        ? "Reconnecting"
+        : streamState === "fallback"
+          ? "Polling fallback"
+          : isSyncing
+            ? "Syncing"
+            : "Live";
+
+  const syncStateDescription =
+    streamState === "ws-connected"
+      ? "WebSocket push active"
+      : streamState === "connected"
+      ? "Server push active"
+      : streamState === "reconnecting"
+        ? "Reconnecting realtime channel"
+        : streamState === "fallback"
+          ? "Push unavailable, polling active"
+          : isSyncing
+            ? "Refreshing metrics now"
+            : "Auto-refresh active";
+
+  const latestDataUpdatedAt = canAccessManager
+    ? Math.max(dashboardQuery.dataUpdatedAt, planningDashboardQuery.dataUpdatedAt)
+    : dashboardQuery.dataUpdatedAt;
 
   const planningDashboard =
     (planningDashboardQuery.data as {
@@ -258,8 +280,8 @@ export default function Dashboard() {
   })();
 
   const lastSync =
-    dashboardQuery.dataUpdatedAt > 0
-      ? new Date(dashboardQuery.dataUpdatedAt).toLocaleTimeString("en-US", {
+    latestDataUpdatedAt > 0
+      ? new Date(latestDataUpdatedAt).toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
         })
@@ -291,12 +313,16 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-hero-meta" aria-label="Dashboard status">
+          <div className="dashboard-hero-chip" role="status" aria-live="polite">
+            <Activity size={15} aria-hidden="true" />
+            <span>{syncStateLabel}: {syncStateDescription}</span>
+          </div>
           <div className="dashboard-hero-chip">
             <Clock3 size={15} aria-hidden="true" />
             <span>Last sync {lastSync}</span>
           </div>
           <div className="dashboard-hero-chip">
-            <Activity size={15} aria-hidden="true" />
+            <CircleDashed size={15} aria-hidden="true" />
             <span>{recentTickets.length} recent updates loaded</span>
           </div>
         </div>
@@ -593,7 +619,7 @@ export default function Dashboard() {
                   <div className="dashboard-ticket-details">
                     <p className="dashboard-ticket-name">{ticket.name}</p>
                     <p className="dashboard-ticket-meta">
-                      {ticket.hotelName} - {formatRelativeTime(ticket.lastUpdate)}
+                      {ticket.contextLabel} - {formatRelativeTime(ticket.lastUpdate)}
                     </p>
                   </div>
                   <span
@@ -605,38 +631,6 @@ export default function Dashboard() {
                   </span>
                 </li>
               ))}
-            </ul>
-          )}
-        </article>
-
-        <article className="dashboard-panel">
-          <header className="dashboard-panel-header">
-            <h2>Hotel workload</h2>
-            <p>Most active properties right now</p>
-          </header>
-
-          {hotelWorkload.length === 0 ? (
-            <p className="dashboard-empty-state">No hotel assignment data yet.</p>
-          ) : (
-            <ul className="dashboard-hotel-list">
-              {hotelWorkload.map((hotel) => {
-                const hotelLoadPercent = Math.max(
-                  10,
-                  Math.round((hotel.ticketCount / peakHotelLoad) * 100),
-                );
-
-                return (
-                  <li key={hotel.id} className="dashboard-hotel-item">
-                    <div className="dashboard-hotel-row">
-                      <span>{hotel.name}</span>
-                      <strong>{COUNT_FORMATTER.format(hotel.ticketCount)}</strong>
-                    </div>
-                    <div className="dashboard-hotel-track" aria-hidden="true">
-                      <span style={{ width: `${hotelLoadPercent}%` }} />
-                    </div>
-                  </li>
-                );
-              })}
             </ul>
           )}
         </article>

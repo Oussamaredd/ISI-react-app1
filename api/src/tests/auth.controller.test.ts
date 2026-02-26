@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+﻿import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,7 +20,6 @@ describe('AuthController', () => {
     displayName: 'Agent User',
     role: 'manager',
     isActive: true,
-    hotelId: 'hotel-1',
   };
 
   const authServiceMock = {
@@ -170,3 +169,4 @@ describe('AuthController', () => {
     expect(authServiceMock.exchangeCode).toHaveBeenCalledWith('exchange-code-1');
   });
 });
+

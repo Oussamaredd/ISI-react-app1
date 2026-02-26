@@ -73,8 +73,6 @@ const domainControllerAndServiceFiles = [
   'src/auth/**/*.service.ts',
   'src/dashboard/**/*.controller.ts',
   'src/dashboard/**/*.service.ts',
-  'src/hotels/**/*.controller.ts',
-  'src/hotels/**/*.service.ts',
   'src/monitoring/**/*.controller.ts',
   'src/monitoring/**/*.service.ts',
   'src/tickets/**/*.controller.ts',

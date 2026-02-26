@@ -116,7 +116,6 @@ PUT /tickets/:id/comments/:commentId
 DELETE /tickets/:id/comments/:commentId
 
 GET /tickets/:id/activity
-POST /tickets/:id/assign-hotel
 ```
 
 ### Admin module
@@ -143,7 +142,10 @@ GET /admin/audit-logs
 
 ```text
 GET /health
-GET /health/database
+GET /api/health
+GET /api/health/live
+GET /api/health/ready
+GET /api/health/database
 
 POST /errors
 POST /metrics/frontend

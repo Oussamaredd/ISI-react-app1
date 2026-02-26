@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { AuthProvider, useAuth } from '../hooks/useAuth';
@@ -14,7 +14,6 @@ const session = {
     role: 'agent',
     roles: [],
     isActive: true,
-    hotelId: 'hotel-1',
     provider: 'local' as const,
   },
 };
@@ -106,3 +105,4 @@ describe('useAuth local storage', () => {
     expect(abortableFetch).toHaveBeenCalledTimes(3);
   });
 });
+

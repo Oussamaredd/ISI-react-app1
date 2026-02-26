@@ -36,7 +36,7 @@ function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
             <span className={priorityClass}>Priority: {priority}</span>
             <em className={statusClass}>Status: {status}</em>
           </div>
-          {ticket.hotelId && <span className="ticket-hotel">Hotel: {ticket.hotelId}</span>}
+          {ticket.supportCategory && <span className="ticket-category">Category: {ticket.supportCategory}</span>}
         </div>
 
         <div className="ticket-actions">

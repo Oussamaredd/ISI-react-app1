@@ -32,14 +32,10 @@ const dashboardResponsePayload = {
       id: "1",
       name: "Lobby AC issue",
       status: "open",
-      hotelName: "EcoTrack Downtown",
+      supportCategory: "general_help",
       createdAt: "2026-02-10T09:00:00.000Z",
       updatedAt: "2026-02-11T10:00:00.000Z",
     },
-  ],
-  hotels: [
-    { id: "h1", name: "EcoTrack Downtown", ticketCount: 14 },
-    { id: "h2", name: "EcoTrack River", ticketCount: 8 },
   ],
 };
 

@@ -1,34 +1,55 @@
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Suspense, lazy, type ReactElement } from "react";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import RouteScrollToTop from "../components/RouteScrollToTop";
 import { useCurrentUser } from "../hooks/useAuth";
-import PublicLayout from "../layouts/PublicLayout";
-import AuthLayout from "../layouts/AuthLayout";
-import AppLayout from "../layouts/AppLayout";
+import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
+import {
+  hasAdminAccess,
+  hasAgentAccess,
+  hasCitizenAccess,
+  hasManagerAccess,
+} from "../utils/authz";
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
-import Dashboard from "../pages/Dashboard";
-import AgentTourPage from "../pages/AgentTourPage";
-import ManagerPlanningPage from "../pages/ManagerPlanningPage";
-import ManagerReportsPage from "../pages/ManagerReportsPage";
-import CitizenChallengesPage from "../pages/CitizenChallengesPage";
-import CitizenProfilePage from "../pages/CitizenProfilePage";
-import CitizenReportPage from "../pages/CitizenReportPage";
-import TicketListPage from "../pages/TicketList";
-import AdvancedTicketList from "../pages/AdvancedTicketList";
-import CreateTickets from "../pages/CreateTickets";
-import TicketDetails from "../pages/TicketDetails";
-import TreatTicketPage from "../pages/TreatTicketPage";
-import SettingsPage from "../pages/SettingsPage";
-import { AdminDashboard } from "../pages/AdminDashboard";
-import AuthCallbackPage from "../pages/auth/AuthCallbackPage";
-import LoginPage from "../pages/auth/LoginPage";
-import SignupPage from "../pages/auth/SignupPage";
-import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "../pages/auth/ResetPasswordPage";
-import LandingPage from "../pages/landing/LandingPage";
-import MarketingInfoPage from "../pages/landing/MarketingInfoPage";
-import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
-import RouteScrollToTop from "../components/RouteScrollToTop";
-import { hasAdminAccess, hasManagerAccess } from "../utils/authz";
+
+const PublicLayout = lazy(() => import("../layouts/PublicLayout"));
+const AuthLayout = lazy(() => import("../layouts/AuthLayout"));
+const AppLayout = lazy(() => import("../layouts/AppLayout"));
+const Dashboard = lazy(() => import("../pages/Dashboard"));
+const AgentTourPage = lazy(() => import("../pages/AgentTourPage"));
+const ManagerPlanningPage = lazy(() => import("../pages/ManagerPlanningPage"));
+const ManagerReportsPage = lazy(() => import("../pages/ManagerReportsPage"));
+const CitizenChallengesPage = lazy(() => import("../pages/CitizenChallengesPage"));
+const CitizenProfilePage = lazy(() => import("../pages/CitizenProfilePage"));
+const CitizenReportPage = lazy(() => import("../pages/CitizenReportPage"));
+const TicketListPage = lazy(() => import("../pages/TicketList"));
+const AdvancedTicketList = lazy(() => import("../pages/AdvancedTicketList"));
+const CreateTickets = lazy(() => import("../pages/CreateTickets"));
+const TicketDetails = lazy(() => import("../pages/TicketDetails"));
+const TreatTicketPage = lazy(() => import("../pages/TreatTicketPage"));
+const SettingsPage = lazy(() => import("../pages/SettingsPage"));
+const AdminDashboard = lazy(() =>
+  import("../pages/AdminDashboard").then((module) => ({
+    default: module.AdminDashboard,
+  })),
+);
+const AuthCallbackPage = lazy(() => import("../pages/auth/AuthCallbackPage"));
+const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
+const SignupPage = lazy(() => import("../pages/auth/SignupPage"));
+const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("../pages/auth/ResetPasswordPage"));
+const LandingPage = lazy(() => import("../pages/landing/LandingPage"));
+const MarketingInfoPage = lazy(() => import("../pages/landing/MarketingInfoPage"));
+
+const RouteLoadingFallback = () => (
+  <div className="app-loading-screen">
+    <div>Loading...</div>
+  </div>
+);
+
+const withRouteSuspense = (element: ReactElement) => (
+  <Suspense fallback={<RouteLoadingFallback />}>{element}</Suspense>
+);
 
 function RootLandingRoute() {
   const { user, isAuthenticated, isLoading } = useCurrentUser();
@@ -47,7 +68,7 @@ function RootLandingRoute() {
     return <Navigate to="/app/dashboard" replace />;
   }
 
-  return <LandingPage />;
+  return withRouteSuspense(<LandingPage />);
 }
 
 function AdminRoute() {
@@ -62,7 +83,7 @@ function AdminRoute() {
     );
   }
 
-  return <AdminDashboard />;
+  return withRouteSuspense(<AdminDashboard />);
 }
 
 function ManagerRoute() {
@@ -77,7 +98,7 @@ function ManagerRoute() {
     );
   }
 
-  return <ManagerPlanningPage />;
+  return withRouteSuspense(<ManagerPlanningPage />);
 }
 
 function ManagerReportsRoute() {
@@ -92,7 +113,40 @@ function ManagerReportsRoute() {
     );
   }
 
-  return <ManagerReportsPage />;
+  return withRouteSuspense(<ManagerReportsPage />);
+}
+
+function AccessDeniedMessage({ message }: { message: string }) {
+  return (
+    <div className="app-access-denied">
+      <h2>Access Denied</h2>
+      <p>{message}</p>
+    </div>
+  );
+}
+
+function AgentRouteGuard() {
+  const { user } = useCurrentUser();
+
+  if (!hasAgentAccess(user)) {
+    return (
+      <AccessDeniedMessage message="You don't have permission to access the agent workspace." />
+    );
+  }
+
+  return <Outlet />;
+}
+
+function CitizenRouteGuard() {
+  const { user } = useCurrentUser();
+
+  if (!hasCitizenAccess(user)) {
+    return (
+      <AccessDeniedMessage message="You don't have permission to access citizen tools." />
+    );
+  }
+
+  return <Outlet />;
 }
 
 export default function AppRouter() {
@@ -100,47 +154,51 @@ export default function AppRouter() {
     <>
       <RouteScrollToTop />
       <Routes>
-        <Route element={<PublicLayout />}>
+        <Route element={withRouteSuspense(<PublicLayout />)}>
           <Route path="/" element={<RootLandingRoute />} />
           {MARKETING_PAGE_LIST.map((page) => (
             <Route
               key={page.key}
               path={`/${page.path}`}
-              element={<MarketingInfoPage pageKey={page.key} />}
+              element={withRouteSuspense(<MarketingInfoPage pageKey={page.key} />)}
             />
           ))}
           <Route path="/faq" element={<Navigate to="/support" replace />} />
         </Route>
 
         <Route element={<RequireGuest />}>
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route element={withRouteSuspense(<AuthLayout />)}>
+            <Route path="/login" element={withRouteSuspense(<LoginPage />)} />
+            <Route path="/signup" element={withRouteSuspense(<SignupPage />)} />
+            <Route path="/forgot-password" element={withRouteSuspense(<ForgotPasswordPage />)} />
+            <Route path="/reset-password" element={withRouteSuspense(<ResetPasswordPage />)} />
           </Route>
         </Route>
 
-        <Route element={<AuthLayout />}>
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route element={withRouteSuspense(<AuthLayout />)}>
+          <Route path="/auth/callback" element={withRouteSuspense(<AuthCallbackPage />)} />
         </Route>
 
         <Route element={<RequireAuth />}>
-          <Route path="/app" element={<AppLayout />}>
+          <Route path="/app" element={withRouteSuspense(<AppLayout />)}>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="agent/tour" element={<AgentTourPage />} />
+            <Route path="dashboard" element={withRouteSuspense(<Dashboard />)} />
+            <Route path="agent" element={<AgentRouteGuard />}>
+              <Route path="tour" element={withRouteSuspense(<AgentTourPage />)} />
+            </Route>
             <Route path="manager/planning" element={<ManagerRoute />} />
             <Route path="manager/reports" element={<ManagerReportsRoute />} />
-            <Route path="citizen/report" element={<CitizenReportPage />} />
-            <Route path="citizen/profile" element={<CitizenProfilePage />} />
-            <Route path="citizen/challenges" element={<CitizenChallengesPage />} />
-            <Route path="tickets/advanced" element={<AdvancedTicketList />} />
-            <Route path="tickets" element={<TicketListPage />} />
-            <Route path="tickets/create" element={<CreateTickets />} />
-            <Route path="tickets/:id/details" element={<TicketDetails />} />
-            <Route path="tickets/:id/treat" element={<TreatTicketPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route path="citizen" element={<CitizenRouteGuard />}>
+              <Route path="report" element={withRouteSuspense(<CitizenReportPage />)} />
+              <Route path="profile" element={withRouteSuspense(<CitizenProfilePage />)} />
+              <Route path="challenges" element={withRouteSuspense(<CitizenChallengesPage />)} />
+            </Route>
+            <Route path="tickets/advanced" element={withRouteSuspense(<AdvancedTicketList />)} />
+            <Route path="tickets" element={withRouteSuspense(<TicketListPage />)} />
+            <Route path="tickets/create" element={withRouteSuspense(<CreateTickets />)} />
+            <Route path="tickets/:id/details" element={withRouteSuspense(<TicketDetails />)} />
+            <Route path="tickets/:id/treat" element={withRouteSuspense(<TreatTicketPage />)} />
+            <Route path="settings" element={withRouteSuspense(<SettingsPage />)} />
             <Route path="admin" element={<AdminRoute />} />
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>

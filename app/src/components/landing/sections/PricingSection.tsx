@@ -15,7 +15,7 @@ const plans = [
     name: "Scale",
     monthly: 49,
     annual: 39,
-    description: "For growing operations with multiple hotels and stricter SLAs.",
+    description: "For growing operations with multiple zones and stricter SLAs.",
     features: ["Advanced filters", "Role controls", "Priority support"],
     highlighted: true,
   },

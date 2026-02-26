@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+
+import { AuthService } from '../auth/auth.service.js';
+import type { RequestWithAuthUser } from '../auth/authorization.types.js';
+import { MonitoringService } from '../monitoring/monitoring.service.js';
 
 import type { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import type { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -6,9 +10,66 @@ import type { OptimizeTourDto } from './dto/optimize-tour.dto.js';
 import type { TriggerEmergencyCollectionDto } from './dto/trigger-emergency-collection.dto.js';
 import { PlanningRepository } from './planning.repository.js';
 
+export type PlanningStreamEvent = {
+  id: string;
+  event: string;
+  data: Record<string, unknown>;
+};
+
+export type PlanningRealtimeDiagnostics = {
+  activeSseConnections: number;
+  activeWebSocketConnections: number;
+  counters: {
+    sseConnected: number;
+    sseDisconnected: number;
+    wsConnected: number;
+    wsDisconnected: number;
+    wsAuthFailures: number;
+    emittedEvents: number;
+  };
+  lastEventTimestamp: string | null;
+  lastEventName: string | null;
+};
+
+type PlanningStreamListener = (event: PlanningStreamEvent) => void;
+
+const REALTIME_EVENT_NAMES = {
+  dashboardSnapshot: 'planning.dashboard.snapshot',
+  containerCritical: 'planning.container.critical',
+  emergencyCreated: 'planning.emergency.created',
+  tourUpdated: 'planning.tour.updated',
+} as const;
+
+const STREAM_EVENT_BUFFER_SIZE = 200;
+const STREAM_SESSION_ALLOWED_ROLES = new Set(['manager', 'admin', 'super_admin']);
+
 @Injectable()
 export class PlanningService {
-  constructor(private readonly repository: PlanningRepository) {}
+  private readonly streamListeners = new Set<PlanningStreamListener>();
+  private readonly streamEventBuffer: PlanningStreamEvent[] = [];
+  private streamEventCounter = 0;
+  private realtimeDiagnostics: PlanningRealtimeDiagnostics = {
+    activeSseConnections: 0,
+    activeWebSocketConnections: 0,
+    counters: {
+      sseConnected: 0,
+      sseDisconnected: 0,
+      wsConnected: 0,
+      wsDisconnected: 0,
+      wsAuthFailures: 0,
+      emittedEvents: 0,
+    },
+    lastEventTimestamp: null,
+    lastEventName: null,
+  };
+
+  constructor(
+    private readonly repository: PlanningRepository,
+    private readonly authService: AuthService,
+    private readonly monitoringService: MonitoringService,
+  ) {
+    this.syncRealtimeDiagnostics();
+  }
 
   async listZones() {
     return this.repository.listZones();
@@ -23,7 +84,30 @@ export class PlanningService {
   }
 
   async createPlannedTour(dto: CreatePlannedTourDto, actorUserId: string) {
-    return this.repository.createPlannedTour(dto, actorUserId);
+    const tour = await this.repository.createPlannedTour(dto, actorUserId);
+
+    this.publishStreamEvent(
+      REALTIME_EVENT_NAMES.tourUpdated,
+      {
+        timestamp: new Date().toISOString(),
+        tour: {
+          id: this.readEntityId(tour),
+          status: this.readEntityField(tour, 'status'),
+          assignedAgentId:
+            this.readEntityField(tour, 'assignedAgentId') ??
+            this.readEntityField(tour, 'assigned_agent_id') ??
+            dto.assignedAgentId ??
+            null,
+          zoneId:
+            this.readEntityField(tour, 'zoneId') ?? this.readEntityField(tour, 'zone_id') ?? dto.zoneId,
+        },
+      },
+      true,
+    );
+
+    await this.publishDashboardSnapshot().catch(() => undefined);
+
+    return tour;
   }
 
   async getManagerDashboard() {
@@ -31,7 +115,25 @@ export class PlanningService {
   }
 
   async triggerEmergencyCollection(dto: TriggerEmergencyCollectionDto, actorUserId: string) {
-    return this.repository.triggerEmergencyCollection(dto, actorUserId);
+    const emergencyResult = await this.repository.triggerEmergencyCollection(dto, actorUserId);
+
+    this.publishStreamEvent(
+      REALTIME_EVENT_NAMES.emergencyCreated,
+      {
+        timestamp: new Date().toISOString(),
+        emergency: {
+          id: this.readEntityId(emergencyResult),
+          containerId: dto.containerId,
+          reason: dto.reason,
+          createdBy: actorUserId,
+        },
+      },
+      true,
+    );
+
+    await this.publishDashboardSnapshot().catch(() => undefined);
+
+    return emergencyResult;
   }
 
   async generateReport(dto: GenerateReportDto, actorUserId: string) {
@@ -48,5 +150,208 @@ export class PlanningService {
 
   async regenerateReport(reportId: string, actorUserId: string) {
     return this.repository.regenerateReport(reportId, actorUserId);
+  }
+
+  issueStreamSession(authUser: RequestWithAuthUser['authUser']) {
+    if (!authUser?.id || !this.hasRealtimeRoleAccess(authUser.role, authUser.roles.map((role) => role.name))) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    return this.authService.issuePlanningStreamSession(authUser.id);
+  }
+
+  issueWebSocketSession(authUser: RequestWithAuthUser['authUser']) {
+    if (!authUser?.id || !this.hasRealtimeRoleAccess(authUser.role, authUser.roles.map((role) => role.name))) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    return this.authService.issuePlanningWebSocketSession(authUser.id);
+  }
+
+  hasRealtimeRoleAccess(primaryRole?: string | null, additionalRoles: string[] = []) {
+    const roleNames = new Set<string>();
+
+    const normalizedPrimaryRole = primaryRole?.trim().toLowerCase();
+    if (normalizedPrimaryRole) {
+      roleNames.add(normalizedPrimaryRole);
+    }
+
+    for (const roleName of additionalRoles) {
+      const normalizedRoleName = roleName?.trim().toLowerCase();
+      if (normalizedRoleName) {
+        roleNames.add(normalizedRoleName);
+      }
+    }
+
+    return Array.from(roleNames).some((roleName) => STREAM_SESSION_ALLOWED_ROLES.has(roleName));
+  }
+
+  getRealtimeDiagnostics(): PlanningRealtimeDiagnostics {
+    return {
+      activeSseConnections: this.realtimeDiagnostics.activeSseConnections,
+      activeWebSocketConnections: this.realtimeDiagnostics.activeWebSocketConnections,
+      counters: {
+        ...this.realtimeDiagnostics.counters,
+      },
+      lastEventTimestamp: this.realtimeDiagnostics.lastEventTimestamp,
+      lastEventName: this.realtimeDiagnostics.lastEventName,
+    };
+  }
+
+  registerSseConnection() {
+    this.realtimeDiagnostics.activeSseConnections += 1;
+    this.realtimeDiagnostics.counters.sseConnected += 1;
+    this.syncRealtimeDiagnostics();
+  }
+
+  unregisterSseConnection() {
+    this.realtimeDiagnostics.activeSseConnections = Math.max(0, this.realtimeDiagnostics.activeSseConnections - 1);
+    this.realtimeDiagnostics.counters.sseDisconnected += 1;
+    this.syncRealtimeDiagnostics();
+  }
+
+  registerWebSocketConnection() {
+    this.realtimeDiagnostics.activeWebSocketConnections += 1;
+    this.realtimeDiagnostics.counters.wsConnected += 1;
+    this.syncRealtimeDiagnostics();
+  }
+
+  unregisterWebSocketConnection() {
+    this.realtimeDiagnostics.activeWebSocketConnections = Math.max(
+      0,
+      this.realtimeDiagnostics.activeWebSocketConnections - 1,
+    );
+    this.realtimeDiagnostics.counters.wsDisconnected += 1;
+    this.syncRealtimeDiagnostics();
+  }
+
+  registerWebSocketAuthFailure() {
+    this.realtimeDiagnostics.counters.wsAuthFailures += 1;
+    this.syncRealtimeDiagnostics();
+  }
+
+  recordEmittedEvent(eventName: string) {
+    this.realtimeDiagnostics.counters.emittedEvents += 1;
+    this.realtimeDiagnostics.lastEventTimestamp = new Date().toISOString();
+    this.realtimeDiagnostics.lastEventName = eventName;
+    this.syncRealtimeDiagnostics();
+  }
+
+  private syncRealtimeDiagnostics() {
+    this.monitoringService.setRealtimeDiagnostics(this.getRealtimeDiagnostics());
+  }
+
+  subscribeRealtimeEvents(listener: PlanningStreamListener) {
+    this.streamListeners.add(listener);
+    return () => {
+      this.streamListeners.delete(listener);
+    };
+  }
+
+  getReplayEventsAfter(lastEventId: string) {
+    const normalizedEventId = lastEventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+
+    const lastIndex = this.streamEventBuffer.findIndex((event) => event.id === normalizedEventId);
+    if (lastIndex < 0) {
+      return [];
+    }
+
+    return this.streamEventBuffer.slice(lastIndex + 1);
+  }
+
+  async getRealtimeDashboardSnapshotEvent(): Promise<PlanningStreamEvent> {
+    const dashboard = (await this.repository.getManagerDashboard()) as {
+      ecoKpis?: { containers?: number; zones?: number; tours?: number };
+      thresholds?: { criticalFillPercent?: number };
+      criticalContainers?: unknown[];
+    };
+
+    return this.createStreamEvent(REALTIME_EVENT_NAMES.dashboardSnapshot, {
+      timestamp: new Date().toISOString(),
+      ecoKpis: {
+        containers: dashboard?.ecoKpis?.containers ?? 0,
+        zones: dashboard?.ecoKpis?.zones ?? 0,
+        tours: dashboard?.ecoKpis?.tours ?? 0,
+      },
+      thresholds: {
+        criticalFillPercent: dashboard?.thresholds?.criticalFillPercent ?? 80,
+      },
+      criticalContainersCount: Array.isArray(dashboard?.criticalContainers)
+        ? dashboard.criticalContainers.length
+        : 0,
+    });
+  }
+
+  createKeepaliveEvent(): PlanningStreamEvent {
+    return this.createStreamEvent('system.keepalive', {
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private async publishDashboardSnapshot() {
+    const snapshotEvent = await this.getRealtimeDashboardSnapshotEvent();
+    this.broadcastStreamEvent(snapshotEvent);
+  }
+
+  private publishStreamEvent(
+    eventName: string,
+    data: Record<string, unknown>,
+    includeCriticalContainerSignal = false,
+  ) {
+    this.broadcastStreamEvent(this.createStreamEvent(eventName, data));
+
+    if (includeCriticalContainerSignal && typeof data.emergency === 'object' && data.emergency !== null) {
+      const emergency = data.emergency as { containerId?: unknown };
+      this.broadcastStreamEvent(
+        this.createStreamEvent(REALTIME_EVENT_NAMES.containerCritical, {
+          timestamp: new Date().toISOString(),
+          container: {
+            id: typeof emergency.containerId === 'string' ? emergency.containerId : null,
+            status: 'critical',
+          },
+        }),
+      );
+    }
+  }
+
+  private createStreamEvent(event: string, data: Record<string, unknown>): PlanningStreamEvent {
+    this.streamEventCounter += 1;
+    return {
+      id: `${Date.now()}-${this.streamEventCounter}`,
+      event,
+      data,
+    };
+  }
+
+  private broadcastStreamEvent(event: PlanningStreamEvent) {
+    this.streamEventBuffer.push(event);
+    if (this.streamEventBuffer.length > STREAM_EVENT_BUFFER_SIZE) {
+      this.streamEventBuffer.splice(0, this.streamEventBuffer.length - STREAM_EVENT_BUFFER_SIZE);
+    }
+
+    for (const listener of this.streamListeners) {
+      listener(event);
+    }
+  }
+
+  private readEntityId(entity: unknown) {
+    if (!entity || typeof entity !== 'object') {
+      return null;
+    }
+
+    const value = (entity as Record<string, unknown>).id;
+    return typeof value === 'string' ? value : null;
+  }
+
+  private readEntityField(entity: unknown, key: string) {
+    if (!entity || typeof entity !== 'object') {
+      return null;
+    }
+
+    const value = (entity as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value : null;
   }
 }

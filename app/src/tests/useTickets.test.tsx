@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
-import { useCreateTicket, useCurrentUser, useHotels, useTickets } from "../hooks/useTickets";
+import { useCreateTicket, useCurrentUser, useTickets } from "../hooks/useTickets";
 import { apiClient } from "../services/api";
 
 vi.mock("../services/api", () => ({
@@ -53,25 +53,6 @@ describe("useTickets", () => {
 
     expect(result.current.data?.tickets?.[0].title).toBe("Test Ticket");
     expect(apiClient.get).toHaveBeenCalledWith("/api/tickets");
-  });
-
-  test("fetches hotels", async () => {
-    const mockHotels = [
-      { id: "1", name: "Hotel A" },
-      { id: "2", name: "Hotel B" },
-    ];
-
-    vi.mocked(apiClient.get).mockResolvedValueOnce(mockHotels);
-
-    const { result } = renderHook(() => useHotels(), {
-      wrapper: createWrapper(),
-    });
-
-    await waitFor(() => {
-      expect(result.current.data).toEqual(mockHotels);
-    });
-
-    expect(apiClient.get).toHaveBeenCalledWith("/api/hotels");
   });
 
   test("creates a ticket", async () => {

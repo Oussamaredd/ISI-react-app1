@@ -47,10 +47,6 @@ const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
     return makeResponse(true, 200, []);
   }
 
-  if (url.includes("/api/hotels")) {
-    return makeResponse(true, 200, []);
-  }
-
   return makeResponse(true, 200, {});
 });
 

@@ -11,10 +11,11 @@
   "scripts": {
     "dev": "npm run build:database && concurrently --kill-others-on-fail -n api,app \"npm:dev:api\" \"npm:dev:app:wait-api\"",
     "dev:app": "npm run dev --workspace=ecotrack-app",
-    "dev:app:wait-api": "node ./infrastructure/scripts/wait-for-api-ready.mjs --url http://localhost:3001/health --timeout-ms 90000 && npm run dev:app",
+    "dev:app:wait-api": "node ./infrastructure/scripts/wait-for-api-ready.mjs --url http://localhost:3001/health --timeout-ms 45000 --no-fail && npm run dev:app",
     "dev:api": "npm run dev --workspace=ecotrack-api",
     "dev:database": "npm run watch --workspace=ecotrack-database",
     "dev:infra": "npm run infra:up",
+    "dev:doctor": "node ./infrastructure/scripts/dev-doctor.mjs",
     "build": "npm run build:database && npm run build:app && npm run build:api",
     "build:app": "npm run build --workspace=ecotrack-app",
     "build:api": "npm run build --workspace=ecotrack-api",

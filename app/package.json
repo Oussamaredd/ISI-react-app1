@@ -7,18 +7,20 @@
     "dev": "vite",
     "dev:landing": "vite --mode landing",
     "dev:app": "vite --mode app",
-    "build": "vite build",
+    "build": "vite build && npm run check:bundle-size",
     "build:landing": "vite build --mode landing",
-    "build:app": "vite build --mode app",
+    "build:app": "vite build --mode app && npm run check:bundle-size",
     "preview": "vite preview",
     "test": "vitest --run",
+    "test:realtime": "vitest --run src/tests/usePlanningRealtimeSocket.test.tsx src/tests/usePlanningRealtimeStream.test.tsx src/tests/Dashboard.realtimeTransport.test.tsx",
     "test:e2e": "vitest --run src/tests/e2e.key-journeys.test.tsx",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:bundle-size": "node ./scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.17",
@@ -30,11 +32,12 @@
     "react-dom": "^18.3.1",
     "react-error-boundary": "^6.0.3",
     "react-router-dom": "^7.12.0",
+    "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^24.10.9",

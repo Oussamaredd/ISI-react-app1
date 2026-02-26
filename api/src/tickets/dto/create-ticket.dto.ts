@@ -21,10 +21,6 @@ export class CreateTicketDto {
 
   @IsUUID()
   @IsOptional()
-  hotelId?: string;
-
-  @IsUUID()
-  @IsOptional()
   assigneeId?: string;
 
   @IsIn(['low', 'medium', 'high'])

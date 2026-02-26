@@ -28,15 +28,15 @@ export function SystemSettings() {
 
   const [formData, setFormData] = useState({
     user_registration: true,
-    default_user_role: 'user',
+    default_user_role: 'agent',
     session_timeout: 24 * 60 * 60 * 1000,
     audit_log_retention: 90,
     max_login_attempts: 5,
     password_min_length: 8,
     email_notifications: true,
     maintenance_mode: false,
-    site_name: 'Ticket Management System',
-    site_description: 'Professional ticket and hotel management platform',
+    site_name: 'EcoTrack Platform',
+    site_description: 'EcoTrack support and operations platform',
     timezone: 'UTC',
     date_format: 'MM/DD/YYYY',
     currency: 'USD',
@@ -124,15 +124,15 @@ export function SystemSettings() {
     if (window.confirm('Are you sure you want to reset all settings to their default values? This action cannot be undone.')) {
       const defaultSettings = {
         user_registration: true,
-        default_user_role: 'user',
+        default_user_role: 'agent',
         session_timeout: 24 * 60 * 60 * 1000,
         audit_log_retention: 90,
         max_login_attempts: 5,
         password_min_length: 8,
         email_notifications: true,
         maintenance_mode: false,
-        site_name: 'Ticket Management System',
-        site_description: 'Professional ticket and hotel management platform',
+        site_name: 'EcoTrack Platform',
+        site_description: 'EcoTrack support and operations platform',
         timezone: 'UTC',
         date_format: 'MM/DD/YYYY',
         currency: 'USD',
@@ -327,9 +327,11 @@ export function SystemSettings() {
                 onChange={(e) => handleInputChange('default_user_role', e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               >
-                <option value="user">User</option>
+                <option value="citizen">Citizen</option>
+                <option value="agent">Agent</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
               </select>
             </div>
 

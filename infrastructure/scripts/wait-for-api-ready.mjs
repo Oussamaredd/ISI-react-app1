@@ -2,6 +2,8 @@ const DEFAULT_URL = 'http://localhost:3001/health';
 const DEFAULT_INTERVAL_MS = 1200;
 const DEFAULT_TIMEOUT_MS = 90000;
 
+const hasArg = (name) => process.argv.includes(name);
+
 const parseArg = (name, fallback) => {
   const index = process.argv.indexOf(name);
   if (index === -1) {
@@ -15,6 +17,7 @@ const parseArg = (name, fallback) => {
 const probeUrl = parseArg('--url', DEFAULT_URL);
 const intervalMs = Number.parseInt(parseArg('--interval-ms', `${DEFAULT_INTERVAL_MS}`), 10);
 const timeoutMs = Number.parseInt(parseArg('--timeout-ms', `${DEFAULT_TIMEOUT_MS}`), 10);
+const noFail = hasArg('--no-fail');
 const startedAt = Date.now();
 
 const wait = (durationMs) =>
@@ -50,6 +53,13 @@ const run = async () => {
 
     console.log(`[wait-for-api-ready] waiting for API at ${probeUrl}`);
     await wait(intervalMs);
+  }
+
+  if (noFail) {
+    console.warn(
+      `[wait-for-api-ready] timeout after ${timeoutMs}ms while probing ${probeUrl}; continuing because --no-fail is set`,
+    );
+    process.exit(0);
   }
 
   console.error(`[wait-for-api-ready] timeout after ${timeoutMs}ms while probing ${probeUrl}`);

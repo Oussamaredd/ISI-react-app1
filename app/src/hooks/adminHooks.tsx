@@ -159,6 +159,53 @@ export function useUpdateUserStatus() {
   });
 }
 
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (userData: {
+      email: string;
+      displayName?: string;
+      password: string;
+      roleIds: string[];
+      isActive: boolean;
+    }) => {
+      const response = await authFetch(`${API_BASE}/api/admin/users`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const payload = await response.json();
+      return payload.data ?? payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      addToast({
+        type: 'success',
+        title: 'User Created',
+        message: 'New user account has been created successfully.',
+      });
+    },
+    onError: (error) => {
+      addToast({
+        type: 'error',
+        title: 'Create Failed',
+        message: error.message || 'Failed to create user. Please try again.',
+      });
+    },
+  });
+}
+
 // Role Management Hooks
 export function useRoles() {
   const { isAuthenticated } = useAuth();
@@ -501,286 +548,6 @@ export function useDispatchTestNotification() {
         type: 'error',
         title: 'Dispatch Failed',
         message: 'Unable to dispatch test notification.',
-      });
-    },
-  });
-}
-
-// Helper functions
-// Hotel Management Hooks
-export function useAdminHotels(filters = {}) {
-  const { isAuthenticated } = useAuth();
-
-  const params = new URLSearchParams();
-  if (filters) {
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        params.append(key, String(value));
-      }
-    });
-  }
-
-  return useQuery({
-    queryKey: ['admin-hotels', filters],
-    queryFn: async () => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels?${params}`,
-        { credentials: 'include' }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch hotels');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-    enabled: isAuthenticated && filters !== null,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-export function useAdminHotel(hotelId) {
-  const { isAuthenticated } = useAuth();
-
-  return useQuery({
-    queryKey: ['admin-hotel', hotelId],
-    queryFn: async () => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels/${hotelId}`,
-        { credentials: 'include' }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch hotel');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-    enabled: isAuthenticated && !!hotelId,
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-export function useHotelStats() {
-  const { isAuthenticated } = useAuth();
-
-  return useQuery({
-    queryKey: ['admin-hotel-stats'],
-    queryFn: async () => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels/stats`,
-        { credentials: 'include' }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch hotel statistics');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-    enabled: isAuthenticated,
-    staleTime: 10 * 60 * 1000, // 10 minutes
-  });
-}
-
-export function useTopHotels(limit = 10) {
-  const { isAuthenticated } = useAuth();
-
-  return useQuery({
-    queryKey: ['admin-top-hotels', limit],
-    queryFn: async () => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels/top?limit=${limit}`,
-        { credentials: 'include' }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch top hotels');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-    enabled: isAuthenticated,
-    staleTime: 15 * 60 * 1000, // 15 minutes
-  });
-}
-
-export function useCreateHotel() {
-  const queryClient = useQueryClient();
-  const { addToast } = useToast();
-
-  return useMutation({
-    mutationFn: async (hotelData: Record<string, unknown>) => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(hotelData),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create hotel');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-hotels'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-hotel-stats'] });
-      addToast({
-        type: 'success',
-        title: 'Hotel Created',
-        message: 'New hotel has been created successfully.',
-      });
-    },
-    onError: (error) => {
-      addToast({
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'Failed to create hotel. Please try again.',
-      });
-    },
-  });
-}
-
-export function useUpdateHotel() {
-  const queryClient = useQueryClient();
-  const { addToast } = useToast();
-
-  return useMutation({
-    mutationFn: async ({ hotelId, ...hotelData }: { hotelId: string; [key: string]: unknown }) => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels/${hotelId}`,
-        {
-          method: 'PUT',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(hotelData),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to update hotel');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-hotels'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-hotel', variables.hotelId] });
-      queryClient.invalidateQueries({ queryKey: ['admin-hotel-stats'] });
-      addToast({
-        type: 'success',
-        title: 'Hotel Updated',
-        message: 'Hotel has been updated successfully.',
-      });
-    },
-    onError: (error) => {
-      addToast({
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'Failed to update hotel. Please try again.',
-      });
-    },
-  });
-}
-
-export function useDeleteHotel() {
-  const queryClient = useQueryClient();
-  const { addToast } = useToast();
-
-  return useMutation({
-    mutationFn: async (hotelId: string) => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels/${hotelId}`,
-        {
-          method: 'DELETE',
-          credentials: 'include'
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to delete hotel');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-hotels'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-hotel-stats'] });
-      addToast({
-        type: 'success',
-        title: 'Hotel Deleted',
-        message: 'Hotel has been deleted successfully.',
-      });
-    },
-    onError: (error) => {
-      addToast({
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'Failed to delete hotel. Please try again.',
-      });
-    },
-  });
-}
-
-export function useToggleHotelAvailability() {
-  const queryClient = useQueryClient();
-  const { addToast } = useToast();
-
-  return useMutation({
-    mutationFn: async (hotelId: string) => {
-      const response = await authFetch(
-        `${API_BASE}/api/admin/hotels/${hotelId}/toggle`,
-        {
-          method: 'PATCH',
-          credentials: 'include'
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to toggle hotel availability');
-      }
-
-      const payload = await response.json();
-      return payload.data ?? payload;
-    },
-
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-hotels'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-hotel-stats'] });
-      addToast({
-        type: 'success',
-        title: 'Hotel Status Updated',
-        message: data.message || 'Hotel availability has been updated.',
-      });
-    },
-    onError: (error) => {
-      addToast({
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'Failed to update hotel status. Please try again.',
       });
     },
   });

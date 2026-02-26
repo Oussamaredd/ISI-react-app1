@@ -54,13 +54,15 @@ Default local endpoints:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:3001/api`
-- API readiness: `http://localhost:3001/health`
-- API diagnostics: `http://localhost:3001/api/health`
+- API liveness: `http://localhost:3001/health`
+- API readiness: `http://localhost:3001/api/health/ready`
+- API diagnostics: `http://localhost:3001/api/health/database`
 
 If the frontend shows `ERR_CONNECTION_REFUSED` for `http://localhost:3001/api/*`, the API process is not reachable. Verify API readiness with:
 
 ```bash
 curl -f http://localhost:3001/health
+curl -f http://localhost:3001/api/health/ready
 ```
 
 If the check fails, restart `npm run dev` and read the API startup error in the terminal output.
@@ -124,6 +126,7 @@ Database name policy: committed connection-string templates target `ticketdb`.
 ## Root Commands
 
 - `npm run dev` - host/native app + api dev workflow
+- `npm run dev:doctor` - fast host diagnostics (env keys, db reachability/migrations, health endpoints)
 - `npm run build` - build database, app, api
 - `npm run test` - app + api tests
 - `npm run test:e2e` - key citizen/agent/manager journey tests

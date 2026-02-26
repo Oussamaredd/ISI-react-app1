@@ -14,6 +14,7 @@ type RouterOptions = {
   initialEntries?: string[];
   path?: string;
   withProviders?: boolean;
+  withAuthProvider?: boolean;
 };
 
 export const createTestQueryClient = () =>
@@ -45,6 +46,7 @@ export function renderWithRouter(
     initialEntries = [route],
     path,
     withProviders = false,
+    withAuthProvider = true,
   }: RouterOptions = {},
   renderOptions?: Omit<RenderOptions, "wrapper">
 ) {
@@ -54,7 +56,7 @@ export function renderWithRouter(
   const Wrapper = ({ children }: { children: ReactNode }) => {
     const content = withProviders && queryClient ? (
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>{children}</AuthProvider>
+        {withAuthProvider ? <AuthProvider>{children}</AuthProvider> : children}
       </QueryClientProvider>
     ) : (
       children

@@ -12,7 +12,6 @@ type AuthUser = {
   role: string;
   roles: Array<{ id: string; name: string }>;
   isActive: boolean;
-  hotelId: string;
   provider: 'local' | 'google';
 };
 

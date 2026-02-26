@@ -25,7 +25,6 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { GamificationModule } from './gamification/gamification.module.js';
 import { HealthModule } from './health/health.module.js';
-import { HotelsModule } from './hotels/hotels.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
 import { PlanningModule } from './planning/planning.module.js';
 import { TicketsModule } from './tickets/tickets.module.js';
@@ -256,7 +255,6 @@ const extractUserId = (request: Request): string | undefined => {
     AuthModule,
     HealthModule,
     TicketsModule,
-    HotelsModule,
     DashboardModule,
     AdminModule,
     MonitoringModule,
