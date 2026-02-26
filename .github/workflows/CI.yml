@@ -1,10 +1,10 @@
-name: CI
+name: CI Integration
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   architecture:
@@ -91,6 +91,9 @@ jobs:
       - name: Run frontend key-journey E2E tests
         run: npm run test:e2e --workspace=ecotrack-app
 
+      - name: Run frontend realtime transport release gate
+        run: npm run test:realtime --workspace=ecotrack-app
+
       - name: Test frontend (Vitest)
         run: npm run test:coverage --workspace=ecotrack-app
 
@@ -124,8 +127,11 @@ jobs:
       SESSION_SECRET: ci-session-secret
       JWT_SECRET: ci-jwt-secret
       JWT_EXPIRES_IN: 7d
-      GOOGLE_CLIENT_ID: ci-google-client-id
+      JWT_ACCESS_SECRET: ci-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:3001/api/auth/google/callback
       CORS_ORIGINS: http://localhost:5173
     steps:
       - uses: actions/checkout@v4

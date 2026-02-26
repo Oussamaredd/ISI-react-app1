@@ -12,7 +12,6 @@ import { UsersService } from '../users/users.service.js';
 
 describe('Tickets query parsing and pagination', () => {
   const ticketId = 'b3b6c9be-4b1d-4b11-8f65-9d9b6c3c7a3e';
-  const validHotelId = 'f38bb586-23fe-4ce0-a4d5-a272788f65ff';
   const validAssigneeId = '2d5f8ed1-5b58-4e67-9b0b-3b28c5f07c15';
 
   const mockService = {
@@ -24,7 +23,6 @@ describe('Tickets query parsing and pagination', () => {
     deleteComment: vi.fn(),
     listActivity: vi.fn(),
     create: vi.fn(),
-    assignHotel: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
   };
@@ -87,7 +85,6 @@ describe('Tickets query parsing and pagination', () => {
         offset: '-5',
         status: 'OPEN',
         priority: 'HIGH',
-        hotel_id: 'not-a-uuid',
         assignee_id: 'bad-uuid',
         q: '   ',
       })
@@ -98,7 +95,6 @@ describe('Tickets query parsing and pagination', () => {
       offset: 0,
       status: 'OPEN',
       priority: 'HIGH',
-      hotelId: undefined,
       assigneeId: undefined,
       search: undefined,
     });
@@ -116,7 +112,6 @@ describe('Tickets query parsing and pagination', () => {
       .query({
         limit: '500',
         offset: '12',
-        hotelId: validHotelId,
         assigneeId: validAssigneeId,
         search: '  lobby  ',
       })
@@ -127,7 +122,6 @@ describe('Tickets query parsing and pagination', () => {
       offset: 12,
       status: undefined,
       priority: undefined,
-      hotelId: validHotelId,
       assigneeId: validAssigneeId,
       search: 'lobby',
     });

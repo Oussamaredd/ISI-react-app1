@@ -9,8 +9,6 @@ const AVAILABLE_PERMISSIONS = [
   'users.write',
   'roles.read',
   'roles.write',
-  'hotels.read',
-  'hotels.write',
   'tickets.read',
   'tickets.write',
   'audit.read',
@@ -30,6 +28,31 @@ const AVAILABLE_PERMISSIONS = [
 
 const DEFAULT_ROLES = [
   {
+    name: 'super_admin',
+    description: 'Super Administrator',
+    permissions: [
+      'users.read',
+      'users.write',
+      'roles.read',
+      'roles.write',
+      'tickets.read',
+      'tickets.write',
+      'audit.read',
+      'settings.write',
+      'ecotrack.containers.read',
+      'ecotrack.containers.write',
+      'ecotrack.zones.read',
+      'ecotrack.zones.write',
+      'ecotrack.tours.read',
+      'ecotrack.tours.write',
+      'ecotrack.citizenReports.read',
+      'ecotrack.citizenReports.write',
+      'ecotrack.gamification.read',
+      'ecotrack.gamification.write',
+      'ecotrack.analytics.read',
+    ],
+  },
+  {
     name: 'admin',
     description: 'Administrator',
     permissions: [
@@ -37,8 +60,6 @@ const DEFAULT_ROLES = [
       'users.write',
       'roles.read',
       'roles.write',
-      'hotels.read',
-      'hotels.write',
       'tickets.read',
       'tickets.write',
       'audit.read',
@@ -61,7 +82,6 @@ const DEFAULT_ROLES = [
     description: 'Manager',
     permissions: [
       'users.read',
-      'hotels.read',
       'tickets.read',
       'audit.read',
       'ecotrack.containers.read',

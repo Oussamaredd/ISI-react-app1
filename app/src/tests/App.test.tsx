@@ -24,7 +24,10 @@ vi.mock("../hooks/useAuth", () => ({
 
 
 test("renders navigation buttons", async () => {
-  renderWithProviders(<App />);
+  renderWithProviders(<App />, {
+    route: "/app/dashboard",
+    initialEntries: ["/app/dashboard"],
+  });
 
   expect(await screen.findByText(/simple list/i)).toBeInTheDocument();
   expect((await screen.findAllByText(/create ticket/i)).length).toBeGreaterThan(0);

@@ -35,6 +35,8 @@ export default defineConfig(({ mode }) => {
           "src/pages/CitizenReportPage.tsx",
           "src/pages/AgentTourPage.tsx",
           "src/pages/ManagerPlanningPage.tsx",
+          "src/utils/authz.ts",
+          "src/lib/scrollPageToTop.ts",
         ],
         thresholds: {
           statements: 60,

@@ -21,6 +21,21 @@ type FrontendMetricEvent = {
   receivedAt: string;
 };
 
+type RealtimeDiagnosticsSnapshot = {
+  activeSseConnections: number;
+  activeWebSocketConnections: number;
+  counters: {
+    sseConnected: number;
+    sseDisconnected: number;
+    wsConnected: number;
+    wsDisconnected: number;
+    wsAuthFailures: number;
+    emittedEvents: number;
+  };
+  lastEventTimestamp: string | null;
+  lastEventName: string | null;
+};
+
 const MAX_FRONTEND_ERRORS = 200;
 const MAX_FRONTEND_METRICS = 1000;
 const UNKNOWN_TYPE = 'unknown';
@@ -86,6 +101,32 @@ export class MonitoringService {
   private readonly frontendMetricsByType = new Map<string, number>();
   private readonly frontendErrors: FrontendErrorEvent[] = [];
   private readonly frontendMetrics: FrontendMetricEvent[] = [];
+  private realtimeDiagnostics: RealtimeDiagnosticsSnapshot = {
+    activeSseConnections: 0,
+    activeWebSocketConnections: 0,
+    counters: {
+      sseConnected: 0,
+      sseDisconnected: 0,
+      wsConnected: 0,
+      wsDisconnected: 0,
+      wsAuthFailures: 0,
+      emittedEvents: 0,
+    },
+    lastEventTimestamp: null,
+    lastEventName: null,
+  };
+
+  setRealtimeDiagnostics(snapshot: RealtimeDiagnosticsSnapshot) {
+    this.realtimeDiagnostics = {
+      activeSseConnections: snapshot.activeSseConnections,
+      activeWebSocketConnections: snapshot.activeWebSocketConnections,
+      counters: {
+        ...snapshot.counters,
+      },
+      lastEventTimestamp: snapshot.lastEventTimestamp,
+      lastEventName: snapshot.lastEventName,
+    };
+  }
 
   recordFrontendError(payload: unknown): number {
     const data = toObject(payload);
@@ -168,6 +209,50 @@ export class MonitoringService {
       left.localeCompare(right),
     )) {
       lines.push(`frontend_metrics_by_type_total{type="${sanitizeLabelValue(type)}"} ${count}`);
+    }
+
+    lines.push('# HELP ecotrack_realtime_active_connections Active realtime connections by transport.');
+    lines.push('# TYPE ecotrack_realtime_active_connections gauge');
+    lines.push(`ecotrack_realtime_active_connections{transport="sse"} ${this.realtimeDiagnostics.activeSseConnections}`);
+    lines.push(
+      `ecotrack_realtime_active_connections{transport="ws"} ${this.realtimeDiagnostics.activeWebSocketConnections}`,
+    );
+
+    lines.push('# HELP ecotrack_realtime_connection_events_total Realtime connection lifecycle events.');
+    lines.push('# TYPE ecotrack_realtime_connection_events_total counter');
+    lines.push(
+      `ecotrack_realtime_connection_events_total{transport="sse",action="connected"} ${this.realtimeDiagnostics.counters.sseConnected}`,
+    );
+    lines.push(
+      `ecotrack_realtime_connection_events_total{transport="sse",action="disconnected"} ${this.realtimeDiagnostics.counters.sseDisconnected}`,
+    );
+    lines.push(
+      `ecotrack_realtime_connection_events_total{transport="ws",action="connected"} ${this.realtimeDiagnostics.counters.wsConnected}`,
+    );
+    lines.push(
+      `ecotrack_realtime_connection_events_total{transport="ws",action="disconnected"} ${this.realtimeDiagnostics.counters.wsDisconnected}`,
+    );
+    lines.push(
+      `ecotrack_realtime_connection_events_total{transport="ws",action="auth_failure"} ${this.realtimeDiagnostics.counters.wsAuthFailures}`,
+    );
+
+    lines.push('# HELP ecotrack_realtime_emitted_events_total Total realtime events emitted by API transport layer.');
+    lines.push('# TYPE ecotrack_realtime_emitted_events_total counter');
+    lines.push(`ecotrack_realtime_emitted_events_total ${this.realtimeDiagnostics.counters.emittedEvents}`);
+
+    lines.push('# HELP ecotrack_realtime_last_event_timestamp_seconds Unix timestamp of last emitted realtime event.');
+    lines.push('# TYPE ecotrack_realtime_last_event_timestamp_seconds gauge');
+    const lastEventEpochSeconds = this.realtimeDiagnostics.lastEventTimestamp
+      ? Math.floor(new Date(this.realtimeDiagnostics.lastEventTimestamp).valueOf() / 1000)
+      : 0;
+    lines.push(`ecotrack_realtime_last_event_timestamp_seconds ${lastEventEpochSeconds}`);
+
+    if (this.realtimeDiagnostics.lastEventName) {
+      lines.push('# HELP ecotrack_realtime_last_event_name_info Label-only metric for latest realtime event name.');
+      lines.push('# TYPE ecotrack_realtime_last_event_name_info gauge');
+      lines.push(
+        `ecotrack_realtime_last_event_name_info{event="${sanitizeLabelValue(this.realtimeDiagnostics.lastEventName)}"} 1`,
+      );
     }
 
     return `${lines.join('\n')}\n`;

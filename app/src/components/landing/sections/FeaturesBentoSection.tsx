@@ -10,7 +10,7 @@ import {
 const cards = [
   {
     title: "Live dispatch board",
-    copy: "Route tickets to the right hotel, team, or specialist with one deterministic workflow.",
+    copy: "Route tickets to the right team, zone owner, or specialist with one deterministic workflow.",
     icon: Route,
     featured: true,
   },
@@ -26,7 +26,7 @@ const cards = [
   },
   {
     title: "Portfolio visibility",
-    copy: "Track load across hotels and rebalance before bottlenecks impact guest experience.",
+    copy: "Track load across zones and rebalance before bottlenecks impact service quality.",
     icon: Building2,
   },
   {

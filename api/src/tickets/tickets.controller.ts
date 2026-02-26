@@ -4,7 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   HttpException,
   Inject,
   InternalServerErrorException,
@@ -23,7 +22,6 @@ import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
 
-import { AssignHotelDto } from './dto/assign-hotel.dto.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateCommentDto } from './dto/update-comment.dto.js';
@@ -109,8 +107,6 @@ export class TicketsController {
     @Query('priority') priority?: string,
     @Query('support_category') supportCategorySnake?: string,
     @Query('supportCategory') supportCategoryCamel?: string,
-    @Query('hotel_id') hotelIdParam?: string,
-    @Query('hotelId') hotelIdCamel?: string,
     @Query('assignee_id') assigneeIdParam?: string,
     @Query('assigneeId') assigneeIdCamel?: string,
     @Query('q') qParam?: string,
@@ -121,7 +117,6 @@ export class TicketsController {
 
     const limit = Number.isNaN(parsedLimit) || parsedLimit <= 0 ? 20 : Math.min(parsedLimit, 100);
     const offset = Number.isNaN(parsedOffset) || parsedOffset < 0 ? 0 : parsedOffset;
-    const hotelId = normalizeUuid(hotelIdParam ?? hotelIdCamel);
     const assigneeId = normalizeUuid(assigneeIdParam ?? assigneeIdCamel);
     const search = normalizeSearch(qParam ?? searchParam);
     const supportCategory = normalizeSupportCategory(supportCategorySnake ?? supportCategoryCamel);
@@ -133,7 +128,6 @@ export class TicketsController {
         status,
         priority,
         supportCategory,
-        hotelId,
         assigneeId,
         search,
       });
@@ -285,24 +279,6 @@ export class TicketsController {
   @RequirePermissions('tickets.write')
   create(@Body() dto: CreateTicketDto) {
     return this.ticketsService.create(dto);
-  }
-
-  @Post(':id/assign-hotel')
-  @RequirePermissions('tickets.write')
-  @HttpCode(200)
-  async assignHotel(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Body() dto: AssignHotelDto,
-  ) {
-    try {
-      return await this.ticketsService.assignHotel(id, dto.hotelId);
-    } catch (error) {
-      console.error('Failed to assign hotel', error);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Unable to assign hotel');
-    }
   }
 
   private requireActor(request: RequestWithAuthUser) {

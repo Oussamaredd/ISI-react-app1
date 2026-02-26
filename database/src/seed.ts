@@ -10,7 +10,6 @@ import {
   comments,
   containers,
   gamificationProfiles,
-  hotels,
   roles,
   systemSettings,
   tickets,
@@ -27,17 +26,10 @@ type RoleSeed = {
   permissions: string[];
 };
 
-type HotelSeed = {
-  name: string;
-  slug: string;
-  isAvailable: boolean;
-};
-
 type UserSeed = {
   email: string;
   displayName: string;
   role: string;
-  hotelSlug: string;
   assignedRoles: string[];
   isActive: boolean;
   authProvider: 'local' | 'google';
@@ -52,7 +44,6 @@ type TicketSeed = {
   priority: string;
   requesterEmail: string;
   assigneeEmail: string;
-  hotelSlug: string;
 };
 
 type CommentSeed = {
@@ -146,8 +137,6 @@ const LEGACY_ADMIN_PERMISSIONS = [
   'users.write',
   'roles.read',
   'roles.write',
-  'hotels.read',
-  'hotels.write',
   'tickets.read',
   'tickets.write',
   'audit.read',
@@ -186,7 +175,6 @@ const ROLE_SEEDS: RoleSeed[] = [
     description: 'Manager',
     permissions: [
       'users.read',
-      'hotels.read',
       'tickets.read',
       'audit.read',
       'ecotrack.containers.read',
@@ -223,18 +211,11 @@ const ROLE_SEEDS: RoleSeed[] = [
   },
 ];
 
-const HOTEL_SEEDS: HotelSeed[] = [
-  { name: 'Default Hotel', slug: 'default-hotel', isAvailable: true },
-  { name: 'North Star Hotel', slug: 'north-star-hotel', isAvailable: true },
-  { name: 'Sunset Resort', slug: 'sunset-resort', isAvailable: true },
-];
-
 const USER_SEEDS: UserSeed[] = [
   {
     email: 'test@ecotrack.local',
     displayName: 'Local Smoke User',
     role: 'agent',
-    hotelSlug: 'default-hotel',
     assignedRoles: ['agent'],
     isActive: true,
     authProvider: 'local',
@@ -242,10 +223,19 @@ const USER_SEEDS: UserSeed[] = [
     googleId: null,
   },
   {
+    email: 'a@admin.fr',
+    displayName: 'EcoTrack Super Admin',
+    role: 'super_admin',
+    assignedRoles: ['super_admin', 'admin'],
+    isActive: true,
+    authProvider: 'local',
+    passwordHash: '$2a$10$X4kLANVeriBVxSHuozgKHufwJQlCuhKCtcSHYF12XuX6eytyrZ5Da',
+    googleId: null,
+  },
+  {
     email: 'superadmin@example.com',
     displayName: 'Super Admin',
     role: 'super_admin',
-    hotelSlug: 'default-hotel',
     assignedRoles: ['super_admin', 'admin'],
     isActive: true,
     authProvider: 'google',
@@ -256,7 +246,6 @@ const USER_SEEDS: UserSeed[] = [
     email: 'admin@example.com',
     displayName: 'Admin User',
     role: 'admin',
-    hotelSlug: 'default-hotel',
     assignedRoles: ['admin'],
     isActive: true,
     authProvider: 'google',
@@ -267,7 +256,6 @@ const USER_SEEDS: UserSeed[] = [
     email: 'manager@example.com',
     displayName: 'Manager User',
     role: 'manager',
-    hotelSlug: 'north-star-hotel',
     assignedRoles: ['manager'],
     isActive: true,
     authProvider: 'google',
@@ -278,7 +266,6 @@ const USER_SEEDS: UserSeed[] = [
     email: 'agent@example.com',
     displayName: 'Agent User',
     role: 'agent',
-    hotelSlug: 'north-star-hotel',
     assignedRoles: ['agent'],
     isActive: true,
     authProvider: 'google',
@@ -289,7 +276,6 @@ const USER_SEEDS: UserSeed[] = [
     email: 'citizen@example.com',
     displayName: 'Citizen User',
     role: 'citizen',
-    hotelSlug: 'default-hotel',
     assignedRoles: ['citizen'],
     isActive: true,
     authProvider: 'google',
@@ -300,62 +286,59 @@ const USER_SEEDS: UserSeed[] = [
 
 const TICKET_SEEDS: TicketSeed[] = [
   {
-    title: 'Leaky faucet in room 101',
-    description: 'Bathroom faucet leaks continuously and needs urgent maintenance.',
+    title: 'Overflow reported in Downtown main square',
+    description: 'Container near main square is close to capacity and needs accelerated pickup.',
     status: 'open',
     priority: 'high',
     requesterEmail: 'agent@example.com',
     assigneeEmail: 'manager@example.com',
-    hotelSlug: 'north-star-hotel',
   },
   {
-    title: 'Air conditioner not cooling',
-    description: 'Room 214 AC unit runs but does not cool below 25C.',
+    title: 'Collection delay on Harbor route',
+    description: 'Residents reported delayed collection on Harbor route for two consecutive days.',
     status: 'in_progress',
     priority: 'medium',
     requesterEmail: 'agent@example.com',
     assigneeEmail: 'manager@example.com',
-    hotelSlug: 'north-star-hotel',
   },
   {
-    title: 'Elevator inspection follow-up',
-    description: 'Post-inspection action items need completion confirmation.',
+    title: 'Damaged container follow-up',
+    description: 'Repair verification for previously damaged container has been completed.',
     status: 'completed',
     priority: 'low',
     requesterEmail: 'manager@example.com',
     assigneeEmail: 'manager@example.com',
-    hotelSlug: 'default-hotel',
   },
 ];
 
 const COMMENT_SEEDS: CommentSeed[] = [
   {
-    ticketTitle: 'Leaky faucet in room 101',
+    ticketTitle: 'Overflow reported in Downtown main square',
     authorEmail: 'agent@example.com',
-    body: 'Guest reported this issue at front desk. Please prioritize.',
+    body: 'Escalated by field observation and resident feedback. Please prioritize.',
   },
   {
-    ticketTitle: 'Air conditioner not cooling',
+    ticketTitle: 'Collection delay on Harbor route',
     authorEmail: 'manager@example.com',
-    body: 'Maintenance team scheduled for inspection this afternoon.',
+    body: 'Dispatch updated and timeline communicated to operations.',
   },
   {
-    ticketTitle: 'Elevator inspection follow-up',
+    ticketTitle: 'Damaged container follow-up',
     authorEmail: 'manager@example.com',
-    body: 'Inspection items completed and documented.',
+    body: 'Repair checklist closed and evidence attached.',
   },
 ];
 
 const SETTING_SEEDS: SettingSeed[] = [
   {
     key: 'site_name',
-    value: 'Ticket Management System',
+    value: 'EcoTrack Platform',
     description: 'Site name',
     isPublic: true,
   },
   {
     key: 'site_description',
-    value: 'Professional ticket and hotel management platform',
+    value: 'EcoTrack support and operations platform',
     description: 'Site description',
     isPublic: true,
   },
@@ -547,38 +530,31 @@ export async function seedDatabase() {
         roleIds.set(seed.name, row.id);
       }
 
-      const hotelIds = new Map<string, string>();
-      for (const seed of HOTEL_SEEDS) {
-        await tx
-        .insert(hotels)
-        .values({
-          name: seed.name,
-          slug: seed.slug,
-          isAvailable: seed.isAvailable,
-        })
-        .onConflictDoUpdate({
-          target: hotels.slug,
-          set: {
-            name: seed.name,
-            isAvailable: seed.isAvailable,
+      const agentRoleId = roleIds.get('agent');
+      if (agentRoleId) {
+        const legacyUsers = await tx
+          .update(users)
+          .set({
+            role: 'agent',
             updatedAt: now,
-          },
-        });
+          })
+          .where(eq(users.role, 'user'))
+          .returning({ id: users.id });
 
-        const [row] = await tx.select().from(hotels).where(eq(hotels.slug, seed.slug)).limit(1);
-        if (!row) {
-          throw new Error(`Failed to resolve hotel: ${seed.slug}`);
+        for (const row of legacyUsers) {
+          await tx.delete(userRoles).where(eq(userRoles.userId, row.id));
+          await tx
+            .insert(userRoles)
+            .values({
+              userId: row.id,
+              roleId: agentRoleId,
+            })
+            .onConflictDoNothing();
         }
-        hotelIds.set(seed.slug, row.id);
       }
 
       const userIds = new Map<string, string>();
       for (const seed of USER_SEEDS) {
-        const hotelId = hotelIds.get(seed.hotelSlug);
-        if (!hotelId) {
-          throw new Error(`Hotel not found for user ${seed.email}: ${seed.hotelSlug}`);
-        }
-
         await tx
         .insert(users)
         .values({
@@ -589,15 +565,16 @@ export async function seedDatabase() {
           googleId: seed.googleId ?? null,
           role: seed.role,
           isActive: seed.isActive,
-          hotelId,
         })
         .onConflictDoUpdate({
           target: users.email,
           set: {
             displayName: seed.displayName,
+            authProvider: seed.authProvider,
+            passwordHash: seed.passwordHash ?? null,
+            googleId: seed.googleId ?? null,
             role: seed.role,
             isActive: seed.isActive,
-            hotelId,
             updatedAt: now,
           },
         });
@@ -614,6 +591,8 @@ export async function seedDatabase() {
         if (!userId) {
           throw new Error(`User missing for role assignment: ${userSeed.email}`);
         }
+
+        await tx.delete(userRoles).where(eq(userRoles.userId, userId));
 
         for (const roleName of userSeed.assignedRoles) {
           const roleId = roleIds.get(roleName);
@@ -635,9 +614,8 @@ export async function seedDatabase() {
       for (const seed of TICKET_SEEDS) {
         const requesterId = userIds.get(seed.requesterEmail);
         const assigneeId = userIds.get(seed.assigneeEmail);
-        const hotelId = hotelIds.get(seed.hotelSlug);
 
-        if (!requesterId || !assigneeId || !hotelId) {
+        if (!requesterId || !assigneeId) {
           throw new Error(`Missing references for ticket seed: ${seed.title}`);
         }
 
@@ -657,7 +635,6 @@ export async function seedDatabase() {
               status: seed.status,
               priority: seed.priority,
               assigneeId,
-              hotelId,
               closedAt: closedAtValue,
               updatedAt: now,
             })
@@ -676,7 +653,6 @@ export async function seedDatabase() {
             priority: seed.priority,
             requesterId,
             assigneeId,
-            hotelId,
             closedAt: CLOSED_STATUSES.has(seed.status) ? now : null,
           })
           .returning({ id: tickets.id });

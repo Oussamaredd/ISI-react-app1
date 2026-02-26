@@ -8,5 +8,6 @@ Execution policy:
 - `infrastructure/scripts/ci/*.sh` contains CI command bundles invoked by `.github/workflows/*`.
 
 Common host commands:
+- `npm run dev:doctor`
 - `npm run health --workspace=ecotrack-infrastructure`
 - `npm run verify:docker --workspace=ecotrack-infrastructure`

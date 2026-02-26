@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+﻿import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,7 +22,6 @@ describe('Tickets comments and activity endpoints', () => {
     deleteComment: vi.fn(),
     listActivity: vi.fn(),
     create: vi.fn(),
-    assignHotel: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
   };
@@ -39,7 +38,6 @@ describe('Tickets comments and activity endpoints', () => {
     roles: [],
     permissions: ['tickets.read', 'tickets.write'],
     isActive: true,
-    hotelId: '9d8f3f51-cf0f-46b4-a418-4d13e4df95ce',
   };
 
   const usersServiceMock = {
@@ -178,3 +176,4 @@ describe('Tickets comments and activity endpoints', () => {
     expect(response.body).toEqual({ activity: payload });
   });
 });
+

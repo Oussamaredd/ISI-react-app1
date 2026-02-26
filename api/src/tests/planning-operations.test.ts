@@ -25,6 +25,16 @@ describe('Planning operations', () => {
     listReportHistory: vi.fn(),
     getReportById: vi.fn(),
     regenerateReport: vi.fn(),
+    getRealtimeDashboardSnapshotEvent: vi.fn(),
+    getReplayEventsAfter: vi.fn(),
+    subscribeRealtimeEvents: vi.fn(),
+    createKeepaliveEvent: vi.fn(),
+    getRealtimeDiagnostics: vi.fn(),
+    registerSseConnection: vi.fn(),
+    unregisterSseConnection: vi.fn(),
+    recordEmittedEvent: vi.fn(),
+    issueStreamSession: vi.fn(),
+    issueWebSocketSession: vi.fn(),
   };
 
   const authServiceMock = {
@@ -80,6 +90,37 @@ describe('Planning operations', () => {
     planningServiceMock.listReportHistory.mockResolvedValue([]);
     planningServiceMock.getReportById.mockResolvedValue({ id: 'report-1', fileContent: 'mock pdf' });
     planningServiceMock.regenerateReport.mockResolvedValue({ id: 'report-2' });
+    planningServiceMock.getRealtimeDashboardSnapshotEvent.mockResolvedValue({
+      id: 'evt-1',
+      event: 'planning.dashboard.snapshot',
+      data: { timestamp: '2026-02-23T00:00:00.000Z' },
+    });
+    planningServiceMock.subscribeRealtimeEvents.mockReturnValue(() => undefined);
+    planningServiceMock.getReplayEventsAfter.mockReturnValue([]);
+    planningServiceMock.createKeepaliveEvent.mockReturnValue({
+      id: 'evt-keepalive',
+      event: 'system.keepalive',
+      data: { timestamp: '2026-02-23T00:00:00.000Z' },
+    });
+    planningServiceMock.getRealtimeDiagnostics.mockReturnValue({
+      activeSseConnections: 0,
+      activeWebSocketConnections: 0,
+      counters: {
+        sseConnected: 1,
+        sseDisconnected: 1,
+        wsConnected: 1,
+        wsDisconnected: 1,
+        wsAuthFailures: 0,
+        emittedEvents: 10,
+      },
+      lastEventTimestamp: '2026-02-23T00:00:00.000Z',
+      lastEventName: 'planning.dashboard.snapshot',
+    });
+    planningServiceMock.issueStreamSession.mockResolvedValue({
+      token: 'stream-token',
+      expiresAt: '2026-02-23T00:02:00.000Z',
+      expiresInSeconds: 120,
+    });
   });
 
   afterAll(async () => {
@@ -143,6 +184,19 @@ describe('Planning operations', () => {
     );
   });
 
+  it('returns realtime diagnostics for planning observability', async () => {
+    const response = await request(app.getHttpServer()).get('/api/planning/realtime/health').expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        activeSseConnections: 0,
+        activeWebSocketConnections: 0,
+        lastEventName: 'planning.dashboard.snapshot',
+      }),
+    );
+    expect(planningServiceMock.getRealtimeDiagnostics).toHaveBeenCalledTimes(1);
+  });
+
   it('generates, lists, downloads, and regenerates reports', async () => {
     const reportId = '3b8c572a-1ff1-4d1b-90ce-f5d05ea0ef7f';
 
@@ -171,5 +225,25 @@ describe('Planning operations', () => {
 
     await request(app.getHttpServer()).post(`/api/planning/reports/${reportId}/regenerate`).expect(201);
     expect(planningServiceMock.regenerateReport).toHaveBeenCalledWith(reportId, userId);
+  });
+
+  it('issues a planning stream session token', async () => {
+    await request(app.getHttpServer()).post('/api/planning/stream/session').expect(201);
+
+    expect(planningServiceMock.issueStreamSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: userId,
+      }),
+    );
+  });
+
+  it('issues a planning websocket session token', async () => {
+    await request(app.getHttpServer()).post('/api/planning/ws/session').expect(201);
+
+    expect(planningServiceMock.issueWebSocketSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: userId,
+      }),
+    );
   });
 });

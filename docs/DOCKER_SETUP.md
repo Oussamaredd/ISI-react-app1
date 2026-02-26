@@ -36,6 +36,10 @@ npm run infra:health
 - `ticket_backend`: healthy
 - `ticket_frontend`: running
 
+Backend health semantics:
+- liveness: `GET http://localhost:3001/health`
+- readiness (container/LB probe): `GET http://localhost:3001/api/health/ready`
+
 ## Migration Commands
 
 ```bash
@@ -50,3 +54,10 @@ npm run migrate:status --workspace=ecotrack-infrastructure
 - Compose DB host is `ticket_db`.
 - Canonical DB name is `ticketdb`.
 - No credential values should be hardcoded in compose service definitions.
+
+## Realtime Transport Edge Policy
+
+- WebSocket upgrade requests must pass through proxy/load balancer for path `/api/planning/ws`.
+- Long-lived HTTP connections must be allowed for SSE path `/api/planning/stream`.
+- Recommended proxy idle timeout for realtime routes: at least `60s` (higher in production).
+- CORS origin policy for WS and SSE must match `CORS_ORIGINS` / `CLIENT_ORIGIN`.

@@ -1,8 +1,9 @@
-name: CD
+name: CD Deployment
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,8 +38,11 @@ jobs:
       SESSION_SECRET: cd-session-secret
       JWT_SECRET: cd-jwt-secret
       JWT_EXPIRES_IN: 7d
-      GOOGLE_CLIENT_ID: cd-google-client-id
+      JWT_ACCESS_SECRET: cd-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-cd.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: cd-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:3001/api/auth/google/callback
       CORS_ORIGINS: http://localhost:5173
     steps:
       - name: Checkout code
@@ -65,7 +69,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     env:
-      VITE_BASE: /isi-ecotrack/
+      VITE_BASE: /${{ github.event.repository.name }}/
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
     
     steps:
       - name: Checkout code
@@ -80,6 +85,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate deploy frontend env
+        run: |
+          if [ -z "${VITE_API_BASE_URL}" ]; then
+            echo "Missing required repository variable: VITE_API_BASE_URL"
+            echo "Set it in Settings > Secrets and variables > Actions > Variables."
+            exit 1
+          fi
+
+          if [[ "${VITE_API_BASE_URL}" == http://localhost* || "${VITE_API_BASE_URL}" == https://localhost* ]]; then
+            echo "VITE_API_BASE_URL cannot target localhost for GitHub Pages deployments."
+            exit 1
+          fi
 
       - name: Run frontend release checks
         run: bash infrastructure/scripts/ci/frontend-release-checks.sh

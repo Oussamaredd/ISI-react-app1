@@ -39,7 +39,7 @@ export default function HeroSection() {
             </Button>
           </div>
           <p className="mt-5 text-sm text-[var(--text-muted)]">
-            Used by support, concierge, and escalation teams across hotel operations.
+            Used by support, operations, and escalation teams across EcoTrack programs.
           </p>
         </div>
       </div>

@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:3001/api/health}"
+API_LIVE_URL="${API_LIVE_URL:-http://localhost:3001/health}"
+API_READY_URL="${API_READY_URL:-http://localhost:3001/api/health/ready}"
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 
 check() {
@@ -17,6 +18,7 @@ check() {
 }
 
 check "frontend" "$FRONTEND_URL"
-check "backend" "$API_URL"
+check "backend-live" "$API_LIVE_URL"
+check "backend-ready" "$API_READY_URL"
 
 echo "[health] done"

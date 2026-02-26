@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, desc, eq, gte, inArray, isNotNull, or, sql } from 'drizzle-orm';
-import { type DatabaseClient, hotels, tickets } from 'ecotrack-database';
+import { desc, gte, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { type DatabaseClient, tickets } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 
@@ -38,14 +38,13 @@ type DashboardSummary = {
 export type DashboardResponse = {
   summary: DashboardSummary;
   statusBreakdown: Record<string, number>;
-  hotels: Array<{ id: string; name: string; ticketCount: number }>;
   recentActivity: Array<{ date: string; created: number; updated: number }>;
   recentTickets: Array<{
     id: string;
     name: string;
     status: string;
     price: number;
-    hotelName: string | null;
+    supportCategory: string | null;
     createdAt?: string | null;
     updatedAt?: string | null;
   }>;
@@ -56,7 +55,7 @@ export class DashboardRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
 
   async getDashboard(): Promise<DashboardResponse> {
-    const [totalRow, completedRow, assignedRow, statusRows, hotelRows, recentTicketsRows] =
+    const [totalRow, completedRow, assignedRow, statusRows, recentTicketsRows] =
       await Promise.all([
         this.db
           .select({ total: sql`count(*)`.mapWith(Number) })
@@ -75,25 +74,14 @@ export class DashboardRepository {
           .groupBy(tickets.status),
         this.db
           .select({
-            id: hotels.id,
-            name: hotels.name,
-            ticketCount: sql`count(${tickets.id})`.mapWith(Number),
-          })
-          .from(hotels)
-          .leftJoin(tickets, eq(tickets.hotelId, hotels.id))
-          .groupBy(hotels.id, hotels.name)
-          .orderBy(asc(hotels.name)),
-        this.db
-          .select({
             id: tickets.id,
             title: tickets.title,
             status: tickets.status,
+            supportCategory: tickets.supportCategory,
             createdAt: tickets.createdAt,
             updatedAt: tickets.updatedAt,
-            hotelName: hotels.name,
           })
           .from(tickets)
-          .leftJoin(hotels, eq(tickets.hotelId, hotels.id))
           .orderBy(desc(tickets.createdAt))
           .limit(10),
       ]);
@@ -109,18 +97,12 @@ export class DashboardRepository {
       return acc;
     }, {});
 
-    const hotelsSummary = hotelRows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      ticketCount: row.ticketCount ?? 0,
-    }));
-
     const recentTickets = recentTicketsRows.map((row) => ({
       id: row.id,
       name: row.title ?? 'Untitled ticket',
       status: row.status ?? 'open',
       price: 0,
-      hotelName: row.hotelName ?? null,
+      supportCategory: row.supportCategory ?? null,
       createdAt: toIsoString(row.createdAt),
       updatedAt: toIsoString(row.updatedAt),
     }));
@@ -135,7 +117,6 @@ export class DashboardRepository {
         assigned,
       },
       statusBreakdown,
-      hotels: hotelsSummary,
       recentActivity,
       recentTickets,
     };

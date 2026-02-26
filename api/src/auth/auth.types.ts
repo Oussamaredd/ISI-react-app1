@@ -12,5 +12,10 @@ export type AuthTokenPayload = {
   email?: string | null;
   name?: string | null;
   picture?: string | null;
-  tokenType?: 'access' | 'local_access' | 'oauth_session';
+  tokenType?:
+    | 'access'
+    | 'local_access'
+    | 'oauth_session'
+    | 'planning_stream_session'
+    | 'planning_ws_session';
 };

@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+﻿import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../auth/auth.service.js';
@@ -54,6 +54,59 @@ describe('AuthService', () => {
     });
   });
 
+  it('does not accept access_token query fallback', () => {
+    const service = new AuthService(usersServiceMock as any);
+    const token = service.createLocalAccessToken({
+      id: 'user-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+    });
+
+    const decoded = service.getAuthUserFromRequest({
+      headers: {},
+      query: { access_token: token } as any,
+      path: '/api/planning/stream',
+    } as any);
+
+    expect(decoded).toBeNull();
+  });
+
+  it('accepts planning stream session token only for planning stream path', () => {
+    const service = new AuthService(usersServiceMock as any);
+    const session = service.issuePlanningStreamSession('user-1');
+
+    const decodedFromStreamPath = service.getAuthUserFromRequest({
+      headers: {},
+      query: { stream_session: session.token } as any,
+      path: '/api/planning/stream',
+    } as any);
+
+    expect(decodedFromStreamPath).toMatchObject({
+      id: 'user-1',
+      provider: 'local',
+    });
+
+    const decodedFromOtherPath = service.getAuthUserFromRequest({
+      headers: {},
+      query: { stream_session: session.token } as any,
+      path: '/api/planning/dashboard',
+    } as any);
+
+    expect(decodedFromOtherPath).toBeNull();
+  });
+
+  it('issues and validates planning websocket session token', () => {
+    const service = new AuthService(usersServiceMock as any);
+    const session = service.issuePlanningWebSocketSession('user-1');
+
+    const decoded = service.getAuthUserFromPlanningWebSocketSessionToken(session.token);
+    expect(decoded).toMatchObject({
+      id: 'user-1',
+      provider: 'local',
+    });
+  });
+
   it('blocks local signup when email already belongs to Google account', async () => {
     usersServiceMock.findByEmail.mockResolvedValueOnce({
       id: 'u-1',
@@ -64,7 +117,6 @@ describe('AuthService', () => {
       avatarUrl: null,
       role: 'agent',
       isActive: true,
-      hotelId: 'hotel-1',
     });
 
     const service = new AuthService(usersServiceMock as any);
@@ -87,7 +139,6 @@ describe('AuthService', () => {
       avatarUrl: null,
       role: 'agent',
       isActive: true,
-      hotelId: 'hotel-1',
     });
 
     const service = new AuthService(usersServiceMock as any);
@@ -141,7 +192,6 @@ describe('AuthService', () => {
       avatarUrl: null,
       role: 'agent',
       isActive: true,
-      hotelId: 'hotel-1',
     });
 
     usersServiceMock.ensureUserForAuth.mockResolvedValueOnce({
@@ -151,7 +201,6 @@ describe('AuthService', () => {
       avatarUrl: null,
       role: 'agent',
       isActive: true,
-      hotelId: 'hotel-1',
     });
     usersServiceMock.getRolesForUser.mockResolvedValueOnce([{ id: 'role-1', name: 'agent' }]);
 
@@ -188,7 +237,6 @@ describe('AuthService', () => {
       avatarUrl: null,
       role: 'agent',
       isActive: true,
-      hotelId: 'hotel-1',
     });
     usersServiceMock.updateUserProfile.mockResolvedValueOnce({
       id: 'u-1',
@@ -197,7 +245,6 @@ describe('AuthService', () => {
       avatarUrl: null,
       role: 'agent',
       isActive: true,
-      hotelId: 'hotel-1',
     });
     usersServiceMock.getRolesForUser.mockResolvedValueOnce([{ id: 'role-1', name: 'agent' }]);
 
@@ -213,3 +260,4 @@ describe('AuthService', () => {
     });
   });
 });
+

@@ -40,3 +40,32 @@ groups:
         annotations:
           summary: "Frontend metric buffer near capacity"
           description: "In-memory frontend metric buffer is above 900 entries."
+
+  - name: ecotrack.realtime.transports
+    rules:
+      - alert: RealtimeWebSocketAuthFailuresHigh
+        expr: increase(ecotrack_realtime_connection_events_total{transport="ws",action="auth_failure"}[10m]) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High WebSocket auth failure rate"
+          description: "WebSocket realtime auth failures exceeded 20 in a 10-minute window."
+
+      - alert: RealtimeNoPushConnections
+        expr: sum(ecotrack_realtime_active_connections{transport=~"sse|ws"}) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No active realtime push connections"
+          description: "No active SSE/WS realtime connections detected for 10 minutes."
+
+      - alert: RealtimeEmittedEventsStalled
+        expr: increase(ecotrack_realtime_emitted_events_total[15m]) == 0 and on() up{job="ecotrack-api"} == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Realtime events stalled while API is up"
+          description: "No realtime events emitted in the last 15 minutes while API targets are healthy."

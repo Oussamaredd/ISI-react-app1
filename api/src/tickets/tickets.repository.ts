@@ -1,6 +1,6 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
-import { type DatabaseClient, comments, hotels, tickets, users } from 'ecotrack-database';
+import { type DatabaseClient, comments, tickets, users } from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 
@@ -11,7 +11,6 @@ type TicketFilters = {
   status?: string;
   priority?: string;
   supportCategory?: string;
-  hotelId?: string;
   assigneeId?: string;
   search?: string;
   limit?: number;
@@ -77,19 +76,17 @@ export class TicketsRepository {
   async create(dto: CreateTicketDto) {
     const title = dto.title ?? dto.name ?? 'Untitled ticket';
 
-    const hotelId = dto.hotelId ?? (await this.ensureDefaultHotel());
-    const requesterId = dto.requesterId ?? (await this.ensureDefaultUser(hotelId));
+    const requesterId = dto.requesterId ?? (await this.ensureDefaultUser());
 
     const [ticket] = await this.db
       .insert(tickets)
-        .values({
-          title,
-          description: dto.description,
-          priority: dto.priority ?? 'medium',
-          supportCategory: dto.supportCategory ?? 'general_help',
-          status: 'open',
+      .values({
+        title,
+        description: dto.description,
+        priority: dto.priority ?? 'medium',
+        supportCategory: dto.supportCategory ?? 'general_help',
+        status: 'open',
         requesterId,
-        hotelId,
         assigneeId: dto.assigneeId ?? null,
       })
       .returning();
@@ -261,27 +258,6 @@ export class TicketsRepository {
     );
   }
 
-  async assignHotel(ticketId: string, hotelId: string) {
-    await this.assertTicketExists(ticketId);
-
-    const hotel = await this.db.query.hotels.findFirst({ where: eq(hotels.id, hotelId) });
-    if (!hotel) {
-      throw new NotFoundException(`Hotel ${hotelId} not found`);
-    }
-
-    const [ticket] = await this.db
-      .update(tickets)
-      .set({ hotelId, updatedAt: new Date() })
-      .where(eq(tickets.id, ticketId))
-      .returning();
-
-    if (!ticket) {
-      throw new NotFoundException(`Ticket ${ticketId} not found`);
-    }
-
-    return ticket;
-  }
-
   async update(id: string, dto: UpdateTicketDto) {
     const payload: Record<string, unknown> = {};
     if (dto.title !== undefined) payload.title = dto.title;
@@ -336,10 +312,6 @@ export class TicketsRepository {
       conditions.push(eq(tickets.supportCategory, filters.supportCategory));
     }
 
-    if (filters.hotelId) {
-      conditions.push(eq(tickets.hotelId, filters.hotelId));
-    }
-
     if (filters.assigneeId) {
       conditions.push(eq(tickets.assigneeId, filters.assigneeId));
     }
@@ -366,27 +338,7 @@ export class TicketsRepository {
     return normalized || undefined;
   }
 
-  private async ensureDefaultHotel(): Promise<string> {
-    const [existing] = await this.db.select().from(hotels).limit(1);
-    if (existing?.id) return existing.id;
-
-    const slug = 'default-hotel';
-    const [hotel] = await this.db
-      .insert(hotels)
-      .values({ name: 'Default Hotel', slug })
-      .onConflictDoNothing({ target: hotels.slug })
-      .returning();
-
-    if (hotel?.id) return hotel.id;
-
-    const [created] = await this.db.select().from(hotels).where(eq(hotels.slug, slug)).limit(1);
-    if (!created?.id) {
-      throw new Error('Failed to provision default hotel');
-    }
-    return created.id;
-  }
-
-  private async ensureDefaultUser(hotelId: string): Promise<string> {
+  private async ensureDefaultUser(): Promise<string> {
     const [existing] = await this.db.select().from(users).limit(1);
     if (existing?.id) return existing.id;
 
@@ -397,7 +349,6 @@ export class TicketsRepository {
         email,
         displayName: 'Guest User',
         role: 'agent',
-        hotelId,
       })
       .returning();
 

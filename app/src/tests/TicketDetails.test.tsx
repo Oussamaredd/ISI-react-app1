@@ -14,7 +14,7 @@ vi.mock('../hooks/useTickets', () => ({
       title: 'Test Ticket',
       status: 'open',
       priority: 'high',
-      hotelName: 'Grand Hotel',
+      supportCategory: 'general_help',
       createdAt: '2026-01-15T10:00:00Z',
       updatedAt: '2026-01-15T10:30:00Z',
     },
@@ -77,7 +77,7 @@ describe('TicketDetails Component', () => {
     expect(await screen.findByText('Test Ticket')).toBeInTheDocument();
     expect(screen.getByText('HIGH')).toBeInTheDocument();
     expect(screen.getByText('OPEN')).toBeInTheDocument();
-    expect(screen.getByText('Grand Hotel')).toBeInTheDocument();
+    expect(screen.getByText('general_help')).toBeInTheDocument();
   });
 
   test('passes commentsPage query parameter into the comments hook', async () => {

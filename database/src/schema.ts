@@ -1,15 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-export const hotels = pgTable('hotels', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  isAvailable: boolean('is_available').default(true).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(),
@@ -20,9 +11,6 @@ export const users = pgTable('users', {
   avatarUrl: text('avatar_url'),
   role: text('role').default('agent').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
-  hotelId: uuid('hotel_id')
-    .notNull()
-    .references(() => hotels.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -49,9 +37,6 @@ export const tickets = pgTable('tickets', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
-  hotelId: uuid('hotel_id')
-    .notNull()
-    .references(() => hotels.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
@@ -291,16 +276,7 @@ export const systemSettings = pgTable('system_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const hotelsRelations = relations(hotels, ({ many }) => ({
-  tickets: many(tickets),
-  users: many(users),
-}));
-
 export const usersRelations = relations(users, ({ many, one }) => ({
-  hotel: one(hotels, {
-    fields: [users.hotelId],
-    references: [hotels.id],
-  }),
   assignedTickets: many(tickets, {
     relationName: 'tickets_assigneeId_users_id',
   }),
@@ -329,10 +305,6 @@ export const passwordResetTokensRelations = relations(passwordResetTokens, ({ on
 }));
 
 export const ticketsRelations = relations(tickets, ({ one, many }) => ({
-  hotel: one(hotels, {
-    fields: [tickets.hotelId],
-    references: [hotels.id],
-  }),
   requester: one(users, {
     fields: [tickets.requesterId],
     references: [users.id],
@@ -504,8 +476,6 @@ export const systemSettingsRelations = relations(systemSettings, ({ one }) => ({
     references: [users.id],
   }),
 }));
-
-export type Hotel = typeof hotels.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Ticket = typeof tickets.$inferSelect;
 export type Comment = typeof comments.$inferSelect;

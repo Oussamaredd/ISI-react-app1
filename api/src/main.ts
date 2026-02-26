@@ -81,6 +81,8 @@ async function bootstrap() {
 }
 
 bootstrap().catch((error) => {
-  NestLogger.error('Failed to bootstrap API', error);
+  // Ensure startup failures are visible even when Nest logger levels are reduced.
+  console.error('[Bootstrap] Failed to bootstrap API', error);
+  NestLogger.error('Failed to bootstrap API', error instanceof Error ? error.stack : String(error));
   process.exitCode = 1;
 });

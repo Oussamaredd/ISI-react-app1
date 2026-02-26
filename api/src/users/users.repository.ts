@@ -1,12 +1,11 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, gte, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
-import { type DatabaseClient, hotels, passwordResetTokens, roles, userRoles, users } from 'ecotrack-database';
+import { and, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { type DatabaseClient, passwordResetTokens, roles, userRoles, users } from 'ecotrack-database';
 
 import type { AuthUser } from '../auth/auth.types.js';
 import { DRIZZLE } from '../database/database.constants.js';
 
 const DEFAULT_ROLE = 'agent';
-const DEFAULT_HOTEL_SLUG = 'default-hotel';
 const GOOGLE_SIGNIN_BLOCKED_BY_LOCAL_ACCOUNT_MESSAGE =
   'This email is registered with email/password. Please sign in with your password.';
 
@@ -14,8 +13,21 @@ type UserFilters = {
   search?: string;
   role?: string;
   isActive?: boolean;
+  authProvider?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
   page?: number;
   limit?: number;
+};
+
+type LocalUserRecord = {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: string;
+  isActive: boolean;
+  [key: string]: unknown;
 };
 
 @Injectable()
@@ -95,7 +107,6 @@ export class UsersRepository {
       return updated ?? existing;
     }
 
-    const hotelId = await this.ensureDefaultHotel();
     const displayName = authUser.name?.trim() || email.split('@')[0] || 'User';
 
     const [upserted] = await this.db
@@ -108,7 +119,6 @@ export class UsersRepository {
         displayName,
         avatarUrl: authUser.avatarUrl ?? null,
         role: DEFAULT_ROLE,
-        hotelId,
       })
       .onConflictDoUpdate({
         target: users.email,
@@ -125,27 +135,74 @@ export class UsersRepository {
     return upserted ?? this.findByEmail(email);
   }
 
-  async createLocalUser(params: { email: string; passwordHash: string; displayName?: string }) {
+  async createLocalUser(params: {
+    email: string;
+    passwordHash: string;
+    displayName?: string;
+    roleIds?: string[];
+    isActive?: boolean;
+  }): Promise<(LocalUserRecord & { roles: Array<{ id: string; name: string }> }) | null> {
     const email = params.email.trim();
-    const hotelId = await this.ensureDefaultHotel();
+    const existing = await this.findByEmail(email);
+    if (existing) {
+      throw new ConflictException('Email is already in use.');
+    }
+
     const displayName = params.displayName?.trim() || email.split('@')[0] || 'User';
+    const resolvedRoleIds = Array.isArray(params.roleIds) ? params.roleIds.filter(Boolean) : [];
+    let selectedRoles: Array<{ id: string; name: string }> = [];
+    let primaryRole = DEFAULT_ROLE;
 
-    const [created] = await this.db
-      .insert(users)
-      .values({
-        email,
-        passwordHash: params.passwordHash,
-        authProvider: 'local',
-        googleId: null,
-        displayName,
-        avatarUrl: null,
-        role: DEFAULT_ROLE,
-        isActive: true,
-        hotelId,
-      })
-      .returning();
+    if (resolvedRoleIds.length > 0) {
+      const roleRows = await this.db.select().from(roles).where(inArray(roles.id, resolvedRoleIds));
+      if (roleRows.length !== resolvedRoleIds.length) {
+        throw new NotFoundException('One or more roles were not found');
+      }
 
-    return created ?? null;
+      selectedRoles = roleRows.map((role) => ({ id: role.id, name: role.name }));
+      primaryRole = this.pickPrimaryRole(roleRows.map((role) => role.name));
+    }
+
+    await this.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(users)
+        .values({
+          email,
+          passwordHash: params.passwordHash,
+          authProvider: 'local',
+          googleId: null,
+          displayName,
+          avatarUrl: null,
+          role: primaryRole,
+          isActive: params.isActive ?? true,
+        })
+        .returning();
+
+      if (created?.id && selectedRoles.length > 0) {
+        await tx.insert(userRoles).values(
+          selectedRoles.map((role) => ({
+            userId: created.id,
+            roleId: role.id,
+          })),
+        );
+      }
+    });
+
+    const createdUserRecord = (await this.findByEmail(email)) as LocalUserRecord | null;
+
+    if (!createdUserRecord) {
+      return null;
+    }
+
+    return {
+      id: createdUserRecord.id,
+      email: createdUserRecord.email,
+      displayName: createdUserRecord.displayName,
+      avatarUrl: createdUserRecord.avatarUrl,
+      role: createdUserRecord.role,
+      isActive: createdUserRecord.isActive,
+      roles: selectedRoles,
+    };
   }
 
   async updatePasswordHash(userId: string, passwordHash: string) {
@@ -246,6 +303,18 @@ export class UsersRepository {
 
     if (typeof filters.isActive === 'boolean') {
       conditions.push(eq(users.isActive, filters.isActive));
+    }
+
+    if (filters.authProvider) {
+      conditions.push(eq(users.authProvider, filters.authProvider));
+    }
+
+    if (filters.createdFrom) {
+      conditions.push(gte(users.createdAt, filters.createdFrom));
+    }
+
+    if (filters.createdTo) {
+      conditions.push(lte(users.createdAt, filters.createdTo));
     }
 
     const where = conditions.length ? and(...conditions) : undefined;
@@ -398,38 +467,8 @@ export class UsersRepository {
     if (roleNames.includes('super_admin')) return 'super_admin';
     if (roleNames.includes('admin')) return 'admin';
     if (roleNames.includes('manager')) return 'manager';
+    if (roleNames.includes('agent')) return 'agent';
+    if (roleNames.includes('citizen')) return 'citizen';
     return roleNames[0] ?? DEFAULT_ROLE;
-  }
-
-  private async ensureDefaultHotel(): Promise<string> {
-    const [existing] = await this.db
-      .select()
-      .from(hotels)
-      .where(eq(hotels.slug, DEFAULT_HOTEL_SLUG))
-      .limit(1);
-    if (existing?.id) return existing.id;
-
-    const [created] = await this.db
-      .insert(hotels)
-      .values({
-        name: 'Default Hotel',
-        slug: DEFAULT_HOTEL_SLUG,
-      })
-      .onConflictDoNothing({ target: hotels.slug })
-      .returning();
-
-    if (created?.id) return created.id;
-
-    const [fallback] = await this.db
-      .select()
-      .from(hotels)
-      .where(eq(hotels.slug, DEFAULT_HOTEL_SLUG))
-      .limit(1);
-
-    if (!fallback?.id) {
-      throw new Error('Failed to provision default hotel');
-    }
-
-    return fallback.id;
   }
 }

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
 import { useAuth } from './useAuth';
 
+const DASHBOARD_REFETCH_INTERVAL_MS = 20_000;
+
 export type TicketStatus = 'open' | 'closed' | 'completed' | 'in_progress' | 'OPEN' | 'COMPLETED';
 export type TicketPriority = 'low' | 'medium' | 'high' | string;
 
@@ -13,19 +15,11 @@ export type Ticket = {
   supportCategory?: string | null;
   status: TicketStatus;
   priority?: TicketPriority;
-  hotelId?: string | null;
   requesterId?: string | null;
   assigneeId?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   closedAt?: string | null;
-};
-
-export type Hotel = {
-  id: string;
-  name: string;
-  is_available?: boolean;
-  isAvailable?: boolean;
 };
 
 export type DashboardData = {
@@ -40,14 +34,13 @@ export type DashboardData = {
     maxPrice?: number;
   };
   statusBreakdown?: Record<string, number>;
-  hotels?: Array<{ id: string | number; name: string; ticketCount?: number; avgPrice?: number }>;
   recentActivity?: Array<{ date: string; created: number; updated: number }>;
   recentTickets?: Array<{
     id: string | number;
     name: string;
     price: number;
     status: string;
-    hotelName?: string;
+    supportCategory?: string;
     createdAt?: string;
     updatedAt?: string;
   }>;
@@ -60,7 +53,6 @@ const normalizeTicket = (raw: any): Ticket => ({
   supportCategory: raw.supportCategory ?? raw.support_category ?? null,
   status: (raw.status ?? 'open') as TicketStatus,
   priority: (raw.priority ?? raw.ticket_priority ?? 'medium') as TicketPriority,
-  hotelId: raw.hotelId ?? raw.hotel_id ?? null,
   requesterId: raw.requesterId ?? raw.requester_id ?? null,
   assigneeId: raw.assigneeId ?? raw.assignee_id ?? null,
   createdAt: raw.createdAt ?? raw.created_at ?? null,
@@ -69,27 +61,11 @@ const normalizeTicket = (raw: any): Ticket => ({
 });
 
 export const useTickets = (filters = {}) => {
-  const isFilters = filters !== false && filters !== null && typeof filters === 'object';
-
   return useQuery({
-    queryKey: ['tickets', isFilters ? filters : 'list'],
+    queryKey: ['tickets', filters],
     queryFn: async () => {
-      if (filters === false) {
-        const response = await apiClient.get('/api/hotels');
-        if (response && Array.isArray((response as any).hotels)) {
-          return {
-            hotels: (response as any).hotels,
-            total: (response as any).total ?? (response as any).hotels.length,
-          };
-        }
-        if (Array.isArray(response)) {
-          return { hotels: response, total: response.length };
-        }
-        return { hotels: [], total: 0 };
-      }
-
       const params = new URLSearchParams();
-      if (isFilters) {
+      if (filters && typeof filters === 'object') {
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== '') {
             params.append(key, String(value));
@@ -110,17 +86,6 @@ export const useTickets = (filters = {}) => {
       return { tickets, total: tickets.length };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-export const useHotels = () => {
-  return useQuery({
-    queryKey: ['hotels'],
-    queryFn: async () => {
-      const response = await apiClient.get('/api/hotels');
-      return response || [];
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
@@ -155,21 +120,6 @@ export const useDeleteTicket = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
-    },
-  });
-};
-
-export const useAssignHotelToTicket = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ ticketId, hotelId }: { ticketId: string; hotelId: string }) => {
-      const response = await apiClient.post(`/api/tickets/${ticketId}/assign-hotel`, { hotelId });
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['hotels'] });
     },
   });
 };
@@ -281,14 +231,17 @@ export const useTicketActivity = (ticketId) => {
   });
 };
 
-export const useDashboard = () => {
+export const useDashboard = (enabled = true) => {
   return useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => {
       const response = await apiClient.get('/api/dashboard');
       return response;
     },
+    enabled,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: enabled ? DASHBOARD_REFETCH_INTERVAL_MS : false,
+    refetchIntervalInBackground: false,
   });
 };
 

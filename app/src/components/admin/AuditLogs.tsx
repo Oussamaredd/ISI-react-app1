@@ -1,19 +1,49 @@
 import { useState } from 'react';
-import { 
-  FileText, 
-  Search, 
-  Filter, 
-  Calendar,
+import {
+  FileText,
+  Search,
+  Filter,
   User,
   Activity,
   ChevronDown,
   Download,
-RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { useAuditLogs, useAuditStats } from '../../hooks/adminHooks';
 import { useToast } from '../../context/ToastContext';
+
+type AuditLog = {
+  id: string;
+  user_id: string | null;
+  user_name: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  old_values: unknown;
+  new_values: unknown;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+};
+
+type AuditLogsResponse = {
+  logs: AuditLog[];
+  total: number;
+  totalPages: number;
+  page: number;
+  pageSize: number;
+};
+
+const csvEscape = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
 
 export function AuditLogs() {
   const [search, setSearch] = useState('');
@@ -26,7 +56,7 @@ export function AuditLogs() {
   const [showFilters, setShowFilters] = useState(false);
   const { addToast } = useToast();
 
-  const { data: logsData, isLoading, error } = useAuditLogs({
+  const { data: rawLogsData, isLoading, error } = useAuditLogs({
     search,
     action: actionFilter,
     resource_type: resourceFilter,
@@ -34,8 +64,9 @@ export function AuditLogs() {
     date_from: dateFrom,
     date_to: dateTo,
     page: currentPage,
-    limit: 50
+    limit: 50,
   });
+  const logsData = (rawLogsData ?? null) as AuditLogsResponse | null;
 
   const { data: statsData } = useAuditStats();
 
@@ -44,7 +75,56 @@ export function AuditLogs() {
   };
 
   const handleExportLogs = () => {
-    addToast('Log export functionality will be implemented in the next version.', 'info');
+    const logs = logsData?.logs ?? [];
+    if (logs.length === 0) {
+      addToast('No logs available for export with the current filters.', 'info');
+      return;
+    }
+
+    const headers = [
+      'timestamp',
+      'action',
+      'resource_type',
+      'resource_id',
+      'user_id',
+      'user_name',
+      'ip_address',
+      'user_agent',
+      'old_values',
+      'new_values',
+    ];
+
+    const rows = logs.map((log) =>
+      [
+        log.created_at,
+        log.action,
+        log.resource_type,
+        log.resource_id,
+        log.user_id,
+        log.user_name,
+        log.ip_address,
+        log.user_agent,
+        log.old_values,
+        log.new_values,
+      ]
+        .map(csvEscape)
+        .join(','),
+    );
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const fileUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+    link.href = fileUrl;
+    link.setAttribute('download', `audit-logs-${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(fileUrl);
+
+    addToast(`Exported ${logs.length} audit log entries as CSV.`, 'success');
   };
 
   const handleRefresh = () => {
@@ -60,11 +140,6 @@ export function AuditLogs() {
       'role_created': 'bg-purple-100 text-purple-800',
       'role_updated': 'bg-indigo-100 text-indigo-800',
       'role_deleted': 'bg-pink-100 text-pink-800',
-      'hotel_created': 'bg-cyan-100 text-cyan-800',
-      'hotel_updated': 'bg-teal-100 text-teal-800',
-      'hotel_deleted': 'bg-orange-100 text-orange-800',
-      'hotel_activated': 'bg-lime-100 text-lime-800',
-      'hotel_deactivated': 'bg-amber-100 text-amber-800',
       'comment_added': 'bg-emerald-100 text-emerald-800',
       'comment_updated': 'bg-sky-100 text-sky-800',
       'comment_deleted': 'bg-rose-100 text-rose-800',
@@ -86,7 +161,6 @@ export function AuditLogs() {
     const iconMap = {
       'users': User,
       'roles': Activity,
-      'hotels': FileText,
       'tickets': FileText,
       'system': Activity,
       'communications': Activity,
@@ -214,9 +288,6 @@ export function AuditLogs() {
                 <option value="role_created">Role Created</option>
                 <option value="role_updated">Role Updated</option>
                 <option value="role_deleted">Role Deleted</option>
-                <option value="hotel_created">Hotel Created</option>
-                <option value="hotel_updated">Hotel Updated</option>
-                <option value="hotel_deleted">Hotel Deleted</option>
                 <option value="system_settings_updated">System Settings Updated</option>
                 <option value="communication_dispatched">Communication Dispatched</option>
               </select>
@@ -234,7 +305,6 @@ export function AuditLogs() {
                 <option value="">All Resources</option>
                 <option value="users">Users</option>
                 <option value="roles">Roles</option>
-                <option value="hotels">Hotels</option>
                 <option value="tickets">Tickets</option>
                 <option value="system">System</option>
                 <option value="communications">Communications</option>

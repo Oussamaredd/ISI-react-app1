@@ -7,7 +7,7 @@ const logos = [
   "Compass Ops",
   "Beacon Desk",
   "Harbor Group",
-  "Fjord Hotels",
+  "Fjord Facilities",
 ];
 
 const useReducedMotion = () => {

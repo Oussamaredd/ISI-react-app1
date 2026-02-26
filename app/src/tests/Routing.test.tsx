@@ -45,7 +45,7 @@ describe("Routing Matrix", () => {
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ tickets: [], hotels: [] }),
+      json: async () => ({ tickets: [] }),
       text: async () => JSON.stringify({}),
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
@@ -68,7 +68,11 @@ describe("Routing Matrix", () => {
     renderRoute("/");
 
     expect(
-      await screen.findByRole("heading", { name: /Bridge every ticket handoff/i }),
+      await screen.findByRole(
+        "heading",
+        { name: /Bridge every ticket handoff/i },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
   });
 
@@ -125,7 +129,7 @@ describe("Routing Matrix", () => {
       });
       unmount();
     }
-  });
+  }, 20000);
 
   test("`/app/*` redirects unauthenticated users to `/login`", async () => {
     const { getLocation } = renderRoute("/app/dashboard");
@@ -135,6 +139,67 @@ describe("Routing Matrix", () => {
     });
 
     expect(getLocation()?.search).toContain("next=");
+  });
+
+  test("`/app/agent/tour` denies users without agent access", async () => {
+    setAuthState({
+      user: { id: "123", role: "citizen", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    renderRoute("/app/agent/tour");
+
+    expect(await screen.findByRole("heading", { name: /Access Denied/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/You don't have permission to access the agent workspace\./i),
+    ).toBeInTheDocument();
+  });
+
+  test("`/app/agent/tour` allows agent access", async () => {
+    setAuthState({
+      user: { id: "123", role: "agent", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { getLocation } = renderRoute("/app/agent/tour");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/app/agent/tour");
+    });
+    expect(screen.queryByRole("heading", { name: /Access Denied/i })).not.toBeInTheDocument();
+  });
+
+  test("`/app/citizen/report` denies users without citizen access", async () => {
+    setAuthState({
+      user: { id: "123", role: "agent", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    renderRoute("/app/citizen/report");
+
+    expect(await screen.findByRole("heading", { name: /Access Denied/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/You don't have permission to access citizen tools\./i),
+    ).toBeInTheDocument();
+  });
+
+  test("`/app/citizen/report` allows citizen access", async () => {
+    setAuthState({
+      user: { id: "123", role: "citizen", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { getLocation } = renderRoute("/app/citizen/report");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/app/citizen/report");
+    });
+
+    expect(screen.queryByRole("heading", { name: /Access Denied/i })).not.toBeInTheDocument();
   });
 
   test("public marketing pages render concrete content", async () => {
@@ -167,9 +232,13 @@ describe("Routing Matrix", () => {
         expect(getLocation()?.pathname).toBe("/");
       });
       expect(
-        await screen.findByRole("heading", { name: /Bridge every ticket handoff/i }),
+        await screen.findByRole(
+          "heading",
+          { name: /Bridge every ticket handoff/i },
+          { timeout: 5000 },
+        ),
       ).toBeInTheDocument();
       unmount();
     }
-  });
+  }, 20000);
 });

@@ -13,7 +13,6 @@ export type AuthenticatedRequestUser = {
   roles: ResolvedRole[];
   permissions: string[];
   isActive: boolean;
-  hotelId: string;
 };
 
 export type RequestWithAuthUser = Request & {

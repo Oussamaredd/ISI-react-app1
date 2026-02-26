@@ -29,10 +29,10 @@ Special case:
 | Path | Component | Notes |
 | --- | --- | --- |
 | `/app/dashboard` | `Dashboard` | Main overview |
-| `/app/citizen/report` | `CitizenReportPage` | Citizen overflow report creation |
-| `/app/citizen/profile` | `CitizenProfilePage` | Citizen impact, badges, and history |
-| `/app/citizen/challenges` | `CitizenChallengesPage` | Challenge enrollment and progress |
-| `/app/agent/tour` | `AgentTourPage` | Agent tour start/stop validation/anomaly workflow |
+| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization and assignment |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history |
 | `/app/tickets` | `TicketListPage` | Basic ticket list with delete action |
@@ -52,6 +52,7 @@ Authenticated shell behavior:
 - Sidebar can be collapsed/expanded with a high-visibility toggle button (state persisted in browser local storage).
 - Main content header shows current route context as page name only (without a page icon).
 - Sign Out returns users to the landing page (`/`).
+- Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 
 ## Landing sections and hash navigation
 

@@ -36,7 +36,7 @@ COPY --from=builder /workspace/infrastructure ./infrastructure
 WORKDIR /workspace/api
 EXPOSE 3001
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://localhost:3001/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl -fsS http://localhost:3001/api/health/ready || exit 1
 
 CMD ["node", "dist/main.js"]

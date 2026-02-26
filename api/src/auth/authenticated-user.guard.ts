@@ -17,8 +17,6 @@ const ALL_PLATFORM_PERMISSIONS = [
   'users.write',
   'roles.read',
   'roles.write',
-  'hotels.read',
-  'hotels.write',
   'tickets.read',
   'tickets.write',
   'audit.read',
@@ -41,7 +39,6 @@ const FALLBACK_ROLE_PERMISSIONS: Record<string, string[]> = {
   admin: ALL_PLATFORM_PERMISSIONS,
   manager: [
     'users.read',
-    'hotels.read',
     'tickets.read',
     'audit.read',
     'ecotrack.containers.read',
@@ -67,7 +64,6 @@ const FALLBACK_ROLE_PERMISSIONS: Record<string, string[]> = {
     'ecotrack.citizenReports.write',
     'ecotrack.gamification.read',
   ],
-  user: ['tickets.read', 'tickets.write'],
 };
 
 const normalizeRole = (value: string) => value.trim().toLowerCase();
@@ -141,7 +137,6 @@ export class AuthenticatedUserGuard implements CanActivate {
       })),
       permissions: Array.from(permissions),
       isActive: dbUser.isActive,
-      hotelId: dbUser.hotelId,
     };
 
     return true;

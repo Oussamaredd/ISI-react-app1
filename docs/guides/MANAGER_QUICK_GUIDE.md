@@ -17,6 +17,15 @@ Plan optimized tours, monitor operations, and publish monthly reports.
 3. Use `Manager Reports` to generate, download, or regenerate period reports.
 4. Track critical indicators on dashboard and trigger emergency collection when needed.
 
+## Freshness behavior
+
+- Manager dashboards first mint a short-lived stream session token, then attempt SSE push updates from `GET /api/planning/stream`.
+- If SSE is unavailable, UI automatically falls back to polling without blocking workflows.
+- Dashboard KPIs auto-refresh every 20 seconds.
+- Planning dashboard data auto-refreshes every 20 seconds when manager access is available.
+- Planning zone/agent metadata auto-refreshes every 30 seconds.
+- Background-tab polling is disabled to reduce unnecessary traffic.
+
 ## Related APIs
 
 - `POST /api/planning/optimize-tour`

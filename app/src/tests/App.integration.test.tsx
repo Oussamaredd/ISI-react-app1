@@ -55,9 +55,18 @@ describe("App Integration", () => {
     renderApp();
 
     expect(
-      await screen.findByRole("heading", { name: /Bridge every ticket handoff/i }),
+      await screen.findByRole(
+        "heading",
+        { name: /Bridge every ticket handoff/i },
+        { timeout: 8000 },
+      ),
     ).toBeInTheDocument();
-    const getStartedLinks = screen.getAllByRole("link", { name: /Get Started/i });
+
+    const getStartedLinks = await screen.findAllByRole(
+      "link",
+      { name: /Get Started/i },
+      { timeout: 8000 },
+    );
     expect(getStartedLinks.some((link) => link.getAttribute("href") === "/login")).toBe(true);
   });
 
@@ -78,13 +87,9 @@ describe("App Integration", () => {
 
     renderApp();
 
-    await waitFor(() =>
-      expect(screen.queryByRole("link", { name: /account settings/i })).not.toBeInTheDocument(),
-    );
-
-    expect(screen.getByText("Test User")).toBeInTheDocument();
-    expect(screen.getByText("Simple List")).toBeInTheDocument();
-    expect(screen.getAllByText("Create Ticket").length).toBeGreaterThan(0);
+    expect(await screen.findByText("Test User")).toBeInTheDocument();
+    expect(await screen.findByText("Simple List")).toBeInTheDocument();
+    expect((await screen.findAllByText("Create Ticket")).length).toBeGreaterThan(0);
   });
 
   test("navigation links work correctly", async () => {

@@ -4,9 +4,11 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { MonitoringModule } from '../monitoring/monitoring.module.js';
+import { MonitoringService } from '../monitoring/monitoring.service.js';
 
 describe('Monitoring endpoints', () => {
   let app: INestApplication;
+  let monitoringService: MonitoringService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -23,6 +25,7 @@ describe('Monitoring endpoints', () => {
       }),
     );
     await app.init();
+    monitoringService = app.get(MonitoringService);
   });
 
   afterAll(async () => {
@@ -67,6 +70,21 @@ describe('Monitoring endpoints', () => {
   });
 
   it('GET /api/metrics returns Prometheus metrics', async () => {
+    monitoringService.setRealtimeDiagnostics({
+      activeSseConnections: 2,
+      activeWebSocketConnections: 1,
+      counters: {
+        sseConnected: 5,
+        sseDisconnected: 3,
+        wsConnected: 4,
+        wsDisconnected: 2,
+        wsAuthFailures: 1,
+        emittedEvents: 42,
+      },
+      lastEventTimestamp: '2026-02-01T10:00:02.000Z',
+      lastEventName: 'planning.dashboard.snapshot',
+    });
+
     const response = await request(app.getHttpServer()).get('/api/metrics').expect(200);
 
     expect(response.headers['content-type']).toContain('text/plain');
@@ -74,5 +92,11 @@ describe('Monitoring endpoints', () => {
     expect(response.text).toContain('frontend_metrics_total');
     expect(response.text).toMatch(/frontend_errors_by_type_total\{type="NETWORK"\}\s+1/);
     expect(response.text).toMatch(/frontend_metrics_by_type_total\{type="navigation"\}\s+1/);
+    expect(response.text).toContain('ecotrack_realtime_active_connections{transport="sse"} 2');
+    expect(response.text).toContain('ecotrack_realtime_active_connections{transport="ws"} 1');
+    expect(response.text).toContain('ecotrack_realtime_emitted_events_total 42');
+    expect(response.text).toContain(
+      'ecotrack_realtime_last_event_name_info{event="planning.dashboard.snapshot"} 1',
+    );
   });
 });
