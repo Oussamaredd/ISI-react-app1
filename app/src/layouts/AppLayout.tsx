@@ -1,15 +1,12 @@
 import React from "react";
 import {
   LayoutDashboard,
-  ListChecks,
-  ListFilter,
   LifeBuoy,
   LogOut,
   MapPin,
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
-  PlusSquare,
   Settings,
   Shield,
   Trophy,
@@ -21,7 +18,12 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useAuth";
 import LogoutButton from "../components/LogoutButton";
 import BrandLogo from "../components/branding/BrandLogo";
-import { hasAdminAccess, hasManagerAccess } from "../utils/authz";
+import {
+  hasAdminAccess,
+  hasAgentAccess,
+  hasCitizenAccess,
+  hasManagerAccess,
+} from "../utils/authz";
 
 type AppNavItem = {
   to: string;
@@ -29,6 +31,8 @@ type AppNavItem = {
   icon: LucideIcon;
   utility?: boolean;
   requiresAdmin?: boolean;
+  requiresAgent?: boolean;
+  requiresCitizen?: boolean;
   requiresManager?: boolean;
   matches: (pathname: string) => boolean;
 };
@@ -36,6 +40,8 @@ type AppNavItem = {
 type PageMeta = {
   label: string;
   requiresAdmin?: boolean;
+  requiresAgent?: boolean;
+  requiresCitizen?: boolean;
   requiresManager?: boolean;
   matches: (pathname: string) => boolean;
 };
@@ -43,8 +49,15 @@ type PageMeta = {
 const DESKTOP_MEDIA_QUERY = "(min-width: 721px)";
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "ecotrack.sidebar.collapsed";
 
-const isSimpleListRoute = (pathname: string) =>
-  pathname === "/app/tickets" || /^\/app\/tickets\/[^/]+\/(details|treat)$/.test(pathname);
+const isTicketLifecycleRoute = (pathname: string) =>
+  /^\/app\/tickets\/[^/]+\/(details|treat)$/.test(pathname);
+
+const isSupportWorkspaceRoute = (pathname: string) =>
+  pathname === "/app/support" ||
+  pathname === "/app/tickets" ||
+  isRouteActive(pathname, "/app/tickets/advanced") ||
+  isRouteActive(pathname, "/app/tickets/create") ||
+  isTicketLifecycleRoute(pathname);
 
 const isRouteActive = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`);
@@ -93,6 +106,8 @@ export default function AppLayout() {
     }
   );
   const canAccessAdmin = hasAdminAccess(user);
+  const canAccessAgent = hasAgentAccess(user);
+  const canAccessCitizen = hasCitizenAccess(user);
   const canAccessManager = hasManagerAccess(user);
   const displayName = user?.displayName || user?.name || user?.email || "User";
   const profileImageUrl = getUserAvatarUrl(user);
@@ -151,27 +166,10 @@ export default function AppLayout() {
         matches: (pathname) => pathname === "/app/dashboard",
       },
       {
-        to: "/app/tickets/advanced",
-        label: "Advanced List",
-        icon: ListFilter,
-        matches: (pathname) => isRouteActive(pathname, "/app/tickets/advanced"),
-      },
-      {
-        to: "/app/tickets",
-        label: "Simple List",
-        icon: ListChecks,
-        matches: (pathname) => isSimpleListRoute(pathname),
-      },
-      {
-        to: "/app/tickets/create",
-        label: "Create Ticket",
-        icon: PlusSquare,
-        matches: (pathname) => isRouteActive(pathname, "/app/tickets/create"),
-      },
-      {
         to: '/app/agent/tour',
         label: 'Agent Tour',
         icon: Truck,
+        requiresAgent: true,
         matches: (pathname) => isRouteActive(pathname, '/app/agent/tour'),
       },
       {
@@ -192,26 +190,22 @@ export default function AppLayout() {
         to: '/app/citizen/report',
         label: 'Report Overflow',
         icon: MapPin,
+        requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/report'),
       },
       {
         to: '/app/citizen/profile',
         label: 'Citizen Profile',
         icon: User,
+        requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/profile'),
       },
       {
         to: '/app/citizen/challenges',
         label: 'Challenges',
         icon: Trophy,
+        requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/challenges'),
-      },
-      {
-        to: "/app/admin",
-        label: "Admin Center",
-        icon: Shield,
-        requiresAdmin: true,
-        matches: (pathname) => isRouteActive(pathname, "/app/admin"),
       },
       {
         to: "/app/settings",
@@ -221,11 +215,19 @@ export default function AppLayout() {
         matches: (pathname) => isRouteActive(pathname, "/app/settings"),
       },
       {
-        to: '/support',
-        label: 'Support FAQ',
+        to: "/app/support",
+        label: "Support",
         icon: LifeBuoy,
         utility: true,
-        matches: (pathname) => pathname === '/support' || pathname === '/faq',
+        matches: (pathname) => isSupportWorkspaceRoute(pathname),
+      },
+      {
+        to: "/app/admin",
+        label: "Admin Center",
+        icon: Shield,
+        utility: true,
+        requiresAdmin: true,
+        matches: (pathname) => isRouteActive(pathname, "/app/admin"),
       },
     ],
     []
@@ -238,29 +240,20 @@ export default function AppLayout() {
         matches: (pathname) => pathname === "/app/dashboard",
       },
       {
-        label: "Advanced List",
-        matches: (pathname) => isRouteActive(pathname, "/app/tickets/advanced"),
-      },
-      {
-        label: "Simple List",
-        matches: (pathname) => pathname === "/app/tickets",
+        label: "Support Workspace",
+        matches: (pathname) => pathname === "/app/support",
       },
       {
         label: "Ticket Details",
-        matches: (pathname) =>
-          /^\/app\/tickets\/[^/]+\/details$/.test(pathname),
+        matches: (pathname) => /^\/app\/tickets\/[^/]+\/details$/.test(pathname),
       },
       {
         label: "Treat Ticket",
-        matches: (pathname) =>
-          /^\/app\/tickets\/[^/]+\/treat$/.test(pathname),
-      },
-      {
-        label: "Create Ticket",
-        matches: (pathname) => isRouteActive(pathname, "/app/tickets/create"),
+        matches: (pathname) => /^\/app\/tickets\/[^/]+\/treat$/.test(pathname),
       },
       {
         label: 'Agent Tour',
+        requiresAgent: true,
         matches: (pathname) => isRouteActive(pathname, '/app/agent/tour'),
       },
       {
@@ -275,23 +268,22 @@ export default function AppLayout() {
       },
       {
         label: 'Report Overflow',
+        requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/report'),
       },
       {
         label: 'Citizen Profile',
+        requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/profile'),
       },
       {
         label: 'Challenges',
+        requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/challenges'),
       },
       {
         label: "Settings",
         matches: (pathname) => isRouteActive(pathname, "/app/settings"),
-      },
-      {
-        label: 'Support FAQ',
-        matches: (pathname) => pathname === '/support' || pathname === '/faq',
       },
       {
         label: "Admin Center",
@@ -305,6 +297,8 @@ export default function AppLayout() {
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.requiresAdmin || canAccessAdmin) &&
+      (!item.requiresAgent || canAccessAgent) &&
+      (!item.requiresCitizen || canAccessCitizen) &&
       (!item.requiresManager || canAccessManager)
   );
   const primaryLinks = visibleNavItems.filter((item) => !item.utility);
@@ -313,6 +307,8 @@ export default function AppLayout() {
   const currentPage =
     currentPageCatalog
       .filter((page) => !page.requiresAdmin || canAccessAdmin)
+      .filter((page) => !page.requiresAgent || canAccessAgent)
+      .filter((page) => !page.requiresCitizen || canAccessCitizen)
       .filter((page) => !page.requiresManager || canAccessManager)
       .find((page) => page.matches(location.pathname)) ?? {
       label: "Workspace",

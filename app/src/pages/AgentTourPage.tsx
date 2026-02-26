@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-
+import { useMemo, useState } from "react";
 import {
   useAgentTour,
   useAnomalyTypes,
@@ -7,7 +6,8 @@ import {
   useStartAgentTour,
   useTourActivity,
   useValidateTourStop,
-} from '../hooks/useAgentTours';
+} from "../hooks/useAgentTours";
+import "../styles/OperationsPages.css";
 
 type TourStop = {
   id: string;
@@ -23,14 +23,15 @@ type TourStop = {
 };
 
 export default function AgentTourPage() {
-  const [qrCode, setQrCode] = useState('');
-  const [manualContainerId, setManualContainerId] = useState('');
-  const [volumeLiters, setVolumeLiters] = useState('');
-  const [validationNotes, setValidationNotes] = useState('');
-  const [anomalyTypeId, setAnomalyTypeId] = useState('');
-  const [anomalyComments, setAnomalyComments] = useState('');
-  const [anomalyPhotoUrl, setAnomalyPhotoUrl] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
+  const [qrCode, setQrCode] = useState("");
+  const [manualContainerId, setManualContainerId] = useState("");
+  const [volumeLiters, setVolumeLiters] = useState("");
+  const [validationNotes, setValidationNotes] = useState("");
+  const [anomalyTypeId, setAnomalyTypeId] = useState("");
+  const [anomalyComments, setAnomalyComments] = useState("");
+  const [anomalyPhotoUrl, setAnomalyPhotoUrl] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [statusTone, setStatusTone] = useState<"success" | "error">("success");
 
   const agentTourQuery = useAgentTour();
   const startTourMutation = useStartAgentTour();
@@ -46,20 +47,29 @@ export default function AgentTourPage() {
         zoneName?: string | null;
         scheduledFor?: string;
         stops?: TourStop[];
-        itinerary?: Array<{ stopId: string; order: number; latitude?: string | null; longitude?: string | null }>;
+        itinerary?: Array<{
+          stopId: string;
+          order: number;
+          latitude?: string | null;
+          longitude?: string | null;
+        }>;
       }
     | null;
 
   const stops = Array.isArray(tour?.stops) ? tour.stops : [];
   const activeStop = useMemo(
-    () => stops.find((stop) => stop.status === 'active') ?? stops.find((stop) => stop.status === 'pending') ?? null,
+    () =>
+      stops.find((stop) => stop.status === "active") ??
+      stops.find((stop) => stop.status === "pending") ??
+      null,
     [stops],
   );
 
   const activityQuery = useTourActivity(tour?.id);
   const activityRows =
-    ((activityQuery.data as { activity?: Array<{ id: string; type: string; createdAt: string; details: unknown }> } | undefined)
-      ?.activity ?? []);
+    ((activityQuery.data as {
+      activity?: Array<{ id: string; type: string; createdAt: string; details: unknown }>;
+    } | undefined)?.activity ?? []);
 
   const itineraryCoordinates = useMemo(() => {
     const coordinates = (tour?.itinerary ?? [])
@@ -95,7 +105,7 @@ export default function AgentTourPage() {
       return;
     }
 
-    setStatusMessage('');
+    setStatusMessage("");
 
     try {
       const payload = {
@@ -107,19 +117,25 @@ export default function AgentTourPage() {
         notes: validationNotes || undefined,
       };
 
-      const response = (await validateStopMutation.mutateAsync(payload)) as { nextStopId?: string | null };
+      const response = (await validateStopMutation.mutateAsync(payload)) as {
+        nextStopId?: string | null;
+      };
 
+      setStatusTone("success");
       setStatusMessage(
         response.nextStopId
           ? `Collection validated. Auto-advanced to next stop (${response.nextStopId}).`
-          : 'Collection validated. Tour completed.',
+          : "Collection validated. Tour completed.",
       );
-      setQrCode('');
-      setManualContainerId('');
-      setVolumeLiters('');
-      setValidationNotes('');
+      setQrCode("");
+      setManualContainerId("");
+      setVolumeLiters("");
+      setValidationNotes("");
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to validate collection stop.');
+      setStatusTone("error");
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to validate collection stop.",
+      );
     }
   };
 
@@ -128,7 +144,7 @@ export default function AgentTourPage() {
       return;
     }
 
-    setStatusMessage('');
+    setStatusMessage("");
 
     try {
       const response = (await reportAnomalyMutation.mutateAsync({
@@ -137,250 +153,297 @@ export default function AgentTourPage() {
         tourStopId: activeStop?.id,
         comments: anomalyComments || undefined,
         photoUrl: anomalyPhotoUrl || undefined,
-        severity: 'medium',
+        severity: "medium",
       })) as { managerAlertTriggered?: boolean };
 
+      setStatusTone("success");
       setStatusMessage(
         response.managerAlertTriggered
-          ? 'Anomaly reported and manager alert triggered.'
-          : 'Anomaly reported.',
+          ? "Anomaly reported and manager alert triggered."
+          : "Anomaly reported.",
       );
-      setAnomalyComments('');
-      setAnomalyPhotoUrl('');
+      setAnomalyComments("");
+      setAnomalyPhotoUrl("");
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to report anomaly.');
+      setStatusTone("error");
+      setStatusMessage(
+        error instanceof Error ? error.message : "Failed to report anomaly.",
+      );
     }
   };
 
   if (agentTourQuery.isLoading) {
-    return <section className="p-6 text-sm text-gray-600">Loading assigned tour...</section>;
+    return (
+      <section className="ops-page">
+        <p className="ops-status ops-status-success">Loading assigned tour...</p>
+      </section>
+    );
   }
 
   if (!tour) {
     return (
-      <section className="p-6">
-        <h1 className="text-xl font-semibold text-gray-900">Daily Agent Tour</h1>
-        <p className="mt-2 text-sm text-gray-600">No assigned tour is available for your account yet.</p>
+      <section className="ops-page">
+        <header className="ops-hero">
+          <h1>Daily Agent Tour</h1>
+          <p>No assigned tour is available for your account yet.</p>
+        </header>
       </section>
     );
   }
 
   return (
-    <section className="p-4 sm:p-6 space-y-4">
-      <header className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-900">{tour.name}</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Zone: {tour.zoneName ?? 'Unassigned'} - Scheduled {tour.scheduledFor ? new Date(tour.scheduledFor).toLocaleString() : 'N/A'}
+    <section className="ops-page">
+      <header className="ops-hero">
+        <h1>{tour.name}</h1>
+        <p>
+          Zone: {tour.zoneName ?? "Unassigned"} - Scheduled{" "}
+          {tour.scheduledFor ? new Date(tour.scheduledFor).toLocaleString() : "N/A"}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-xs font-medium">Status: {tour.status}</span>
+        <div className="ops-actions ops-mt-lg">
+          <span className="ops-chip ops-chip-info">Status: {tour.status}</span>
           <button
             type="button"
-            className="rounded-md bg-emerald-600 text-white px-3 py-1 text-sm hover:bg-emerald-700 disabled:opacity-50"
-            disabled={tour.status === 'in_progress' || startTourMutation.isPending}
+            className="ops-btn ops-btn-success"
+            disabled={tour.status === "in_progress" || startTourMutation.isPending}
             onClick={() => startTourMutation.mutate(tour.id)}
           >
-            {tour.status === 'in_progress' ? 'Tour In Progress' : 'Start Tour'}
+            {tour.status === "in_progress" ? "Tour In Progress" : "Start Tour"}
           </button>
         </div>
       </header>
 
-      <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-medium text-gray-900">Itinerary Map</h2>
+      <article className="ops-card">
+        <h2>Itinerary Map</h2>
         {itineraryCoordinates.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">No coordinate data available for map rendering.</p>
+          <p className="ops-empty ops-mt-xs">
+            No coordinate data available for map rendering.
+          </p>
         ) : (
-          <svg viewBox="0 0 100 100" className="mt-3 w-full max-w-md rounded-lg border border-gray-100 bg-gray-50 p-2">
-            <polyline
-              points={itineraryCoordinates.map((point) => `${point.x},${point.y}`).join(' ')}
-              fill="none"
-              stroke="#0ea5e9"
-              strokeWidth="2"
-            />
-            {itineraryCoordinates.map((point) => (
-              <g key={point.order}>
-                <circle cx={point.x} cy={point.y} r="3" fill="#0f766e" />
-                <text x={point.x + 2} y={point.y - 2} fontSize="4" fill="#0f172a">
-                  {point.order}
-                </text>
-              </g>
-            ))}
-          </svg>
+          <div className="ops-map-frame">
+            <svg viewBox="0 0 100 100" className="w-full">
+              <polyline
+                points={itineraryCoordinates.map((point) => `${point.x},${point.y}`).join(" ")}
+                fill="none"
+                stroke="#4f8cff"
+                strokeWidth="2"
+              />
+              {itineraryCoordinates.map((point) => (
+                <g key={point.order}>
+                  <circle cx={point.x} cy={point.y} r="3" fill="#27d17f" />
+                  <text x={point.x + 2} y={point.y - 2} fontSize="4" fill="#f3f7ff">
+                    {point.order}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
         )}
       </article>
 
-      <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-medium text-gray-900">Ordered Stops</h2>
-        <ul className="mt-3 space-y-2">
-          {stops.map((stop) => (
-            <li
-              key={stop.id}
-              className={`rounded-md border px-3 py-2 text-sm ${
-                stop.status === 'active'
-                  ? 'border-emerald-300 bg-emerald-50'
-                  : stop.status === 'completed'
-                    ? 'border-gray-200 bg-gray-50'
-                    : 'border-blue-200 bg-blue-50'
-              }`}
-            >
-              <p className="font-medium text-gray-900">
-                #{stop.stopOrder} - {stop.containerCode} - {stop.containerLabel}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                Status: {stop.status} {stop.eta ? `- ETA ${new Date(stop.eta).toLocaleTimeString()}` : ''}
-              </p>
-            </li>
-          ))}
+      <article className="ops-card">
+        <h2>Ordered Stops</h2>
+        <ul className="ops-list ops-mt-lg">
+          {stops.map((stop) => {
+            const toneClass =
+              stop.status === "active"
+                ? "ops-chip ops-chip-success"
+                : stop.status === "completed"
+                  ? "ops-chip ops-chip-info"
+                  : "ops-chip ops-chip-warning";
+
+            return (
+              <li key={stop.id} className="ops-list-item">
+                <p>
+                  <strong>#{stop.stopOrder}</strong> - {stop.containerCode} - {stop.containerLabel}
+                </p>
+                <p className="ops-list-meta">
+                  ETA: {stop.eta ? new Date(stop.eta).toLocaleTimeString() : "N/A"}
+                </p>
+                <div className="ops-actions ops-mt-xs">
+                  <span className={toneClass}>Status: {stop.status}</span>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </article>
 
-      <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
-        <h2 className="text-lg font-medium text-gray-900">Validate Active Stop</h2>
+      <article className="ops-card ops-form">
+        <h2>Validate Active Stop</h2>
         {activeStop ? (
           <>
-            <p className="text-sm text-gray-600">
+            <p className="ops-subtle">
               Active stop: #{activeStop.stopOrder} - {activeStop.containerCode}
             </p>
 
-            <label htmlFor="agent-tour-volume-liters" className="block text-xs font-medium text-gray-700">
-              Volume (liters)
-            </label>
-            <input
-              id="agent-tour-volume-liters"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              type="number"
-              value={volumeLiters}
-              onChange={(event) => setVolumeLiters(event.target.value)}
-              placeholder="e.g. 120"
-            />
+            <div className="ops-field">
+              <label htmlFor="agent-tour-volume-liters" className="ops-label">
+                Volume (liters)
+              </label>
+              <input
+                id="agent-tour-volume-liters"
+                className="ops-input"
+                type="number"
+                value={volumeLiters}
+                onChange={(event) => setVolumeLiters(event.target.value)}
+                placeholder="e.g. 120"
+              />
+            </div>
 
-            <label htmlFor="agent-tour-qr-code" className="block text-xs font-medium text-gray-700">
-              QR code (optional)
-            </label>
-            <input
-              id="agent-tour-qr-code"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              value={qrCode}
-              onChange={(event) => setQrCode(event.target.value)}
-              placeholder="Scan or type QR value"
-            />
+            <div className="ops-field">
+              <label htmlFor="agent-tour-qr-code" className="ops-label">
+                QR code (optional)
+              </label>
+              <input
+                id="agent-tour-qr-code"
+                className="ops-input"
+                value={qrCode}
+                onChange={(event) => setQrCode(event.target.value)}
+                placeholder="Scan or type QR value"
+              />
+            </div>
 
-            <label htmlFor="agent-tour-manual-container" className="block text-xs font-medium text-gray-700">
-              Manual fallback container
-            </label>
-            <select
-              id="agent-tour-manual-container"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              value={manualContainerId}
-              onChange={(event) => setManualContainerId(event.target.value)}
-            >
-              <option value="">Use stop default container</option>
-              {stops.map((stop) => (
-                <option key={stop.id} value={stop.containerId}>
-                  {stop.containerCode} - {stop.containerLabel}
-                </option>
-              ))}
-            </select>
+            <div className="ops-field">
+              <label htmlFor="agent-tour-manual-container" className="ops-label">
+                Manual fallback container
+              </label>
+              <select
+                id="agent-tour-manual-container"
+                className="ops-select"
+                value={manualContainerId}
+                onChange={(event) => setManualContainerId(event.target.value)}
+              >
+                <option value="">Use stop default container</option>
+                {stops.map((stop) => (
+                  <option key={stop.id} value={stop.containerId}>
+                    {stop.containerCode} - {stop.containerLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <label htmlFor="agent-tour-validation-notes" className="block text-xs font-medium text-gray-700">
-              Notes (optional)
-            </label>
-            <textarea
-              id="agent-tour-validation-notes"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              rows={2}
-              value={validationNotes}
-              onChange={(event) => setValidationNotes(event.target.value)}
-            />
+            <div className="ops-field">
+              <label htmlFor="agent-tour-validation-notes" className="ops-label">
+                Notes (optional)
+              </label>
+              <textarea
+                id="agent-tour-validation-notes"
+                className="ops-textarea"
+                rows={2}
+                value={validationNotes}
+                onChange={(event) => setValidationNotes(event.target.value)}
+              />
+            </div>
 
-            <button
-              type="button"
-              className="rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700 disabled:opacity-60"
-              onClick={submitValidation}
-              disabled={!volumeLiters || validateStopMutation.isPending}
-            >
-              {validateStopMutation.isPending ? 'Validating...' : 'Validate Stop'}
-            </button>
+            <div className="ops-actions">
+              <button
+                type="button"
+                className="ops-btn ops-btn-primary"
+                onClick={submitValidation}
+                disabled={!volumeLiters || validateStopMutation.isPending}
+              >
+                {validateStopMutation.isPending ? "Validating..." : "Validate Stop"}
+              </button>
+            </div>
           </>
         ) : (
-          <p className="text-sm text-gray-500">No active stop pending validation.</p>
+          <p className="ops-empty">No active stop pending validation.</p>
         )}
       </article>
 
-      <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
-        <h2 className="text-lg font-medium text-gray-900">Report Anomaly</h2>
+      <article className="ops-card ops-form">
+        <h2>Report Anomaly</h2>
 
-        <label htmlFor="agent-tour-anomaly-type" className="block text-xs font-medium text-gray-700">
-          Anomaly type
-        </label>
-        <select
-          id="agent-tour-anomaly-type"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          value={anomalyTypeId}
-          onChange={(event) => setAnomalyTypeId(event.target.value)}
-        >
-          <option value="">Select anomaly type</option>
-          {((anomalyTypesQuery.data as { anomalyTypes?: Array<{ id: string; label: string }> } | undefined)
-            ?.anomalyTypes ?? []
-          ).map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.label}
-            </option>
-          ))}
-        </select>
+        <div className="ops-field">
+          <label htmlFor="agent-tour-anomaly-type" className="ops-label">
+            Anomaly type
+          </label>
+          <select
+            id="agent-tour-anomaly-type"
+            className="ops-select"
+            value={anomalyTypeId}
+            onChange={(event) => setAnomalyTypeId(event.target.value)}
+          >
+            <option value="">Select anomaly type</option>
+            {((anomalyTypesQuery.data as {
+              anomalyTypes?: Array<{ id: string; label: string }>;
+            } | undefined)?.anomalyTypes ?? []
+            ).map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <label htmlFor="agent-tour-anomaly-comments" className="block text-xs font-medium text-gray-700">
-          Comments
-        </label>
-        <textarea
-          id="agent-tour-anomaly-comments"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          rows={2}
-          value={anomalyComments}
-          onChange={(event) => setAnomalyComments(event.target.value)}
-        />
+        <div className="ops-field">
+          <label htmlFor="agent-tour-anomaly-comments" className="ops-label">
+            Comments
+          </label>
+          <textarea
+            id="agent-tour-anomaly-comments"
+            className="ops-textarea"
+            rows={2}
+            value={anomalyComments}
+            onChange={(event) => setAnomalyComments(event.target.value)}
+          />
+        </div>
 
-        <label htmlFor="agent-tour-anomaly-photo-url" className="block text-xs font-medium text-gray-700">
-          Photo URL (optional)
-        </label>
-        <input
-          id="agent-tour-anomaly-photo-url"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          value={anomalyPhotoUrl}
-          onChange={(event) => setAnomalyPhotoUrl(event.target.value)}
-        />
+        <div className="ops-field">
+          <label htmlFor="agent-tour-anomaly-photo-url" className="ops-label">
+            Photo URL (optional)
+          </label>
+          <input
+            id="agent-tour-anomaly-photo-url"
+            className="ops-input"
+            value={anomalyPhotoUrl}
+            onChange={(event) => setAnomalyPhotoUrl(event.target.value)}
+          />
+        </div>
 
-        <button
-          type="button"
-          className="rounded-md bg-rose-600 text-white px-3 py-2 text-sm hover:bg-rose-700 disabled:opacity-60"
-          disabled={!anomalyTypeId || reportAnomalyMutation.isPending}
-          onClick={submitAnomaly}
-        >
-          {reportAnomalyMutation.isPending ? 'Reporting...' : 'Report Anomaly'}
-        </button>
+        <div className="ops-actions">
+          <button
+            type="button"
+            className="ops-btn ops-btn-danger"
+            disabled={!anomalyTypeId || reportAnomalyMutation.isPending}
+            onClick={submitAnomaly}
+          >
+            {reportAnomalyMutation.isPending ? "Reporting..." : "Report Anomaly"}
+          </button>
+        </div>
       </article>
 
-      <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-medium text-gray-900">Tour Activity History</h2>
-        <ul className="mt-3 space-y-2">
+      <article className="ops-card">
+        <h2>Tour Activity History</h2>
+        <ul className="ops-list ops-mt-sm">
           {activityRows.length === 0 ? (
-            <li className="text-sm text-gray-500">No activity captured yet.</li>
+            <li className="ops-empty">No activity captured yet.</li>
           ) : (
             activityRows.map((item) => (
-              <li key={item.id} className="rounded-md border border-gray-100 px-3 py-2 text-sm">
-                <p className="font-medium text-gray-900">{item.type}</p>
-                <p className="text-xs text-gray-600 mt-1">{new Date(item.createdAt).toLocaleString()}</p>
+              <li key={item.id} className="ops-list-item">
+                <p>
+                  <strong>{item.type}</strong>
+                </p>
+                <p className="ops-list-meta">{new Date(item.createdAt).toLocaleString()}</p>
               </li>
             ))
           )}
         </ul>
       </article>
 
-      {statusMessage && (
-        <p className="text-sm font-medium text-emerald-700" role="status" aria-live="polite">
+      {statusMessage ? (
+        <p
+          className={
+            statusTone === "success"
+              ? "ops-status ops-status-success"
+              : "ops-status ops-status-error"
+          }
+          role="status"
+          aria-live="polite"
+        >
           {statusMessage}
         </p>
-      )}
+      ) : null}
     </section>
   );
 }

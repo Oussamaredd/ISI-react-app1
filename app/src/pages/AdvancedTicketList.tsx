@@ -409,7 +409,7 @@ export default function AdvancedTicketList() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => navigate("/app/tickets/create")}
+                    onClick={() => navigate("/app/support#create")}
                     className="advanced-ticket-inline-btn"
                   >
                     create your first ticket

@@ -19,20 +19,25 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
     | "billing"
     | "other"
   >("general_help");
+  const [createError, setCreateError] = useState<string | null>(null);
   const createTicketMutation = useCreateTicket();
   const { isPending: isCreating } = createTicketMutation;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || isCreating) return;
+    if (!title.trim() || isCreating) {
+      return;
+    }
+
+    setCreateError(null);
 
     try {
-        await createTicketMutation.mutateAsync({
-          name: title.trim(),
-          description: description.trim(),
-          priority,
-          supportCategory,
-        });
+      await createTicketMutation.mutateAsync({
+        name: title.trim(),
+        description: description.trim(),
+        priority,
+        supportCategory,
+      });
 
       setTitle("");
       setDescription("");
@@ -43,15 +48,25 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
         onSuccess();
       }
     } catch (error) {
-      console.error("Create ticket error caught by component:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to create ticket right now. Please retry.";
+      setCreateError(message);
     }
   };
 
   const isValid = title.trim().length > 0;
 
   return (
-    <div>
+    <div className="create-shell">
       <form onSubmit={handleSubmit} className="create-form">
+        {createError ? (
+          <p role="alert" className="create-error">
+            {createError}
+          </p>
+        ) : null}
+
         <div className="create-field">
           <label htmlFor="title" className="create-label">
             Ticket Name
@@ -66,6 +81,9 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
             required
             className="create-input"
           />
+          <p className="create-hint">
+            Use a short and specific title so agents can triage faster.
+          </p>
         </div>
 
         <div className="create-field">
@@ -81,6 +99,9 @@ export default function CreateTicket({ onSuccess }: CreateTicketProps) {
             rows={4}
             className="create-input create-textarea"
           />
+          <p className="create-hint">
+            Include context, observed impact, and expected resolution.
+          </p>
         </div>
 
         <div className="create-field">

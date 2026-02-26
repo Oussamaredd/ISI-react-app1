@@ -1,242 +1,172 @@
-import { useState } from 'react';
-import { 
-  Users, 
-  Settings, 
-  FileText, 
-  Activity,
-  Ticket,
-  LogOut
-} from 'lucide-react';
-import { Button } from '../components/Button';
-import { useAuth } from '../hooks/useAuth';
-import { useUsers } from '../hooks/adminHooks';
-import { UserManagement } from '../components/admin/UserManagement';
-import { AdminTicketManagement } from '../components/admin/AdminTicketManagement';
-import { SystemSettings as SystemSettingsComponent } from '../components/admin/SystemSettings';
-import { AuditLogs } from '../components/admin/AuditLogs';
-import { useNavigate } from 'react-router-dom';
-import BrandLogo from '../components/branding/BrandLogo';
+import { useState } from "react";
+import { Activity, FileText, LogOut, Settings, Ticket, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import BrandLogo from "../components/branding/BrandLogo";
+import { AuditLogs } from "../components/admin/AuditLogs";
+import { AdminTicketManagement } from "../components/admin/AdminTicketManagement";
+import { SystemSettings as SystemSettingsComponent } from "../components/admin/SystemSettings";
+import { UserManagement } from "../components/admin/UserManagement";
+import { useAuth } from "../hooks/useAuth";
+import { useUsers } from "../hooks/adminHooks";
+import "../styles/OperationsPages.css";
 
 export function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const { data: usersData, isLoading: usersLoading } = useUsers(
-    activeTab === 'overview' || activeTab === 'users' ? {} : null
+    activeTab === "overview" || activeTab === "users" ? {} : null,
   );
 
   const menuItems = [
-    { id: 'overview', label: 'Overview', icon: Settings },
-    { id: 'users', label: 'User Management', icon: Users },
-    { id: 'tickets', label: 'Ticket Management', icon: Ticket },
-    { id: 'audit', label: 'Audit Logs', icon: FileText },
-    { id: 'system', label: 'System Settings', icon: Activity },
+    { id: "overview", label: "Overview", icon: Settings },
+    { id: "users", label: "User Management", icon: Users },
+    { id: "tickets", label: "Ticket Management", icon: Ticket },
+    { id: "audit", label: "Audit Logs", icon: FileText },
+    { id: "system", label: "System Settings", icon: Activity },
   ];
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     }
   };
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'overview':
+      case "overview":
         return <OverviewSection usersData={usersData} usersLoading={usersLoading} />;
-      case 'users':
+      case "users":
         return <UserManagement />;
-      case 'tickets':
-        return <TicketManagement />;
-      case 'audit':
-        return <AuditLogsSection />;
-      case 'system':
-        return <SystemSettingsSection />;
+      case "tickets":
+        return <AdminTicketManagement />;
+      case "audit":
+        return <AuditLogs />;
+      case "system":
+        return <SystemSettingsComponent />;
       default:
         return <OverviewSection usersData={usersData} usersLoading={usersLoading} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="space-y-1">
-              <BrandLogo
-                imageClassName="h-11 w-11"
-                textClassName="text-xs font-semibold uppercase tracking-[0.08em] text-gray-700"
-              />
-              <h1 className="text-2xl font-bold text-gray-900">Admin Center</h1>
-              <p className="text-sm text-gray-600">Welcome back, {user?.displayName ?? user?.email}</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Current User:</span> {user?.email}
-              </div>
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={handleLogout}
-                className="flex items-center space-x-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </Button>
-            </div>
-          </div>
+    <section className="ops-admin-shell">
+      <header className="ops-hero">
+        <BrandLogo
+          imageClassName="h-11 w-11"
+          textClassName="text-xs font-semibold uppercase tracking-[0.08em] text-slate-200"
+        />
+        <h1>Admin Center</h1>
+        <p>
+          Welcome back, {user?.displayName ?? user?.email}. Manage users,
+          tickets, and governance settings.
+        </p>
+        <div className="ops-actions ops-mt-lg">
+          <span className="ops-chip ops-chip-info">Current User: {user?.email}</span>
+          <button
+            type="button"
+            className="ops-btn ops-btn-outline"
+            onClick={handleLogout}
+          >
+            <LogOut size={14} aria-hidden="true" />
+            <span className="ops-inline-gap">Logout</span>
+          </button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex space-x-8">
-          {/* Sidebar Navigation */}
-          <nav className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="mb-4">
-                <BrandLogo
-                  imageClassName="h-10 w-10"
-                  textClassName="text-xs font-semibold uppercase tracking-[0.08em] text-gray-700"
-                />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Menu</h2>
-              <div className="space-y-1">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        activeTab === item.id
-                          ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+      <div className="ops-admin-layout">
+        <aside className="ops-card ops-admin-nav">
+          <h2>Admin Menu</h2>
+          <nav className="ops-admin-menu" aria-label="Admin navigation">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              const className = isActive
+                ? "ops-admin-tab ops-admin-tab-active"
+                : "ops-admin-tab";
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={className}
+                  onClick={() => setActiveTab(item.id)}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
+        </aside>
 
-          {/* Main Content */}
-          <main className="flex-1">
-            {renderContent()}
-          </main>
-        </div>
+        <main>{renderContent()}</main>
       </div>
-    </div>
+    </section>
   );
 }
 
-function OverviewSection({ usersData, usersLoading }) {
+function OverviewSection({
+  usersData,
+  usersLoading,
+}: {
+  usersData: any;
+  usersLoading: boolean;
+}) {
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">System Overview</h2>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Users"
-          value={usersLoading ? '...' : usersData?.total || 0}
-          icon={Users}
-          color="blue"
-        />
-        <StatCard
-          title="Open Tickets"
-          value="-"
-          icon={Ticket}
-          color="green"
-        />
-        <StatCard
-          title="Resolved Tickets"
-          value="-"
-          icon={FileText}
-          color="yellow"
-        />
-        <StatCard
-          title="Audit Events"
-          value="-"
-          icon={FileText}
-          color="blue"
-        />
-      </div>
+    <section className="ops-page">
+      <article className="ops-card">
+        <h2>System Overview</h2>
+        <div className="ops-grid ops-grid-4 ops-mt-sm">
+          <StatCard title="Total Users" value={usersLoading ? "..." : usersData?.total || 0} />
+          <StatCard title="Open Tickets" value="-" />
+          <StatCard title="Resolved Tickets" value="-" />
+          <StatCard title="Audit Events" value="-" />
+        </div>
+      </article>
 
-      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
-          EcoTrack role mapping is active for citizen, agent, manager, admin, and super admin profiles.
+      <article className="ops-card">
+        <p className="ops-card-intro">
+          EcoTrack role mapping is active for citizen, agent, manager, admin,
+          and super admin profiles.
         </p>
-      </div>
+      </article>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-3">
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">New user registered</p>
-              <p className="text-xs text-gray-500">john.doe@example.com • 2 minutes ago</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">User account status changed</p>
-              <p className="text-xs text-gray-500">Account activation updated • 1 hour ago</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">System settings changed</p>
-              <p className="text-xs text-gray-500">Session timeout updated • 3 hours ago</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <article className="ops-card">
+        <h2>Recent Activity</h2>
+        <ul className="ops-list ops-mt-sm">
+          <li className="ops-list-item">
+            <p>
+              <strong>New user registered</strong>
+            </p>
+            <p className="ops-list-meta">john.doe@example.com - 2 minutes ago</p>
+          </li>
+          <li className="ops-list-item">
+            <p>
+              <strong>User account status changed</strong>
+            </p>
+            <p className="ops-list-meta">Account activation updated - 1 hour ago</p>
+          </li>
+          <li className="ops-list-item">
+            <p>
+              <strong>System settings changed</strong>
+            </p>
+            <p className="ops-list-meta">Session timeout updated - 3 hours ago</p>
+          </li>
+        </ul>
+      </article>
+    </section>
   );
 }
 
-function StatCard({ title, value, icon: Icon, color }) {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    purple: 'bg-purple-50 text-purple-600',
-  };
-
+function StatCard({ title, value }: { title: string; value: string | number }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-        </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="w-6 h-6" />
-        </div>
-      </div>
-    </div>
+    <article className="ops-kpi-card">
+      <p className="ops-kpi-label">{title}</p>
+      <p className="ops-kpi-value">{value}</p>
+    </article>
   );
-}
-
-function TicketManagement() {
-  return <AdminTicketManagement />;
-}
-
-function AuditLogsSection() {
-  return <AuditLogs />;
-}
-
-function SystemSettingsSection() {
-  return <SystemSettingsComponent />;
 }

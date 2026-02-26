@@ -88,8 +88,7 @@ describe("App Integration", () => {
     renderApp();
 
     expect(await screen.findByText("Test User")).toBeInTheDocument();
-    expect(await screen.findByText("Simple List")).toBeInTheDocument();
-    expect((await screen.findAllByText("Create Ticket")).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("link", { name: "Support" })).toBeInTheDocument();
   });
 
   test("navigation links work correctly", async () => {
@@ -109,14 +108,14 @@ describe("App Integration", () => {
 
     renderApp();
 
-    await waitFor(() => expect(screen.getByText("Simple List")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Support" })).toBeInTheDocument());
 
-    const createTicketLinks = screen.getAllByRole("link", { name: "Create Ticket" });
-    expect(createTicketLinks.some((link) => link.getAttribute("href") === "/app/tickets/create")).toBe(
+    const supportLinks = screen.getAllByRole("link", { name: "Support" });
+    expect(supportLinks.some((link) => link.getAttribute("href") === "/app/support")).toBe(
       true,
     );
 
-    const ticketsListLinks = screen.getAllByRole("link", { name: "Simple List" });
-    expect(ticketsListLinks.some((link) => link.getAttribute("href") === "/app/tickets")).toBe(true);
+    const dashboardLinks = screen.getAllByRole("link", { name: "Dashboard" });
+    expect(dashboardLinks.some((link) => link.getAttribute("href") === "/app/dashboard")).toBe(true);
   });
 });

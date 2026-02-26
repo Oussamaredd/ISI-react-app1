@@ -1,7 +1,7 @@
 # Advanced Ticket List Feature
 
 ## Overview
-`/app/tickets/advanced` provides a support-ticket focused list with search, status filtering, and pagination.
+The advanced ticket list is the triage view inside the unified support workspace (`/app/support#advanced`), with compatibility redirect support from `/app/tickets/advanced`.
 
 ## Current UX
 - Search by ticket title.
@@ -29,6 +29,7 @@ Query parameters currently used by the page:
 
 ## Relevant Files
 - `app/src/pages/AdvancedTicketList.tsx`
+- `app/src/pages/SupportPage.tsx`
 - `app/src/hooks/useTickets.tsx`
 - `app/src/tests/AdvancedTicketList.test.tsx`
 

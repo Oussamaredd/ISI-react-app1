@@ -35,9 +35,10 @@ Special case:
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization and assignment |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history |
-| `/app/tickets` | `TicketListPage` | Basic ticket list with delete action |
-| `/app/tickets/advanced` | `AdvancedTicketList` | Search and filtering |
-| `/app/tickets/create` | `CreateTickets` | Ticket creation form |
+| `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views |
+| `/app/tickets` | `Navigate` redirect | Compatibility redirect to `/app/support#simple` |
+| `/app/tickets/advanced` | `Navigate` redirect | Compatibility redirect to `/app/support#advanced` |
+| `/app/tickets/create` | `Navigate` redirect | Compatibility redirect to `/app/support#create` |
 | `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param |
 | `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow |
 | `/app/settings` | `SettingsPage` | User profile settings (display name update) |
@@ -47,8 +48,8 @@ Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
 - Sidebar top: logo.
-- Sidebar navigation: Dashboard, ticket routes, optional Admin route.
-- Sidebar bottom: account identity row (avatar + name, display-only), Settings, and Sign Out actions.
+- Sidebar navigation is priority-ordered with Dashboard first.
+- Sidebar bottom: account identity row (avatar + name, display-only), Settings, Support, optional Admin Center, and Sign Out actions.
 - Sidebar can be collapsed/expanded with a high-visibility toggle button (state persisted in browser local storage).
 - Main content header shows current route context as page name only (without a page icon).
 - Sign Out returns users to the landing page (`/`).

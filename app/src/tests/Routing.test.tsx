@@ -202,6 +202,31 @@ describe("Routing Matrix", () => {
     expect(screen.queryByRole("heading", { name: /Access Denied/i })).not.toBeInTheDocument();
   });
 
+  test("legacy ticket app routes redirect to support workspace views", async () => {
+    setAuthState({
+      user: { id: "123", role: "agent", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const legacyRoutes = [
+      { route: "/app/tickets", hash: "#simple" },
+      { route: "/app/tickets/advanced", hash: "#advanced" },
+      { route: "/app/tickets/create", hash: "#create" },
+    ];
+
+    for (const legacyRoute of legacyRoutes) {
+      const { getLocation, unmount } = renderRoute(legacyRoute.route);
+
+      await waitFor(() => {
+        expect(getLocation()?.pathname).toBe("/app/support");
+        expect(getLocation()?.hash).toBe(legacyRoute.hash);
+      });
+
+      unmount();
+    }
+  }, 20000);
+
   test("public marketing pages render concrete content", async () => {
     const { getLocation } = renderRoute("/privacy");
 

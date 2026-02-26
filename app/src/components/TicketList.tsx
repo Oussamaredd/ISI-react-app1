@@ -12,6 +12,16 @@ interface TicketItemProps {
 const formatStatus = (status: Ticket["status"]) => (status || "open").toString().toUpperCase();
 const formatPriority = (priority: Ticket["priority"]) =>
   (priority || "medium").toString().toUpperCase();
+const toDisplaySupportCategory = (supportCategory?: string | null) => {
+  if (!supportCategory) {
+    return "General Help";
+  }
+
+  return supportCategory
+    .replace(/_/g, " ")
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+};
 
 function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
   const status = formatStatus(ticket.status);
@@ -30,13 +40,15 @@ function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
   return (
     <li className="ticket-item">
       <div className="ticket-item-layout">
-        <div>
+        <div className="ticket-item-main">
           <div className="ticket-item-header">
-            <strong>{ticket.title}</strong>
-            <span className={priorityClass}>Priority: {priority}</span>
-            <em className={statusClass}>Status: {status}</em>
+            <h3 className="ticket-item-title">{ticket.title}</h3>
+            <span className={priorityClass}>{priority}</span>
+            <em className={statusClass}>{status}</em>
           </div>
-          {ticket.supportCategory && <span className="ticket-category">Category: {ticket.supportCategory}</span>}
+          <span className="ticket-category">
+            Support Category: {toDisplaySupportCategory(ticket.supportCategory)}
+          </span>
         </div>
 
         <div className="ticket-actions">
@@ -83,23 +95,23 @@ export default function TicketList() {
   };
 
   if (isLoading) {
-    return <div>Loading tickets...</div>;
+    return <p className="ticket-feedback-state">Loading tickets...</p>;
   }
 
   if (error) {
-    return <div>Error loading tickets: {error.message}</div>;
+    return <p className="ticket-feedback-state ticket-feedback-state-error">Error loading tickets: {error.message}</p>;
   }
 
   return (
-    <div>
+    <div className="ticket-list-shell">
       {deleteError ? (
         <div role="alert" className="ticket-delete-error">
           {deleteError}
         </div>
       ) : null}
       {tickets.length === 0 ? (
-        <p>
-          No tickets yet. <Link to="/app/tickets/create">Create your first ticket!</Link>
+        <p className="ticket-feedback-state">
+          No tickets yet. <Link to="/app/support#create">Create your first ticket!</Link>
         </p>
       ) : (
         <ul className="ticket-items">

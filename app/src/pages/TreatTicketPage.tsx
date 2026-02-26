@@ -1,50 +1,37 @@
 import React from "react";
-import { useParams, Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import TreatTicket from "../components/TreatTicket";
-import "../styles/TicketList.css";
+import "../styles/TicketWorkflow.css";
 
 export default function TreatTicketPage() {
   const { id } = useParams<{ id: string }>();
 
   if (!id) {
-    return <div className="container">Invalid ticket ID</div>;
+    return (
+      <section className="ticket-flow-feedback ticket-flow-feedback-error">
+        <p>Invalid ticket ID.</p>
+      </section>
+    );
   }
 
   return (
-    <div className="container">
-      <h1>Treat Ticket #{id}</h1>
+    <section className="ticket-treat-page">
+      <header className="ticket-treat-page-header">
+        <p className="ticket-details-eyebrow">Ticket Treatment</p>
+        <h1>Treat Ticket #{id}</h1>
+        <p>Review context and progress this request to resolution.</p>
+      </header>
+
       <TreatTicket />
-      
-      <div style={{ marginTop: "2rem" }}>
-        <Link 
-          to={`/app/tickets/${id}/details`}
-          style={{
-            padding: "0.5rem 1rem",
-            backgroundColor: "#007bff",
-            color: "white",
-            textDecoration: "none",
-            borderRadius: "4px",
-            cursor: "pointer"
-          }}
-        >
-          ← View Ticket Details
+
+      <nav className="ticket-treat-page-actions" aria-label="Ticket actions">
+        <Link to={`/app/tickets/${id}/details`} className="ticket-details-primary-btn">
+          View Ticket Details
         </Link>
-        
-        <Link 
-          to="/app/tickets"
-          style={{
-            padding: "0.5rem 1rem",
-            backgroundColor: "#6c757d",
-            color: "white",
-            textDecoration: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            marginLeft: "0.5rem"
-          }}
-        >
-          ← Back to List
+        <Link to="/app/support#simple" className="ticket-details-secondary-btn">
+          Back to Support
         </Link>
-      </div>
-    </div>
+      </nav>
+    </section>
   );
 }

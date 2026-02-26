@@ -22,9 +22,7 @@ const ManagerReportsPage = lazy(() => import("../pages/ManagerReportsPage"));
 const CitizenChallengesPage = lazy(() => import("../pages/CitizenChallengesPage"));
 const CitizenProfilePage = lazy(() => import("../pages/CitizenProfilePage"));
 const CitizenReportPage = lazy(() => import("../pages/CitizenReportPage"));
-const TicketListPage = lazy(() => import("../pages/TicketList"));
-const AdvancedTicketList = lazy(() => import("../pages/AdvancedTicketList"));
-const CreateTickets = lazy(() => import("../pages/CreateTickets"));
+const SupportPage = lazy(() => import("../pages/SupportPage"));
 const TicketDetails = lazy(() => import("../pages/TicketDetails"));
 const TreatTicketPage = lazy(() => import("../pages/TreatTicketPage"));
 const SettingsPage = lazy(() => import("../pages/SettingsPage"));
@@ -193,9 +191,10 @@ export default function AppRouter() {
               <Route path="profile" element={withRouteSuspense(<CitizenProfilePage />)} />
               <Route path="challenges" element={withRouteSuspense(<CitizenChallengesPage />)} />
             </Route>
-            <Route path="tickets/advanced" element={withRouteSuspense(<AdvancedTicketList />)} />
-            <Route path="tickets" element={withRouteSuspense(<TicketListPage />)} />
-            <Route path="tickets/create" element={withRouteSuspense(<CreateTickets />)} />
+            <Route path="support" element={withRouteSuspense(<SupportPage />)} />
+            <Route path="tickets/advanced" element={<Navigate to="/app/support#advanced" replace />} />
+            <Route path="tickets" element={<Navigate to="/app/support#simple" replace />} />
+            <Route path="tickets/create" element={<Navigate to="/app/support#create" replace />} />
             <Route path="tickets/:id/details" element={withRouteSuspense(<TicketDetails />)} />
             <Route path="tickets/:id/treat" element={withRouteSuspense(<TreatTicketPage />)} />
             <Route path="settings" element={withRouteSuspense(<SettingsPage />)} />

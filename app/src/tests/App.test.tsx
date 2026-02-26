@@ -29,6 +29,7 @@ test("renders navigation buttons", async () => {
     initialEntries: ["/app/dashboard"],
   });
 
-  expect(await screen.findByText(/simple list/i)).toBeInTheDocument();
-  expect((await screen.findAllByText(/create ticket/i)).length).toBeGreaterThan(0);
+  const productNavigation = await screen.findByRole("navigation", { name: /product navigation/i });
+  expect(productNavigation).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Support" })).toBeInTheDocument();
 });

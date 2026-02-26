@@ -1,4 +1,9 @@
-import { useEnrollInChallenge, useCitizenChallenges, useUpdateChallengeProgress } from '../hooks/useCitizen';
+import {
+  useCitizenChallenges,
+  useEnrollInChallenge,
+  useUpdateChallengeProgress,
+} from "../hooks/useCitizen";
+import "../styles/OperationsPages.css";
 
 type ChallengeCard = {
   id: string;
@@ -16,54 +21,66 @@ export default function CitizenChallengesPage() {
   const enrollMutation = useEnrollInChallenge();
   const progressMutation = useUpdateChallengeProgress();
 
-  const challengeRows = Array.isArray((challengesQuery.data as { challenges?: unknown[] } | undefined)?.challenges)
+  const challengeRows = Array.isArray(
+    (challengesQuery.data as { challenges?: unknown[] } | undefined)?.challenges,
+  )
     ? (((challengesQuery.data as { challenges: ChallengeCard[] }).challenges) ?? [])
     : [];
 
-  return (
-    <section className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Collective Challenges</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Join community challenges, track your progress, and unlock rewards.
-        </p>
-      </div>
+  if (challengesQuery.isLoading) {
+    return (
+      <section className="ops-page">
+        <p className="ops-status ops-status-success">Loading challenges...</p>
+      </section>
+    );
+  }
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  return (
+    <section className="ops-page">
+      <header className="ops-hero">
+        <h1>Collective Challenges</h1>
+        <p>
+          Join city initiatives, track your progress, and unlock community
+          rewards.
+        </p>
+      </header>
+
+      <div className="ops-grid ops-grid-2">
         {challengeRows.length === 0 ? (
-          <p className="text-sm text-gray-500">No active challenges available right now.</p>
+          <p className="ops-empty">No active challenges available right now.</p>
         ) : (
           challengeRows.map((challenge) => {
-            const isEnrolled = challenge.enrollmentStatus !== 'not_enrolled';
-            const isCompleted = challenge.enrollmentStatus === 'completed';
+            const isEnrolled = challenge.enrollmentStatus !== "not_enrolled";
+            const isCompleted = challenge.enrollmentStatus === "completed";
 
             return (
-              <article key={challenge.id} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+              <article key={challenge.id} className="ops-card ops-form">
                 <div>
-                  <h2 className="text-lg font-medium text-gray-900">{challenge.title}</h2>
-                  <p className="text-sm text-gray-600 mt-1">{challenge.description}</p>
+                  <h2>{challenge.title}</h2>
+                  <p className="ops-card-intro">{challenge.description}</p>
                 </div>
 
-                <p className="text-xs text-gray-500">
+                <p className="ops-subtle">
                   Target: {challenge.targetValue} - Reward: {challenge.rewardPoints} points
                 </p>
 
-                <div className="h-2 rounded bg-gray-100 overflow-hidden">
+                <div className="ops-progress-track">
                   <div
-                    className="h-full bg-emerald-500"
+                    className="ops-progress-fill"
                     style={{ width: `${Math.min(100, challenge.completionPercent)}%` }}
                   />
                 </div>
 
-                <p className="text-xs text-gray-600">
-                  Progress: {challenge.progress}/{challenge.targetValue} ({challenge.completionPercent}%)
+                <p className="ops-subtle">
+                  Progress: {challenge.progress}/{challenge.targetValue} (
+                  {challenge.completionPercent}%)
                 </p>
 
-                <div className="flex gap-2">
+                <div className="ops-actions">
                   {!isEnrolled ? (
                     <button
                       type="button"
-                      className="rounded-md bg-blue-600 text-white px-3 py-1 text-sm hover:bg-blue-700"
+                      className="ops-btn ops-btn-primary"
                       onClick={() => enrollMutation.mutate(challenge.id)}
                       disabled={enrollMutation.isPending}
                     >
@@ -72,11 +89,20 @@ export default function CitizenChallengesPage() {
                   ) : (
                     <button
                       type="button"
-                      className="rounded-md bg-emerald-600 text-white px-3 py-1 text-sm hover:bg-emerald-700 disabled:opacity-60"
-                      onClick={() => progressMutation.mutate({ challengeId: challenge.id, progressDelta: 1 })}
+                      className={
+                        isCompleted
+                          ? "ops-btn ops-btn-outline"
+                          : "ops-btn ops-btn-success"
+                      }
+                      onClick={() =>
+                        progressMutation.mutate({
+                          challengeId: challenge.id,
+                          progressDelta: 1,
+                        })
+                      }
                       disabled={progressMutation.isPending || isCompleted}
                     >
-                      {isCompleted ? 'Completed' : 'Add Progress +1'}
+                      {isCompleted ? "Completed" : "Add Progress +1"}
                     </button>
                   )}
                 </div>
