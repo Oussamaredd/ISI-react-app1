@@ -45,17 +45,39 @@ export default function ManagerReportsPage() {
   };
 
   const canSubmit = useMemo(
-    () =>
-      selectedKpis.length > 0 &&
-      periodStart.length > 0 &&
-      periodEnd.length > 0,
-    [periodEnd.length, periodStart.length, selectedKpis.length],
+    () => {
+      if (selectedKpis.length === 0 || periodStart.length === 0 || periodEnd.length === 0) {
+        return false;
+      }
+
+      const periodStartTime = new Date(`${periodStart}T00:00:00Z`).getTime();
+      const periodEndTime = new Date(`${periodEnd}T23:59:59Z`).getTime();
+      if (Number.isNaN(periodStartTime) || Number.isNaN(periodEndTime) || periodStartTime > periodEndTime) {
+        return false;
+      }
+
+      if (sendEmail) {
+        const normalizedEmail = emailTo.trim();
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+      }
+
+      return true;
+    },
+    [emailTo, periodEnd, periodStart, selectedKpis.length, sendEmail],
   );
 
   const generateReport = async () => {
     if (!canSubmit) {
       setStatusTone("error");
-      setStatusMessage("Select period and at least one KPI before generating.");
+      if (selectedKpis.length === 0 || periodStart.length === 0 || periodEnd.length === 0) {
+        setStatusMessage("Select period and at least one KPI before generating.");
+      } else if (new Date(`${periodStart}T00:00:00Z`).getTime() > new Date(`${periodEnd}T23:59:59Z`).getTime()) {
+        setStatusMessage("Period end must be on or after period start.");
+      } else if (sendEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTo.trim())) {
+        setStatusMessage("Enter a valid email address to send the report.");
+      } else {
+        setStatusMessage("Fix report filters before generating.");
+      }
       return;
     }
 

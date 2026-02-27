@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -26,21 +26,34 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const tickets = pgTable('tickets', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  title: text('title').notNull(),
-  description: text('description'),
-  supportCategory: text('support_category').default('general_help').notNull(),
-  status: text('status').default('open').notNull(),
-  priority: text('priority').default('medium').notNull(),
-  requesterId: uuid('requester_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  closedAt: timestamp('closed_at', { withTimezone: true }),
-});
+export const tickets = pgTable(
+  'tickets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    title: text('title').notNull(),
+    description: text('description'),
+    supportCategory: text('support_category').default('general_help').notNull(),
+    status: text('status').default('open').notNull(),
+    priority: text('priority').default('medium').notNull(),
+    requesterId: uuid('requester_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+  },
+  (table) => ({
+    createdAtIdx: index('tickets_created_at_idx').on(table.createdAt),
+    statusCreatedAtIdx: index('tickets_status_created_at_idx').on(table.status, table.createdAt),
+    priorityCreatedAtIdx: index('tickets_priority_created_at_idx').on(table.priority, table.createdAt),
+    supportCategoryCreatedAtIdx: index('tickets_support_category_created_at_idx').on(
+      table.supportCategory,
+      table.createdAt,
+    ),
+    assigneeCreatedAtIdx: index('tickets_assignee_created_at_idx').on(table.assigneeId, table.createdAt),
+  }),
+);
 
 export const comments = pgTable('comments', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -89,16 +102,23 @@ export const containers = pgTable('containers', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const tours = pgTable('tours', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  status: text('status').default('planned').notNull(),
-  scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
-  zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
-  assignedAgentId: uuid('assigned_agent_id').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const tours = pgTable(
+  'tours',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    status: text('status').default('planned').notNull(),
+    scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
+    zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
+    assignedAgentId: uuid('assigned_agent_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    scheduledForIdx: index('tours_scheduled_for_idx').on(table.scheduledFor),
+    zoneScheduledForIdx: index('tours_zone_scheduled_for_idx').on(table.zoneId, table.scheduledFor),
+  }),
+);
 
 export const tourStops = pgTable('tour_stops', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -130,18 +150,28 @@ export const citizenReports = pgTable('citizen_reports', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const collectionEvents = pgTable('collection_events', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  tourStopId: uuid('tour_stop_id').references(() => tourStops.id, { onDelete: 'set null' }),
-  containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
-  actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
-  volumeLiters: integer('volume_liters'),
-  notes: text('notes'),
-  latitude: text('latitude'),
-  longitude: text('longitude'),
-  collectedAt: timestamp('collected_at', { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const collectionEvents = pgTable(
+  'collection_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tourStopId: uuid('tour_stop_id').references(() => tourStops.id, { onDelete: 'set null' }),
+    containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    volumeLiters: integer('volume_liters'),
+    notes: text('notes'),
+    latitude: text('latitude'),
+    longitude: text('longitude'),
+    collectedAt: timestamp('collected_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    collectedAtIdx: index('collection_events_collected_at_idx').on(table.collectedAt),
+    containerCollectedAtIdx: index('collection_events_container_collected_at_idx').on(
+      table.containerId,
+      table.collectedAt,
+    ),
+  }),
+);
 
 export const gamificationProfiles = pgTable('gamification_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -196,37 +226,57 @@ export const anomalyTypes = pgTable('anomaly_types', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const anomalyReports = pgTable('anomaly_reports', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  anomalyTypeId: uuid('anomaly_type_id')
-    .notNull()
-    .references(() => anomalyTypes.id, { onDelete: 'restrict' }),
-  tourId: uuid('tour_id').references(() => tours.id, { onDelete: 'set null' }),
-  tourStopId: uuid('tour_stop_id').references(() => tourStops.id, { onDelete: 'set null' }),
-  reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
-  comments: text('comments'),
-  photoUrl: text('photo_url'),
-  severity: text('severity').default('medium').notNull(),
-  status: text('status').default('reported').notNull(),
-  reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const anomalyReports = pgTable(
+  'anomaly_reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    anomalyTypeId: uuid('anomaly_type_id')
+      .notNull()
+      .references(() => anomalyTypes.id, { onDelete: 'restrict' }),
+    tourId: uuid('tour_id').references(() => tours.id, { onDelete: 'set null' }),
+    tourStopId: uuid('tour_stop_id').references(() => tourStops.id, { onDelete: 'set null' }),
+    reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
+    comments: text('comments'),
+    photoUrl: text('photo_url'),
+    severity: text('severity').default('medium').notNull(),
+    status: text('status').default('reported').notNull(),
+    reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reportedAtIdx: index('anomaly_reports_reported_at_idx').on(table.reportedAt),
+    anomalyTypeReportedAtIdx: index('anomaly_reports_type_reported_at_idx').on(
+      table.anomalyTypeId,
+      table.reportedAt,
+    ),
+  }),
+);
 
-export const reportExports = pgTable('report_exports', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  requestedByUserId: uuid('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-  periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
-  periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
-  selectedKpis: jsonb('selected_kpis').$type<string[]>().default([]).notNull(),
-  format: text('format').default('pdf').notNull(),
-  status: text('status').default('generated').notNull(),
-  sendEmail: boolean('send_email').default(false).notNull(),
-  emailTo: text('email_to'),
-  fileContent: text('file_content').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const reportExports = pgTable(
+  'report_exports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    requestedByUserId: uuid('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+    periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+    selectedKpis: jsonb('selected_kpis').$type<string[]>().default([]).notNull(),
+    format: text('format').default('pdf').notNull(),
+    status: text('status').default('generated').notNull(),
+    sendEmail: boolean('send_email').default(false).notNull(),
+    emailTo: text('email_to'),
+    fileContent: text('file_content').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index('report_exports_created_at_idx').on(table.createdAt),
+    requesterCreatedAtIdx: index('report_exports_requester_created_at_idx').on(
+      table.requestedByUserId,
+      table.createdAt,
+    ),
+  }),
+);
 
 export const roles = pgTable('roles', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -253,18 +303,30 @@ export const userRoles = pgTable(
   }),
 );
 
-export const auditLogs = pgTable('audit_logs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-  action: text('action').notNull(),
-  resourceType: text('resource_type').notNull(),
-  resourceId: text('resource_id'),
-  oldValues: jsonb('old_values'),
-  newValues: jsonb('new_values'),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    action: text('action').notNull(),
+    resourceType: text('resource_type').notNull(),
+    resourceId: text('resource_id'),
+    oldValues: jsonb('old_values'),
+    newValues: jsonb('new_values'),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    createdAtIdx: index('audit_logs_created_at_idx').on(table.createdAt),
+    actionCreatedAtIdx: index('audit_logs_action_created_at_idx').on(table.action, table.createdAt),
+    resourceTypeCreatedAtIdx: index('audit_logs_resource_type_created_at_idx').on(
+      table.resourceType,
+      table.createdAt,
+    ),
+    userCreatedAtIdx: index('audit_logs_user_created_at_idx').on(table.userId, table.createdAt),
+  }),
+);
 
 export const systemSettings = pgTable('system_settings', {
   key: text('key').primaryKey(),

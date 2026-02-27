@@ -5,6 +5,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Inject,
   InternalServerErrorException,
   NotFoundException,
   Param,
@@ -32,11 +33,42 @@ const { hash } = bcryptPkg as unknown as {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const parseOptionalBooleanQuery = (value: string | undefined, fieldName: string) => {
+  if (value == null) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'false') {
+    return false;
+  }
+
+  throw new BadRequestException(`${fieldName} must be "true" or "false"`);
+};
+
+const parseOptionalDateQuery = (value: string | undefined, fieldName: string) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new BadRequestException(`${fieldName} must be a valid date`);
+  }
+
+  return parsed;
+};
+
 @Controller('admin/users')
 @UseGuards(AdminGuard)
 export class AdminUsersController {
   constructor(
+    @Inject(UsersService)
     private readonly usersService: UsersService,
+    @Inject(AdminAuditService)
     private readonly auditService: AdminAuditService,
   ) {}
 
@@ -52,11 +84,10 @@ export class AdminUsersController {
     @Query('limit') limitParam?: string,
   ) {
     try {
-      const isActive =
-        isActiveParam === 'true' ? true : isActiveParam === 'false' ? false : undefined;
-      const createdFrom = createdFromParam ? new Date(createdFromParam) : undefined;
-      const createdTo = createdToParam ? new Date(createdToParam) : undefined;
-      if (createdTo && !Number.isNaN(createdTo.getTime())) {
+      const isActive = parseOptionalBooleanQuery(isActiveParam, 'is_active');
+      const createdFrom = parseOptionalDateQuery(createdFromParam, 'created_from');
+      const createdTo = parseOptionalDateQuery(createdToParam, 'created_to');
+      if (createdTo) {
         createdTo.setHours(23, 59, 59, 999);
       }
       const page = Number.parseInt(pageParam ?? '', 10);
@@ -67,9 +98,8 @@ export class AdminUsersController {
         role,
         isActive,
         authProvider,
-        createdFrom:
-          createdFrom && !Number.isNaN(createdFrom.getTime()) ? createdFrom : undefined,
-        createdTo: createdTo && !Number.isNaN(createdTo.getTime()) ? createdTo : undefined,
+        createdFrom,
+        createdTo,
         page: Number.isFinite(page) ? page : undefined,
         limit: Number.isFinite(limit) ? limit : undefined,
       });
@@ -77,6 +107,9 @@ export class AdminUsersController {
       return { data: result };
     } catch (error) {
       console.error('Failed to list users', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Unable to fetch users');
     }
   }

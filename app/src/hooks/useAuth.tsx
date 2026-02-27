@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         const response = await fetch(
-          `${API_BASE}/api/me`,
+          `${API_BASE}/api/auth/status`,
           {
             credentials: 'include',
             signal: requestController.signal,
@@ -79,8 +79,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (response.ok) {
-          const payload = (await response.json()) as { user?: AuthUser };
-          applyAuthenticatedState(payload.user ?? null);
+          const payload = (await response.json()) as {
+            authenticated?: boolean;
+            user?: AuthUser;
+          };
+          applyAuthenticatedState(payload.authenticated ? (payload.user ?? null) : null);
           setIsLoading(false);
           return;
         }

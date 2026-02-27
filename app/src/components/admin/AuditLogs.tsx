@@ -133,25 +133,25 @@ export function AuditLogs() {
 
   const getActionBadge = (action) => {
     const colorMap = {
-      'user_created': 'bg-blue-100 text-blue-800',
-      'user_updated': 'bg-yellow-100 text-yellow-800',
-      'user_activated': 'bg-green-100 text-green-800',
-      'user_deactivated': 'bg-red-100 text-red-800',
-      'role_created': 'bg-purple-100 text-purple-800',
-      'role_updated': 'bg-indigo-100 text-indigo-800',
-      'role_deleted': 'bg-pink-100 text-pink-800',
-      'comment_added': 'bg-emerald-100 text-emerald-800',
-      'comment_updated': 'bg-sky-100 text-sky-800',
-      'comment_deleted': 'bg-rose-100 text-rose-800',
-      'system_settings_updated': 'bg-gray-100 text-gray-800',
-      'communication_dispatched': 'bg-violet-100 text-violet-800',
-      'manager_alert_anomaly_reported': 'bg-red-100 text-red-800',
+      'user_created': 'ops-chip ops-chip-info',
+      'user_updated': 'ops-chip ops-chip-warning',
+      'user_activated': 'ops-chip ops-chip-success',
+      'user_deactivated': 'ops-chip ops-chip-danger',
+      'role_created': 'ops-chip ops-chip-info',
+      'role_updated': 'ops-chip ops-chip-warning',
+      'role_deleted': 'ops-chip ops-chip-danger',
+      'comment_added': 'ops-chip ops-chip-success',
+      'comment_updated': 'ops-chip ops-chip-info',
+      'comment_deleted': 'ops-chip ops-chip-danger',
+      'system_settings_updated': 'ops-chip ops-chip-info',
+      'communication_dispatched': 'ops-chip ops-chip-warning',
+      'manager_alert_anomaly_reported': 'ops-chip ops-chip-danger',
     };
 
-    const colorClass = colorMap[action] || 'bg-gray-100 text-gray-800';
+    const colorClass = colorMap[action] || 'ops-chip ops-chip-info';
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+      <span className={colorClass}>
         {action.replace(/_/g, ' ')}
       </span>
     );
@@ -182,16 +182,18 @@ export function AuditLogs() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="text-red-600">
-          <p>Error loading audit logs: {error.message}</p>
+      <div className="ops-admin-panel">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="text-red-600">
+            <p>Error loading audit logs: {error.message}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ops-admin-panel">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -231,7 +233,7 @@ export function AuditLogs() {
                   {stat.action.replace(/_/g, ' ')}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {stat.resource_type} • {stat.count} actions
+                  {stat.resource_type} - {stat.count} actions
                 </div>
                 <div className="text-xs text-gray-400">
                   {new Date(stat.date).toLocaleDateString()}
@@ -503,7 +505,6 @@ export function AuditLogs() {
                         variant="secondary"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                       >
                         Previous
                       </Button>
@@ -512,10 +513,10 @@ export function AuditLogs() {
                         <button
                           key={page}
                           onClick={() => handlePageChange(page)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          className={`ops-btn ${
                             currentPage === page
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              ? 'ops-btn-muted'
+                              : 'ops-btn-outline'
                           }`}
                         >
                           {page}
@@ -526,7 +527,6 @@ export function AuditLogs() {
                         variant="secondary"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === logsData.totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                       >
                         Next
                       </Button>
@@ -541,3 +541,4 @@ export function AuditLogs() {
     </div>
   );
 }
+

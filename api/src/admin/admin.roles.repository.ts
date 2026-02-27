@@ -25,6 +25,7 @@ const AVAILABLE_PERMISSIONS = [
   'ecotrack.gamification.write',
   'ecotrack.analytics.read',
 ];
+const AVAILABLE_PERMISSIONS_SET = new Set(AVAILABLE_PERMISSIONS.map((permission) => permission.toLowerCase()));
 
 const DEFAULT_ROLES = [
   {
@@ -142,9 +143,7 @@ export class AdminRolesRepository {
       throw new BadRequestException('Role name already exists');
     }
 
-    const permissions = Array.isArray(payload.permissions)
-      ? payload.permissions.filter(Boolean)
-      : [];
+    const permissions = this.normalizePermissions(payload.permissions);
 
     const [created] = await this.db
       .insert(roles)
@@ -184,9 +183,7 @@ export class AdminRolesRepository {
     }
 
     if (payload.permissions !== undefined) {
-      updates.permissions = Array.isArray(payload.permissions)
-        ? payload.permissions.filter(Boolean)
-        : [];
+      updates.permissions = this.normalizePermissions(payload.permissions);
     }
 
     const [updated] = await this.db
@@ -226,5 +223,24 @@ export class AdminRolesRepository {
         permissions: role.permissions,
       })),
     );
+  }
+
+  private normalizePermissions(rawPermissions?: string[]) {
+    const normalizedPermissions = Array.isArray(rawPermissions)
+      ? rawPermissions
+          .map((permission) => (typeof permission === 'string' ? permission.trim().toLowerCase() : ''))
+          .filter((permission): permission is string => permission.length > 0)
+      : [];
+
+    const deduplicatedPermissions = Array.from(new Set(normalizedPermissions));
+    const unsupportedPermissions = deduplicatedPermissions.filter(
+      (permission) => !AVAILABLE_PERMISSIONS_SET.has(permission),
+    );
+
+    if (unsupportedPermissions.length > 0) {
+      throw new BadRequestException(`Unknown permissions: ${unsupportedPermissions.join(', ')}`);
+    }
+
+    return deduplicatedPermissions;
   }
 }

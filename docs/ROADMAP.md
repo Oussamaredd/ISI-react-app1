@@ -52,7 +52,7 @@ Status scale:
 | Operational dashboard | PARTIAL | `app/src/pages/Dashboard.tsx`, `api/src/dashboard/dashboard.controller.ts` |
 | Health and metrics endpoints | PARTIAL | `api/src/health/health.controller.ts`, `api/src/monitoring/monitoring.controller.ts` |
 | CI/CD + quality gates | DONE | `.github/workflows/CI.yml`, `.github/workflows/CD.yml` |
-| EcoTrack domain modules (containers, zones, tours, citizen reports, gamification) | TODO | Not present in current `app/api/database` domain models |
+| EcoTrack domain modules (containers, zones, tours, citizen reports, gamification) | DONE | `api/src/app.module.ts`, `app/src/routes/AppRouter.tsx`, `database/src/schema.ts` |
 
 ## 3) Target User Stories and Task Checklists
 
@@ -204,7 +204,7 @@ Workbook refs: `M5.1`, `M3.5`
 
 Checklist:
 - [x] Existing dashboard and KPI framework.
-- [x] Introduce EcoTrack KPIs in parallel with ticket KPIs; cut over only after parity sign-off.
+- [x] Cut over manager planning dashboard responses to EcoTrack KPIs while keeping support-ticket dashboards in the support module.
 - [x] Add container state map and critical thresholds.
 - [x] Add emergency collection trigger flow.
 
@@ -331,9 +331,9 @@ Use this section during sprint planning/review.
 | US-DEV-201 |  | 3 | DONE | Agent tour page, itinerary map, start action, and mobile-first flow implemented |
 | US-DEV-202 |  | 3 | DONE | Stop validation endpoints/UI with QR fallback, persisted collection events, and auto-advance |
 | US-DEV-203 |  | 3 | DONE | Anomaly type catalog/reporting with manager alert audit event and tour activity integration |
-| US-DEV-301 |  | 4 | DONE | Manager wizard, optimization heuristic, route adjustment, and assignment workflow implemented |
+| US-DEV-301 |  | 4 | DONE | Manager wizard, nearest-neighbor + 2-opt route optimization, route adjustment, and assignment workflow implemented |
 | US-DEV-302 |  | 4 | DONE | Dashboard/planning polling and live freshness indicators are enabled for near-real-time monitoring |
-| US-DEV-303 |  | 6 | DONE | Report generation, PDF download, email option, and report history/regeneration implemented |
+| US-DEV-303 |  | 6 | DONE | Report generation, PDF/CSV artifact output, email option, and report history/regeneration implemented |
 | US-DEV-401 |  | 5 | DONE | Support categories/aliases, FAQ app nav wiring, and chatbot contract published |
 | US-DEV-402 |  | 5 | DONE | Admin ticket management, add-user flow, advanced filters, and audit CSV export are implemented |
 | US-DEV-403 |  | 5 | DONE | Citizen report actions award points/badges and feed existing leaderboard/profile UX |

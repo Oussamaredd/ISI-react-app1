@@ -176,8 +176,8 @@ export function UserManagement() {
 
   const getStatusBadge = (isActive: boolean) => (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+      className={`ops-chip ${
+        isActive ? 'ops-chip-success' : 'ops-chip-danger'
       }`}
     >
       {isActive ? 'Active' : 'Inactive'}
@@ -187,7 +187,7 @@ export function UserManagement() {
   const getRoleBadge = (roles: AdminRole[] | undefined, fallbackRole?: string | null) => {
     if (!Array.isArray(roles) || roles.length === 0) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+        <span className="ops-chip ops-chip-info">
           {fallbackRole ?? 'user'}
         </span>
       );
@@ -198,7 +198,7 @@ export function UserManagement() {
         {roles.map((role) => (
           <span
             key={role.id}
-            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+            className="ops-chip ops-chip-info"
           >
             {role.name}
           </span>
@@ -209,16 +209,18 @@ export function UserManagement() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="text-red-600">
-          <p>Error loading users: {(error as Error).message}</p>
+      <div className="ops-admin-panel">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="text-red-600">
+            <p>Error loading users: {(error as Error).message}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ops-admin-panel">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
         <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
@@ -366,7 +368,7 @@ export function UserManagement() {
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => handleEditUser(user)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="ops-admin-icon-btn"
                             title="Edit User"
                           >
                             <MoreVertical className="w-4 h-4" />
@@ -376,8 +378,8 @@ export function UserManagement() {
                             onClick={() => handleStatusToggle(user)}
                             className={
                               getIsActive(user)
-                                ? 'text-red-600 hover:text-red-900'
-                                : 'text-green-600 hover:text-green-900'
+                                ? 'ops-admin-icon-btn ops-admin-icon-btn-danger'
+                                : 'ops-admin-icon-btn ops-admin-icon-btn-success'
                             }
                             title={getIsActive(user) ? 'Deactivate User' : 'Activate User'}
                             disabled={isUpdatingUserStatus}
@@ -424,7 +426,6 @@ export function UserManagement() {
                         variant="secondary"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                       >
                         Previous
                       </Button>
@@ -433,10 +434,10 @@ export function UserManagement() {
                         <button
                           key={page}
                           onClick={() => handlePageChange(page)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          className={`ops-btn ${
                             currentPage === page
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              ? 'ops-btn-muted'
+                              : 'ops-btn-outline'
                           }`}
                         >
                           {page}
@@ -447,7 +448,6 @@ export function UserManagement() {
                         variant="secondary"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                       >
                         Next
                       </Button>

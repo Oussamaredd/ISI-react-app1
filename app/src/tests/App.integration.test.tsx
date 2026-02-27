@@ -27,10 +27,27 @@ const renderApp = (route = "/") =>
     initialEntries: [route],
   });
 
+const mockDesktopMatchMedia = () => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("min-width: 721px"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+};
+
 describe("App Integration", () => {
   beforeEach(() => {
     mockFetch.mockReset();
     vi.stubGlobal("fetch", mockFetch);
+    mockDesktopMatchMedia();
   });
 
   afterEach(() => {

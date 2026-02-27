@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsLatitude, IsLongitude, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateCitizenReportDto {
   @IsOptional()
@@ -20,13 +20,11 @@ export class CreateCitizenReportDto {
   description!: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(32)
+  @IsLatitude()
   latitude?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(32)
+  @IsLongitude()
   longitude?: string;
 
   @IsOptional()

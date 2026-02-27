@@ -25,6 +25,9 @@ jobs:
       - name: Validate env policies and templates
         run: npm run validate-env:all
 
+      - name: Validate CDC traceability matrix and executable specs contracts
+        run: npm run validate-specs
+
       - name: Enforce architecture lint rules
         run: npm run lint
 

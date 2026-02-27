@@ -136,7 +136,38 @@ describe('Protected API route authorization', () => {
     expect(ticketsServiceMock.create).not.toHaveBeenCalled();
   });
 
+  it('allows read-only ticket users to create comments', async () => {
+    usersServiceMock.ensureUserForAuth.mockResolvedValue({ ...baseDbUser, role: 'manager' });
+    usersServiceMock.getRolesForUser.mockResolvedValue([
+      { id: 'role-manager', name: 'manager', permissions: ['tickets.read'] },
+    ]);
+    ticketsServiceMock.addComment.mockResolvedValue({
+      id: '9d938f2e-3cd4-49c8-a3a7-c5fb63f4cb3c',
+      body: 'Visibility update',
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/tickets/48c60b65-434f-4a08-bb5a-bf1fa5c0eabc/comments')
+      .set('Cookie', authCookie)
+      .send({ body: 'Visibility update' })
+      .expect(201);
+
+    expect(ticketsServiceMock.addComment).toHaveBeenCalledWith(
+      '48c60b65-434f-4a08-bb5a-bf1fa5c0eabc',
+      'Visibility update',
+      {
+        id: baseDbUser.id,
+        role: 'manager',
+        roles: [{ id: 'role-manager', name: 'manager' }],
+      },
+    );
+  });
+
   it('allows authenticated user with read permission to access protected read endpoints', async () => {
+    usersServiceMock.getRolesForUser.mockResolvedValue([
+      { id: 'role-agent', name: 'agent', permissions: ['tickets.read'] },
+    ]);
+
     await request(app.getHttpServer()).get('/api/tickets').set('Cookie', authCookie).expect(200);
     await request(app.getHttpServer())
       .get('/api/dashboard')
@@ -145,6 +176,10 @@ describe('Protected API route authorization', () => {
   });
 
   it('allows authenticated user with write permission to access protected write endpoints', async () => {
+    usersServiceMock.getRolesForUser.mockResolvedValue([
+      { id: 'role-agent', name: 'agent', permissions: ['tickets.read', 'tickets.write'] },
+    ]);
+
     await request(app.getHttpServer())
       .post('/api/tickets')
       .set('Cookie', authCookie)

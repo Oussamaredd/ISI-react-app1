@@ -54,7 +54,7 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const port = Number(process.env.API_PORT ?? process.env.PORT ?? 3001);
+  const port = Number(process.env.API_PORT ?? 3001);
   const host = process.env.API_HOST ?? '0.0.0.0';
   const origins = (process.env.CORS_ORIGINS ?? process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
     .split(',')

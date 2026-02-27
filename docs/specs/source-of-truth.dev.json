@@ -1,0 +1,42 @@
+{
+  "version": "1.0.0",
+  "specialty": "development",
+  "updatedAt": "2026-02-27",
+  "matrixFile": "docs/specs/cdc-traceability-matrix.dev.json",
+  "inputArtifacts": [
+    "docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx",
+    "docs/specs/inputs/ECOTRACK_M2_DEV.xlsx"
+  ],
+  "requiredUseCaseIds": [
+    "UC-C01",
+    "UC-C02",
+    "UC-C03",
+    "UC-A01",
+    "UC-A02",
+    "UC-A03",
+    "UC-G01",
+    "UC-G02",
+    "UC-G03",
+    "UC-AD01",
+    "UC-AD02"
+  ],
+  "allowedStatuses": [
+    "implemented",
+    "partial",
+    "planned",
+    "blocked"
+  ],
+  "requiredCiChecks": [
+    "npm run validate-specs",
+    "npm run test:realtime --workspace=ecotrack-app"
+  ],
+  "canonicalFiles": [
+    "docs/specs/SOURCE_OF_TRUTH.md",
+    "docs/specs/cdc-traceability-matrix.dev.md",
+    "docs/specs/mobile-platform-integration-contract.md"
+  ],
+  "excludedSpecialties": [
+    "cyber-security",
+    "data-science"
+  ]
+}

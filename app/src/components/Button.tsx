@@ -1,38 +1,28 @@
-// client/src/components/Button.jsx
 import React from 'react';
 
-export const Button = ({ children, onClick = () => {}, style = {}, variant = 'primary', ...props }) => {
-  const baseStyle = {
-    padding: '0.5rem 1rem',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '500',
-    ...style
-  };
+type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
-  const variantStyles = {
-    primary: {
-      backgroundColor: '#007bff',
-      color: 'white',
-    },
-    secondary: {
-      backgroundColor: '#6c757d',
-      color: 'white',
-    },
-    danger: {
-      backgroundColor: '#dc3545',
-      color: 'white',
-    }
-  };
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+};
+
+const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
+  primary: 'ops-btn ops-btn-primary',
+  secondary: 'ops-btn ops-btn-outline',
+  danger: 'ops-btn ops-btn-danger',
+};
+
+export const Button = ({
+  children,
+  variant = 'primary',
+  className = '',
+  ...props
+}: ButtonProps) => {
+  const variantClass = BUTTON_VARIANTS[variant] ?? BUTTON_VARIANTS.primary;
+  const finalClassName = `${variantClass}${className ? ` ${className}` : ''}`;
 
   return (
-    <button
-      style={{ ...baseStyle, ...variantStyles[variant] }}
-      onClick={onClick}
-      {...props}
-    >
+    <button className={finalClassName} {...props}>
       {children}
     </button>
   );

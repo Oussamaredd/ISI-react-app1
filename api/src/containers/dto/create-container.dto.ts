@@ -1,4 +1,15 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateContainerDto {
   @IsString()
@@ -27,12 +38,10 @@ export class CreateContainerDto {
   zoneId?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(32)
+  @IsLatitude()
   latitude?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(32)
+  @IsLongitude()
   longitude?: string;
 }

@@ -42,18 +42,18 @@ const getStatusBadgeClassName = (status: Ticket['status']) => {
   const normalized = (status ?? 'open').toString().toLowerCase();
 
   if (normalized === 'completed') {
-    return 'bg-green-100 text-green-800';
+    return 'ops-chip ops-chip-success';
   }
 
   if (normalized === 'in_progress') {
-    return 'bg-yellow-100 text-yellow-800';
+    return 'ops-chip ops-chip-warning';
   }
 
   if (normalized === 'closed') {
-    return 'bg-gray-100 text-gray-800';
+    return 'ops-chip ops-chip-info';
   }
 
-  return 'bg-blue-100 text-blue-800';
+  return 'ops-chip ops-chip-info';
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -121,7 +121,7 @@ export function AdminTicketManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ops-admin-panel">
       <h2 className="text-xl font-semibold text-gray-900">Ticket Management</h2>
 
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -166,7 +166,7 @@ export function AdminTicketManagement() {
               onClick={() => {
                 void refetch();
               }}
-              className="mt-3 inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="mt-3 ops-btn ops-btn-primary"
             >
               Retry
             </button>
@@ -207,7 +207,7 @@ export function AdminTicketManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClassName(ticket.status)}`}
+                          className={getStatusBadgeClassName(ticket.status)}
                         >
                           {toDisplayStatus(ticket.status)}
                         </span>
@@ -222,13 +222,13 @@ export function AdminTicketManagement() {
                         <div className="flex items-center justify-end gap-3">
                           <Link
                             to={`/app/tickets/${ticket.id}/details`}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="ops-admin-inline-link"
                           >
                             View details
                           </Link>
                           <Link
                             to={`/app/tickets/${ticket.id}/treat`}
-                            className="text-green-600 hover:text-green-900"
+                            className="ops-admin-inline-link"
                           >
                             Treat
                           </Link>
@@ -245,7 +245,7 @@ export function AdminTicketManagement() {
                 type="button"
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
-                className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ops-btn ops-btn-outline"
               >
                 Previous
               </button>
@@ -256,7 +256,7 @@ export function AdminTicketManagement() {
                 type="button"
                 onClick={handleNextPage}
                 disabled={currentPage >= totalPages}
-                className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ops-btn ops-btn-outline"
               >
                 Next
               </button>

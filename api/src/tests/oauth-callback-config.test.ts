@@ -18,7 +18,6 @@ afterEach(() => {
   delete process.env.GOOGLE_OAUTH_CALLBACK_URL;
   delete process.env.GOOGLE_OAUTH_REDIRECT_URI;
   delete process.env.GOOGLE_CALLBACK;
-  delete process.env.API_URL;
   delete process.env.API_BASE_URL;
   delete process.env.API_HOST;
   delete process.env.API_PORT;
@@ -37,8 +36,8 @@ describe('OAuth callback config', () => {
     expect(() => getGoogleCallbackUrl()).toThrow(/Invalid GOOGLE_CALLBACK_URL path/i);
   });
 
-  it('derives callback URL from API_URL when explicit callback is absent', () => {
-    process.env.API_URL = 'http://localhost:3001';
+  it('derives callback URL from API_BASE_URL when explicit callback is absent', () => {
+    process.env.API_BASE_URL = 'http://localhost:3001';
 
     expect(getGoogleCallbackUrl()).toBe('http://localhost:3001/api/auth/google/callback');
   });

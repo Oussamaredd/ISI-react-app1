@@ -88,7 +88,11 @@ describe('Planning operations', () => {
     planningServiceMock.triggerEmergencyCollection.mockResolvedValue({ alertTriggered: true });
     planningServiceMock.generateReport.mockResolvedValue({ id: 'report-1' });
     planningServiceMock.listReportHistory.mockResolvedValue([]);
-    planningServiceMock.getReportById.mockResolvedValue({ id: 'report-1', fileContent: 'mock pdf' });
+    planningServiceMock.getReportById.mockResolvedValue({
+      id: 'report-1',
+      format: 'pdf',
+      fileContent: Buffer.from('mock pdf').toString('base64'),
+    });
     planningServiceMock.regenerateReport.mockResolvedValue({ id: 'report-2' });
     planningServiceMock.getRealtimeDashboardSnapshotEvent.mockResolvedValue({
       id: 'evt-1',
@@ -143,6 +147,23 @@ describe('Planning operations', () => {
     expect(planningServiceMock.optimizeTour).toHaveBeenCalledWith(
       expect.objectContaining({ zoneId, fillThresholdPercent: 75 }),
     );
+  });
+
+  it('rejects optimize payload when manualContainerIds is not an array', async () => {
+    const zoneId = '5b4ac9a8-2eb4-42eb-aa0e-b4afcf689d6f';
+    const containerId = 'f7a67f92-f8f7-4104-97b3-9136310cb2dd';
+
+    await request(app.getHttpServer())
+      .post('/api/planning/optimize-tour')
+      .send({
+        zoneId,
+        scheduledFor: new Date().toISOString(),
+        fillThresholdPercent: 75,
+        manualContainerIds: containerId,
+      })
+      .expect(400);
+
+    expect(planningServiceMock.optimizeTour).not.toHaveBeenCalled();
   });
 
   it('creates a planned tour and assignment workflow', async () => {
@@ -216,12 +237,70 @@ describe('Planning operations', () => {
     await request(app.getHttpServer()).get('/api/planning/reports/history').expect(200);
     expect(planningServiceMock.listReportHistory).toHaveBeenCalledTimes(1);
 
-    planningServiceMock.getReportById.mockResolvedValueOnce({ id: reportId, fileContent: 'mock pdf content' });
+    planningServiceMock.getReportById.mockResolvedValueOnce({
+      id: reportId,
+      format: 'pdf',
+      fileContent: Buffer.from('mock pdf content').toString('base64'),
+    });
     const downloadResponse = await request(app.getHttpServer())
       .get(`/api/planning/reports/${reportId}/download`)
       .expect(200);
 
-    expect(Buffer.from(downloadResponse.body).toString('utf-8')).toBe('mock pdf content');
+    const coerceResponseBodyToBuffer = (value: unknown): Buffer => {
+      if (Buffer.isBuffer(value)) {
+        const asText = value.toString('utf8');
+        if (asText.startsWith('{"type":"Buffer","data":[')) {
+          try {
+            const parsed = JSON.parse(asText) as { data?: number[] };
+            if (Array.isArray(parsed.data)) {
+              return Buffer.from(parsed.data);
+            }
+          } catch {
+            // Fall through and return the original buffer.
+          }
+        }
+
+        return value;
+      }
+
+      if (typeof value === 'string') {
+        let candidate: unknown = value;
+        for (let depth = 0; depth < 2; depth += 1) {
+          if (typeof candidate !== 'string') {
+            break;
+          }
+
+          try {
+            candidate = JSON.parse(candidate);
+          } catch {
+            break;
+          }
+        }
+
+        if (candidate !== value) {
+          return coerceResponseBodyToBuffer(candidate);
+        }
+
+        return Buffer.from(value);
+      }
+
+      if (
+        typeof value === 'object' &&
+        value != null &&
+        'type' in value &&
+        value.type === 'Buffer' &&
+        'data' in value &&
+        Array.isArray(value.data)
+      ) {
+        return Buffer.from(value.data);
+      }
+
+      return Buffer.from(String(value ?? ''));
+    };
+
+    const downloadBodyBuffer = coerceResponseBodyToBuffer(downloadResponse.body);
+
+    expect(downloadBodyBuffer.toString('utf-8')).toBe('mock pdf content');
 
     await request(app.getHttpServer()).post(`/api/planning/reports/${reportId}/regenerate`).expect(201);
     expect(planningServiceMock.regenerateReport).toHaveBeenCalledWith(reportId, userId);
@@ -238,7 +317,7 @@ describe('Planning operations', () => {
   });
 
   it('issues a planning websocket session token', async () => {
-    await request(app.getHttpServer()).post('/api/planning/ws/session').expect(201);
+    await request(app.getHttpServer()).post('/api/planning/ws-session').expect(201);
 
     expect(planningServiceMock.issueWebSocketSession).toHaveBeenCalledWith(
       expect.objectContaining({

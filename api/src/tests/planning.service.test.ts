@@ -108,6 +108,34 @@ describe('PlanningService stream hardening', () => {
       expiresAt: '2026-02-23T00:02:00.000Z',
       expiresInSeconds: 120,
     });
+
+    expect(
+      service.issueWebSocketSession({
+        id: 'user-3',
+        email: 'manager2@example.com',
+        displayName: 'Manager User 2',
+        role: 'manager',
+        roles: undefined,
+        permissions: ['ecotrack.analytics.read'],
+        isActive: true,
+      } as any),
+    ).toEqual({
+      token: 'ws-token',
+      expiresAt: '2026-02-23T00:02:00.000Z',
+      expiresInSeconds: 120,
+    });
+
+    expect(() =>
+      service.issueWebSocketSession({
+        id: 'user-4',
+        email: 'agent2@example.com',
+        displayName: 'Agent User 2',
+        role: 'agent',
+        roles: undefined,
+        permissions: ['ecotrack.tours.read'],
+        isActive: true,
+      } as any),
+    ).toThrow(ForbiddenException);
   });
 
   it('tracks realtime diagnostics counters and emitted events', () => {

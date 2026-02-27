@@ -162,6 +162,15 @@ describe('Tickets query parsing and pagination', () => {
     expect(mockService.listComments).toHaveBeenCalledWith(ticketId, { page: 1, pageSize: 100 });
   });
 
+  it('GET /api/tickets/:id/comments sanitizes decimal pagination params', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/tickets/${ticketId}/comments`)
+      .query({ page: '2.7', pageSize: '3.5' })
+      .expect(200);
+
+    expect(mockService.listComments).toHaveBeenCalledWith(ticketId, { page: 2, pageSize: 3 });
+  });
+
   it('GET /api/tickets returns 500 when service throws', async () => {
     mockService.findAll.mockRejectedValueOnce(new Error('database down'));
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

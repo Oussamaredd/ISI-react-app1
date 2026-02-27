@@ -20,30 +20,39 @@ type PlanningRealtimeEvent = {
 
 const BASE_RECONNECT_DELAY_MS = 2_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const WEBSOCKET_SESSION_ENDPOINTS = ['/api/planning/ws-session', '/api/planning/ws/session'];
+
+class WebSocketSessionRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`Unable to issue websocket session token (HTTP ${status})`);
+  }
+}
 
 const requestWebSocketSessionToken = async () => {
-  const response = await fetch(`${API_BASE}/api/planning/ws/session`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: Object.fromEntries(
-      withAuthHeader({
-        'Content-Type': 'application/json',
-      }).entries(),
-    ),
-    body: JSON.stringify({}),
-  });
+  for (const endpoint of WEBSOCKET_SESSION_ENDPOINTS) {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: Object.fromEntries(withAuthHeader().entries()),
+    });
 
-  if (!response.ok) {
-    throw new Error('Unable to issue websocket session token');
+    if (response.status === 404) {
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new WebSocketSessionRequestError(response.status);
+    }
+
+    const payload = (await response.json()) as SessionPayload;
+    const token = payload.token ?? payload.sessionToken;
+    if (token) {
+      return token;
+    }
   }
 
-  const payload = (await response.json()) as SessionPayload;
-  const token = payload.token ?? payload.sessionToken;
-  if (!token) {
-    throw new Error('Missing websocket session token');
-  }
-
-  return token;
+  throw new Error('Missing websocket session token');
 };
 
 export const usePlanningRealtimeSocket = (enabled: boolean) => {
@@ -88,6 +97,11 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
       }
 
       reconnectAttempts += 1;
+      if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+        setConnectionState('fallback');
+        return;
+      }
+
       setConnectionState('reconnecting');
       const reconnectDelay = Math.min(
         BASE_RECONNECT_DELAY_MS * 2 ** (reconnectAttempts - 1),
@@ -120,10 +134,18 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
             sessionToken,
           },
         });
-      } catch {
-        if (reconnectAttempts >= 3) {
+      } catch (error) {
+        if (
+          error instanceof WebSocketSessionRequestError &&
+          error.status >= 400 &&
+          error.status < 500 &&
+          error.status !== 408 &&
+          error.status !== 429
+        ) {
           setConnectionState('fallback');
+          return;
         }
+
         scheduleReconnect();
         return;
       }
@@ -134,19 +156,11 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
       });
 
       socket.on('connect_error', () => {
-        if (reconnectAttempts >= 3) {
-          setConnectionState('fallback');
-        }
         scheduleReconnect();
       });
 
       socket.on('disconnect', () => {
         if (isCancelled) {
-          return;
-        }
-
-        if (reconnectAttempts >= 3) {
-          setConnectionState('fallback');
           return;
         }
 

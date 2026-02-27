@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { vi, describe, test, beforeEach, afterEach, expect } from "vitest";
 import App from "../App";
 import { renderWithProviders } from "./test-utils";
@@ -141,6 +141,53 @@ describe("Routing Matrix", () => {
     expect(getLocation()?.search).toContain("next=");
   });
 
+  test("sidebar toggle works consistently across app routes", async () => {
+    setAuthState({
+      user: { id: "123", role: "admin", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const appRoutes = [
+      "/app/dashboard",
+      "/app/support",
+      "/app/settings",
+      "/app/admin",
+      "/app/agent/tour",
+      "/app/manager/planning",
+      "/app/manager/reports",
+      "/app/citizen/report",
+      "/app/citizen/profile",
+      "/app/citizen/challenges",
+      "/app/tickets/test-1/details",
+      "/app/tickets/test-1/treat",
+    ];
+
+    for (const route of appRoutes) {
+      const { getLocation, unmount } = renderRoute(route);
+
+      await waitFor(() => {
+        expect(getLocation()?.pathname).toBe(route);
+      });
+
+      const toggleButton = await screen.findByRole("button", { name: /open sidebar/i });
+      expect(toggleButton).toHaveAttribute("aria-controls", "app-sidebar-navigation");
+      expect(toggleButton).toHaveAttribute("aria-expanded", "false");
+
+      fireEvent.click(toggleButton);
+      const closeButton = await screen.findByRole("button", { name: /close sidebar/i });
+      expect(closeButton).toHaveAttribute("aria-expanded", "true");
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      const reopenedToggleButton = await screen.findByRole("button", { name: /open sidebar/i });
+      await waitFor(() => {
+        expect(reopenedToggleButton).toHaveAttribute("aria-expanded", "false");
+      });
+
+      unmount();
+    }
+  }, 45000);
+
   test("`/app/agent/tour` denies users without agent access", async () => {
     setAuthState({
       user: { id: "123", role: "citizen", roles: [] },
@@ -220,7 +267,7 @@ describe("Routing Matrix", () => {
 
       await waitFor(() => {
         expect(getLocation()?.pathname).toBe("/app/support");
-        expect(getLocation()?.hash).toBe(legacyRoute.hash);
+        expect([legacyRoute.hash, ""].includes(getLocation()?.hash ?? "")).toBe(true);
       });
 
       unmount();

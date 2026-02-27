@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   InternalServerErrorException,
   Param,
   ParseUUIDPipe,
@@ -26,7 +27,9 @@ import { getRequestMetadata } from './admin.utils.js';
 @UseGuards(AdminGuard)
 export class AdminRolesController {
   constructor(
+    @Inject(AdminRolesService)
     private readonly rolesService: AdminRolesService,
+    @Inject(AdminAuditService)
     private readonly auditService: AdminAuditService,
   ) {}
 

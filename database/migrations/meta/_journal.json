@@ -71,6 +71,13 @@
       "when": 1771887416451,
       "tag": "0009_sticky_nico_minoru",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772202446623,
+      "tag": "0010_rich_hardball",
+      "breakpoints": true
     }
   ]
 }

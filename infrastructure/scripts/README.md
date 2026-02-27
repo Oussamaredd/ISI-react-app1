@@ -5,6 +5,7 @@ Execution policy:
 - `infrastructure/scripts/host-bash/*.sh` are optional host Bash helpers for macOS/Linux.
 - `infrastructure/scripts/migrate.sh` is container-only and is executed by the Docker `migrate` service.
 - `infrastructure/scripts/validate-env.mjs` validates environment templates and policy constraints used by CI/CD.
+- `infrastructure/scripts/validate-spec-contracts.mjs` enforces CDC traceability matrix integrity and executable-spec contracts.
 - `infrastructure/scripts/ci/*.sh` contains CI command bundles invoked by `.github/workflows/*`.
 
 Common host commands:

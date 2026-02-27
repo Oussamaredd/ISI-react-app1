@@ -8,7 +8,14 @@ type PlanningStreamState = 'connected' | 'reconnecting' | 'fallback' | 'disabled
 
 const BASE_RECONNECT_DELAY_MS = 2_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
+const MAX_RECONNECT_ATTEMPTS = 3;
 const STREAM_SESSION_ENDPOINTS = ['/api/planning/stream/session', '/api/planning/stream-session'];
+
+class StreamSessionRequestError extends Error {
+  constructor(readonly status: number) {
+    super(`Unable to issue stream session token (HTTP ${status})`);
+  }
+}
 
 type StreamSessionPayload = {
   sessionToken?: string;
@@ -27,21 +34,20 @@ const toStreamUrl = (sessionToken: string, lastEventId: string | null) => {
   return streamUrl.toString();
 };
 
-const requestStreamSessionToken = async (lastEventId: string | null) => {
+const requestStreamSessionToken = async () => {
   for (const endpoint of STREAM_SESSION_ENDPOINTS) {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       credentials: 'include',
-      headers: Object.fromEntries(
-        withAuthHeader({
-          'Content-Type': 'application/json',
-        }).entries(),
-      ),
-      body: JSON.stringify(lastEventId ? { lastEventId } : {}),
+      headers: Object.fromEntries(withAuthHeader().entries()),
     });
 
-    if (!response.ok) {
+    if (response.status === 404) {
       continue;
+    }
+
+    if (!response.ok) {
+      throw new StreamSessionRequestError(response.status);
     }
 
     const payload = (await response.json()) as StreamSessionPayload;
@@ -100,6 +106,11 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
       }
 
       reconnectAttempts += 1;
+      if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+        setConnectionState('fallback');
+        return;
+      }
+
       setConnectionState('reconnecting');
       const reconnectDelay = Math.min(
         BASE_RECONNECT_DELAY_MS * 2 ** (reconnectAttempts - 1),
@@ -117,7 +128,7 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
       }
 
       try {
-        const streamSessionToken = await requestStreamSessionToken(lastEventId);
+        const streamSessionToken = await requestStreamSessionToken();
         if (isCancelled) {
           return;
         }
@@ -125,10 +136,18 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
         eventSource = new window.EventSource(toStreamUrl(streamSessionToken, lastEventId), {
           withCredentials: true,
         });
-      } catch {
-        if (reconnectAttempts >= 3) {
+      } catch (error) {
+        if (
+          error instanceof StreamSessionRequestError &&
+          error.status >= 400 &&
+          error.status < 500 &&
+          error.status !== 408 &&
+          error.status !== 429
+        ) {
           setConnectionState('fallback');
+          return;
         }
+
         scheduleReconnect();
         return;
       }
@@ -139,9 +158,6 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
       };
 
       eventSource.onerror = () => {
-        if (reconnectAttempts >= 3) {
-          setConnectionState('fallback');
-        }
         scheduleReconnect();
       };
 

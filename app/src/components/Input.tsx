@@ -1,19 +1,19 @@
-// client/src/components/Input.jsx
 import React from 'react';
 
-export const Input = ({ style = {}, ...props }) => {
-  const baseStyle = {
-    padding: '0.5rem',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    ...style
-  };
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
-  return (
-    <input
-      style={baseStyle}
-      {...props}
-    />
-  );
-};
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className = '', ...props }, ref) => {
+    const finalClassName = `ops-input${className ? ` ${className}` : ''}`;
+
+    return (
+      <input
+        ref={ref}
+        className={finalClassName}
+        {...props}
+      />
+    );
+  },
+);
+
+Input.displayName = 'Input';

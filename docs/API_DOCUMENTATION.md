@@ -18,6 +18,8 @@ POST /login
 POST /signup
 POST /auth/exchange
 POST /logout
+GET /auth/status
+GET /auth/me
 GET /me
 POST /forgot-password
 POST /reset-password
@@ -81,12 +83,27 @@ GET /planning/agents
 POST /planning/optimize-tour
 POST /planning/create-tour
 GET /planning/dashboard
+POST /planning/ws-session
+POST /planning/stream/session
 POST /planning/emergency-collection
 
 POST /planning/reports/generate
 GET /planning/reports/history
+GET /planning/reports/:reportId/download
 POST /planning/reports/:reportId/regenerate
 ```
+
+Report generation supports:
+- `format: "pdf"` for binary PDF download
+- `format: "csv"` for Excel-compatible CSV download
+- `periodStart <= periodEnd` validation
+- `selectedKpis` restricted to `tours`, `collections`, `anomalies`
+- `emailTo` required when `sendEmail=true`
+- `POST /planning/reports/:reportId/regenerate` recalculates metrics and regenerates file content from the source report period/KPIs.
+
+GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and tour stop validation are validated as latitude/longitude coordinates.
+`manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
+`orderedContainerIds` in `POST /planning/create-tour` must all belong to the selected `zoneId`.
 
 ### Analytics and Gamification
 
@@ -118,6 +135,11 @@ DELETE /tickets/:id/comments/:commentId
 GET /tickets/:id/activity
 ```
 
+Authorization notes:
+- `tickets.read`: required for ticket read endpoints and ticket comment endpoints.
+- `tickets.write`: required for ticket create/update/delete endpoints.
+- Ticket write endpoints enforce both `tickets.read` and `tickets.write` permissions.
+
 ### Admin module
 
 ```text
@@ -137,6 +159,13 @@ POST /admin/settings/notifications/test
 
 GET /admin/audit-logs
 ```
+
+Admin query validation notes:
+- `GET /admin/users`: `is_active` must be `"true"` or `"false"` when provided.
+- `GET /admin/users`: `created_from` and `created_to` must be valid date values.
+- `GET /admin/audit-logs`: `date_from` and `date_to` must be valid date values.
+- `GET /admin/audit-logs`: date-only `date_to` queries are treated as inclusive through `23:59:59.999`.
+- `POST /admin/roles` and `PUT /admin/roles/:id` accept only known platform permission identifiers.
 
 ## Health and Monitoring
 

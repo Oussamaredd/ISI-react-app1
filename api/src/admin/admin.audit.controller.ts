@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   Controller,
   Get,
+  Inject,
   InternalServerErrorException,
   Query,
   UseGuards,
@@ -9,10 +11,23 @@ import {
 import { AdminAuditService } from './admin.audit.service.js';
 import { AdminGuard } from './admin.guard.js';
 
+const parseOptionalDateQuery = (value: string | undefined, fieldName: string) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new BadRequestException(`${fieldName} must be a valid date`);
+  }
+
+  return parsed;
+};
+
 @Controller('admin/audit-logs')
 @UseGuards(AdminGuard)
 export class AdminAuditController {
-  constructor(private readonly auditService: AdminAuditService) {}
+  constructor(@Inject(AdminAuditService) private readonly auditService: AdminAuditService) {}
 
   @Get()
   async listLogs(
@@ -26,8 +41,11 @@ export class AdminAuditController {
     @Query('limit') limitParam?: string,
   ) {
     try {
-      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
-      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      const dateFrom = parseOptionalDateQuery(dateFromParam, 'date_from');
+      const dateTo = parseOptionalDateQuery(dateToParam, 'date_to');
+      if (dateTo) {
+        dateTo.setHours(23, 59, 59, 999);
+      }
 
       const page = Number.parseInt(pageParam ?? '', 10);
       const limit = Number.parseInt(limitParam ?? '', 10);
@@ -37,8 +55,8 @@ export class AdminAuditController {
         action,
         resourceType,
         userId,
-        dateFrom: dateFrom && !Number.isNaN(dateFrom.getTime()) ? dateFrom : undefined,
-        dateTo: dateTo && !Number.isNaN(dateTo.getTime()) ? dateTo : undefined,
+        dateFrom,
+        dateTo,
         page: Number.isFinite(page) ? page : undefined,
         limit: Number.isFinite(limit) ? limit : undefined,
       });
@@ -46,6 +64,9 @@ export class AdminAuditController {
       return { data: result };
     } catch (error) {
       console.error('Failed to fetch audit logs', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Unable to fetch audit logs');
     }
   }

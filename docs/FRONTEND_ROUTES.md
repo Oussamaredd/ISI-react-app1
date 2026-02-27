@@ -47,11 +47,16 @@ Special case:
 Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
-- Sidebar top: logo.
+- Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with Dashboard first.
-- Sidebar bottom: account identity row (avatar + name, display-only), Settings, Support, optional Admin Center, and Sign Out actions.
-- Sidebar can be collapsed/expanded with a high-visibility toggle button (state persisted in browser local storage).
-- Main content header shows current route context as page name only (without a page icon).
+- Sidebar bottom: Settings, Support, optional Admin Center, and Sign Out actions.
+- Sidebar toggle behavior:
+  - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
+  - Desktop collapsed state: toggle remains in the sidebar top area and is revealed when hovering/focusing the logo area.
+  - Mobile (`max-width: 720px`): overlay drawer with dimmed backdrop; supports close via toggle, `Esc`, backdrop click, and route navigation.
+  - Accessibility: toggle uses `aria-expanded` + `aria-controls`; mobile drawer traps focus while open, sets initial focus into the drawer, restores focus to toggle on close, and prevents background scroll.
+- Main content header is sticky and keeps both the page name and account identity (avatar + name) visible while scrolling.
+- Non-dashboard `/app/*` workspace pages use full main-section width (`width: 100%`) with container-aware responsive styles, so grid/tab/detail layouts reflow when sidebar width changes (expanded vs compressed), not only on viewport breakpoints.
 - Sign Out returns users to the landing page (`/`).
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 

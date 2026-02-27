@@ -48,6 +48,7 @@ describe('usePlanningRealtimeSocket', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -66,7 +67,7 @@ describe('usePlanningRealtimeSocket', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3001/api/planning/ws/session',
+      'http://localhost:3001/api/planning/ws-session',
       expect.objectContaining({ method: 'POST' }),
     );
 
@@ -93,5 +94,71 @@ describe('usePlanningRealtimeSocket', () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-tour'] });
+  });
+
+  it('falls back without retry storms on non-retriable session errors', async () => {
+    vi.useFakeTimers();
+
+    const failingFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: 'Bad Request' }),
+    } satisfies Partial<Response>);
+    vi.stubGlobal('fetch', failingFetch as unknown as typeof fetch);
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => usePlanningRealtimeSocket(true), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    await waitFor(() => {
+      expect(result.current.connectionState).toBe('fallback');
+    });
+
+    expect(failingFetch).toHaveBeenCalledTimes(1);
+    expect(ioMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to legacy websocket session endpoint when preferred path is missing', async () => {
+    const socket = createMockSocket();
+    ioMock.mockReturnValue(socket);
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      } satisfies Partial<Response>)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ token: 'legacy-ws-token' }),
+      } satisfies Partial<Response>);
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderHook(() => usePlanningRealtimeSocket(true), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(ioMock).toHaveBeenCalled();
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost:3001/api/planning/ws-session',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3001/api/planning/ws/session',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });

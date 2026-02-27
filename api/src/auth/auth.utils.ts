@@ -40,7 +40,7 @@ export const getGoogleCallbackUrl = () => {
     return explicitCallback.replace(/\/+$/, '');
   }
 
-  const apiBase = getEnvValue('API_URL', 'API_BASE_URL');
+  const apiBase = getEnvValue('API_BASE_URL');
   if (apiBase) {
     const normalized = apiBase.replace(/\/+$/, '');
     return normalized.endsWith('/api')

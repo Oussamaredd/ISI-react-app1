@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   UnauthorizedException,
   Param,
   ParseUUIDPipe,
@@ -22,7 +23,7 @@ import { UpdateChallengeProgressDto } from './dto/update-challenge-progress.dto.
 @Controller('citizen')
 @UseGuards(AuthenticatedUserGuard)
 export class CitizenController {
-  constructor(private readonly citizenService: CitizenService) {}
+  constructor(@Inject(CitizenService) private readonly citizenService: CitizenService) {}
 
   @Post('reports')
   async createReport(@Req() request: RequestWithAuthUser, @Body() dto: CreateCitizenReportDto) {

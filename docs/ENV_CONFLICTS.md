@@ -7,7 +7,7 @@ Last updated: 2026-02-11
 | Conflict | Observed Locations | Risk | Resolution | Status |
 | --- | --- | --- | --- | --- |
 | `VITE_API_URL` vs `VITE_API_BASE_URL` | `app/.env.local`, `app/.env.example`, `app/.env.app`, `app/src/services/api.tsx` | Frontend source ambiguity and drift between local/CI/build inputs | Canonical key is `VITE_API_BASE_URL`. Keep `VITE_API_URL` as temporary alias in code only during transition. | resolved (canonical picked) |
-| `PORT` vs `API_PORT` | `.env`, `infrastructure/environments/.env.*`, API config | API port can differ by workflow and break callback/CORS assumptions | Canonical key is `API_PORT`; `PORT` retained only as short migration alias where needed. | resolved (canonical picked) |
+| `PORT` vs `API_PORT` | `.env`, `infrastructure/environments/.env.*`, API config | API port can differ by workflow and break callback/CORS assumptions | Canonical key is `API_PORT`; API runtime no longer reads `PORT`. | resolved (canonical + runtime cleanup) |
 | `DB_*` (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`) vs `DATABASE_URL` | `.env`, `infrastructure/environments/.env.docker` | Multiple DB sources can point services to different DBs | Canonical key is `DATABASE_URL` for app/runtime and tooling. Keep `POSTGRES_*` only for DB container bootstrap in compose. | resolved (canonical picked) |
 | API runtime split across `.env` and `api/.env` | root `.env`, `api/.env`, `api/src/main.ts`, `api/src/app.module.ts` | Host native dev may load different env file depending on cwd | Canonical host source is root `.env`; `api/.env` is deprecated as runtime source and now template-only guidance for service-scoped keys. | resolved |
 | Docker compose mixed `env_file` + inline fallbacks | `infrastructure/docker-compose.yml` | Inline defaults can silently diverge from canonical docker env file | `--env-file infrastructure/environments/.env.docker` is enforced on compose scripts; redundant inline env defaults removed for canonicalized keys. | resolved |
@@ -18,7 +18,8 @@ Last updated: 2026-02-11
 | Deprecated | Canonical | Sunset Rule |
 | --- | --- | --- |
 | `VITE_API_URL` | `VITE_API_BASE_URL` | Keep read support in frontend code temporarily; stop writing this key in env files now. |
-| `PORT` | `API_PORT` | Keep compatibility fallback in API where required; all templates and scripts use `API_PORT`. |
+| `PORT` | `API_PORT` | Removed from API runtime fallback; keep only as legacy local-env artifact until local files are cleaned. |
+| `API_URL` | `API_BASE_URL` | Removed from API runtime callback derivation; use `API_BASE_URL` when explicit API base URL is needed. |
 | `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_PORT` | `DATABASE_URL` | Keep only when needed for local DB bootstrap tooling; runtime resolution uses `DATABASE_URL`. |
 | `CLIENT_ORIGIN` | `CORS_ORIGINS` (first origin) | Keep optional for backward compatibility; canonical docs and templates use `CORS_ORIGINS`. |
 

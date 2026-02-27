@@ -21,6 +21,7 @@ import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
+import { parsePaginationParams } from '../common/http/pagination.js';
 
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
@@ -172,19 +173,25 @@ export class TicketsController {
     @Query('page') pageParam?: string,
     @Query('pageSize') pageSizeParam?: string,
   ) {
-    const page = Number.isFinite(Number(pageParam)) && Number(pageParam) > 0 ? Number(pageParam) : 1;
-    const pageSizeRaw = Number(pageSizeParam);
-    const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.min(pageSizeRaw, 100) : 20;
+    const pagination = parsePaginationParams(pageParam, pageSizeParam);
 
     try {
-      const { comments, total } = await this.ticketsService.listComments(id, { page, pageSize });
-      const hasNext = page * pageSize < total;
+      const { comments, total } = await this.ticketsService.listComments(id, {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+      });
+      const hasNext = pagination.offset + pagination.limit < total;
       return {
         comments,
         total,
-        page,
-        pageSize,
-        pagination: { total, page, pageSize, hasNext },
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        pagination: {
+          total,
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          hasNext,
+        },
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -196,7 +203,7 @@ export class TicketsController {
   }
 
   @Post(':id/comments')
-  @RequirePermissions('tickets.write')
+  @RequirePermissions('tickets.read')
   async addComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: CreateCommentDto,
@@ -219,7 +226,7 @@ export class TicketsController {
   }
 
   @Put(':id/comments/:commentId')
-  @RequirePermissions('tickets.write')
+  @RequirePermissions('tickets.read')
   async updateComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,
@@ -243,7 +250,7 @@ export class TicketsController {
   }
 
   @Delete(':id/comments/:commentId')
-  @RequirePermissions('tickets.write')
+  @RequirePermissions('tickets.read')
   async deleteComment(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Param('commentId', new ParseUUIDPipe()) commentId: string,

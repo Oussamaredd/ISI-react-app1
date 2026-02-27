@@ -39,7 +39,7 @@ Visibility legend:
 | Key | Owner | Visibility | Workflows | Status |
 | --- | --- | --- | --- | --- |
 | API_PORT | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
-| API_URL | api | private | host-dev, deploy-dev, deploy-staging, deploy-prod | deprecated alias (prefer `VITE_API_BASE_URL` in frontend and `API_PORT`/`API_HOST` in API runtime) |
+| API_URL | api | private | host-dev, deploy-dev, deploy-staging, deploy-prod | removed runtime alias (use `API_BASE_URL` when explicit API base is needed) |
 | APP_URL | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | BCRYPT_ROUNDS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | CACHE_MAX_SIZE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -78,7 +78,7 @@ Visibility legend:
 | METRICS_PORT | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | MIGRATE_COMMAND | infrastructure | private | docker-dev | canonical |
 | NODE_ENV | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
-| PORT | api | private | host-dev, deploy-dev, deploy-staging, deploy-prod | deprecated alias (normalize to `API_PORT`) |
+| PORT | api | private | host-dev, deploy-dev, deploy-staging, deploy-prod | removed API runtime alias (normalize to `API_PORT`) |
 | POSTGRES_DB | infrastructure | private | docker-dev | canonical compose DB container setting |
 | POSTGRES_PASSWORD | infrastructure | private | docker-dev | canonical compose DB container setting |
 | POSTGRES_USER | infrastructure | private | docker-dev | canonical compose DB container setting |

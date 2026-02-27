@@ -61,7 +61,7 @@ export type AppConfig = {
 export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   api: {
-    port: Number(process.env.API_PORT ?? process.env.PORT ?? 3001),
+    port: Number(process.env.API_PORT ?? 3001),
     rateLimit: {
       windowMs: toPositiveInt(process.env.RATE_LIMIT_WINDOW_MS, DEFAULT_RATE_LIMIT_WINDOW_MS),
       maxRequests: toPositiveInt(process.env.RATE_LIMIT_MAX_REQUESTS, DEFAULT_RATE_LIMIT_MAX_REQUESTS),

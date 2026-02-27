@@ -59,8 +59,12 @@ Database package runtime note:
 Deprecated aliases (temporary read support only):
 
 - `VITE_API_URL` -> `VITE_API_BASE_URL`
-- `PORT` -> `API_PORT`
 - `DB_*` -> `DATABASE_URL`
+
+Removed runtime aliases (no longer read by API runtime):
+
+- `PORT` -> use `API_PORT` only
+- `API_URL` -> use `API_BASE_URL` where an explicit API base URL is required
 
 ## Precedence Rules
 

@@ -17,7 +17,6 @@
     "dev:infra": "npm run infra:up",
     "dev:doctor": "node ./infrastructure/scripts/dev-doctor.mjs",
     "build": "npm run build:database && npm run build:app && npm run build:api",
-    "build:cf": "npm run build --workspace=ecotrack-app",
     "build:app": "npm run build --workspace=ecotrack-app",
     "build:api": "npm run build --workspace=ecotrack-api",
     "build:database": "npm run build --workspace=ecotrack-database",
@@ -47,10 +46,10 @@
     "validate-env:deploy:staging": "node ./infrastructure/scripts/validate-env.mjs --workflow deploy-staging --files infrastructure/environments/.env.staging.example",
     "validate-env:deploy:prod": "node ./infrastructure/scripts/validate-env.mjs --workflow deploy-prod --files infrastructure/environments/.env.production.example",
     "validate-env:all": "npm run validate-env:host:template && npm run validate-env:docker:template && npm run validate-env:deploy:dev && npm run validate-env:deploy:staging && npm run validate-env:deploy:prod",
+    "validate-specs": "node ./infrastructure/scripts/validate-spec-contracts.mjs",
     "infra:up": "npm run docker:dev --workspace=ecotrack-infrastructure",
     "infra:down": "npm run docker:down --workspace=ecotrack-infrastructure",
-    "infra:health": "npm run health --workspace=ecotrack-infrastructure",
-    "deploy:cf": "wrangler deploy --config wrangler.toml"
+    "infra:health": "npm run health --workspace=ecotrack-infrastructure"
   },
   "workspaces": [
     "app",
@@ -63,7 +62,6 @@
     "lodash": "4.17.23"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "wrangler": "^4.68.1"
+    "concurrently": "^8.2.2"
   }
 }

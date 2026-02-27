@@ -1,0 +1,445 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "specialty": "development",
+    "updatedAt": "2026-02-27",
+    "sourceOfTruth": "docs/specs/source-of-truth.dev.json"
+  },
+  "useCases": [
+    {
+      "id": "UC-C01",
+      "specialty": "development",
+      "title": "Citizen overflow report",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:10.1",
+        "Workbook:M5.2"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "POST /api/citizen/reports"
+        ],
+        "implementationFiles": [
+          "api/src/citizen/citizen.controller.ts",
+          "api/src/citizen/citizen.service.ts",
+          "api/src/citizen/citizen.repository.ts",
+          "app/src/pages/CitizenReportPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [],
+        "appTests": [
+          "app/src/tests/e2e.key-journeys.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test:e2e --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-C02",
+      "specialty": "development",
+      "title": "Citizen profile and history",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.2",
+        "Workbook:M5.2"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "GET /api/citizen/profile",
+          "GET /api/citizen/history"
+        ],
+        "implementationFiles": [
+          "api/src/citizen/citizen.controller.ts",
+          "api/src/citizen/citizen.service.ts",
+          "api/src/citizen/citizen.repository.ts",
+          "app/src/pages/CitizenProfilePage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/citizen-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/CitizenProfilePage.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-C03",
+      "specialty": "development",
+      "title": "Citizen challenges",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.2",
+        "Workbook:M14.7"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "GET /api/citizen/challenges",
+          "POST /api/citizen/challenges/:challengeId/enroll",
+          "POST /api/citizen/challenges/:challengeId/progress"
+        ],
+        "implementationFiles": [
+          "api/src/citizen/citizen.controller.ts",
+          "api/src/citizen/citizen.service.ts",
+          "api/src/citizen/citizen.repository.ts",
+          "app/src/pages/CitizenChallengesPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/citizen-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/CitizenChallengesPage.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-A01",
+      "specialty": "development",
+      "title": "Agent receives and starts daily tour",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:9.1",
+        "Workbook:M5.2"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "GET /api/tours/agent/me",
+          "POST /api/tours/:tourId/start"
+        ],
+        "implementationFiles": [
+          "api/src/tours/tours.controller.ts",
+          "api/src/tours/tours.service.ts",
+          "api/src/tours/tours.repository.ts",
+          "app/src/pages/AgentTourPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/tours-agent-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/e2e.key-journeys.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test:e2e --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-A02",
+      "specialty": "development",
+      "title": "Agent validates tour collection stop",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:9.1",
+        "Workbook:M5.2"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "POST /api/tours/:tourId/stops/:stopId/validate"
+        ],
+        "implementationFiles": [
+          "api/src/tours/tours.controller.ts",
+          "api/src/tours/tours.service.ts",
+          "api/src/tours/tours.repository.ts",
+          "app/src/pages/AgentTourPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/tours-agent-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/e2e.key-journeys.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test:e2e --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-A03",
+      "specialty": "development",
+      "title": "Agent anomaly report",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:9.1",
+        "Workbook:M5.2"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "POST /api/tours/:tourId/anomalies"
+        ],
+        "implementationFiles": [
+          "api/src/tours/tours.controller.ts",
+          "api/src/tours/tours.service.ts",
+          "api/src/tours/tours.repository.ts",
+          "app/src/pages/AgentTourPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/tours-agent-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/e2e.key-journeys.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test:e2e --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-G01",
+      "specialty": "development",
+      "title": "Manager optimizes and creates tours",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.2",
+        "CDC:10.1",
+        "Workbook:M5.12"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md",
+        "docs/specs/realtime-dashboard-push-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "POST /api/planning/optimize-tour",
+          "POST /api/planning/create-tour"
+        ],
+        "implementationFiles": [
+          "api/src/planning/planning.controller.ts",
+          "api/src/planning/planning.service.ts",
+          "api/src/planning/planning.repository.ts",
+          "app/src/pages/ManagerPlanningPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/planning-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/e2e.key-journeys.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test:e2e --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-G02",
+      "specialty": "development",
+      "title": "Manager monitoring and realtime updates",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.1",
+        "CDC:5.2",
+        "Workbook:M10.1"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md",
+        "docs/specs/realtime-dashboard-push-contract.md",
+        "docs/specs/websocket-realtime-step-plan.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "GET /api/planning/dashboard",
+          "GET /api/planning/stream",
+          "POST /api/planning/stream/session",
+          "POST /api/planning/ws-session",
+          "POST /api/planning/ws/session"
+        ],
+        "implementationFiles": [
+          "api/src/planning/planning.controller.ts",
+          "api/src/planning/planning.gateway.ts",
+          "api/src/planning/planning.service.ts",
+          "app/src/hooks/usePlanningRealtimeSocket.tsx",
+          "app/src/hooks/usePlanningRealtimeStream.tsx",
+          "app/src/pages/Dashboard.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/planning-operations.test.ts",
+          "api/src/tests/planning-stream.controller.test.ts",
+          "api/src/tests/planning.gateway.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/usePlanningRealtimeSocket.test.tsx",
+          "app/src/tests/usePlanningRealtimeStream.test.tsx",
+          "app/src/tests/Dashboard.realtimeTransport.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run validate-specs",
+          "npm run test:realtime --workspace=ecotrack-app",
+          "npm run test --workspace=ecotrack-api"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-G03",
+      "specialty": "development",
+      "title": "Manager monthly report generation and download",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.2",
+        "Workbook:M10.7"
+      ],
+      "specFiles": [
+        "docs/specs/mobile-platform-integration-contract.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "POST /api/planning/reports/generate",
+          "GET /api/planning/reports/history",
+          "GET /api/planning/reports/:id/download",
+          "POST /api/planning/reports/:id/regenerate"
+        ],
+        "implementationFiles": [
+          "api/src/planning/planning.controller.ts",
+          "api/src/planning/planning.service.ts",
+          "api/src/planning/planning.repository.ts",
+          "api/src/planning/report-artifact.utils.ts",
+          "app/src/pages/ManagerReportsPage.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/planning-operations.test.ts",
+          "api/src/tests/report-artifact.utils.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/ManagerReportsPage.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-AD01",
+      "specialty": "development",
+      "title": "Admin users and roles management",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.2",
+        "Workbook:M14.7"
+      ],
+      "specFiles": [
+        "docs/ROADMAP.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "GET /api/admin/users",
+          "POST /api/admin/users",
+          "GET /api/admin/roles",
+          "POST /api/admin/roles"
+        ],
+        "implementationFiles": [
+          "api/src/admin/admin.users.controller.ts",
+          "api/src/admin/admin.roles.controller.ts",
+          "app/src/pages/AdminDashboard.tsx",
+          "app/src/components/admin/UserCreateModal.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/admin-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/UserCreateModal.test.tsx",
+          "app/src/tests/AdminTicketManagement.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    },
+    {
+      "id": "UC-AD02",
+      "specialty": "development",
+      "title": "Admin thresholds, notifications, and audit visibility",
+      "status": "implemented",
+      "sourceRefs": [
+        "CDC:5.2",
+        "Workbook:M14.7"
+      ],
+      "specFiles": [
+        "docs/ROADMAP.md"
+      ],
+      "contract": {
+        "backendEndpoints": [
+          "GET /api/admin/settings",
+          "POST /api/admin/settings/notifications/test",
+          "GET /api/admin/audit-logs"
+        ],
+        "implementationFiles": [
+          "api/src/admin/admin.settings.controller.ts",
+          "api/src/admin/admin.audit.controller.ts",
+          "app/src/components/admin/AuditLogs.tsx"
+        ]
+      },
+      "verification": {
+        "apiTests": [
+          "api/src/tests/admin-operations.test.ts"
+        ],
+        "appTests": [
+          "app/src/tests/AuditLogs.test.tsx"
+        ],
+        "ciChecks": [
+          "npm run test --workspace=ecotrack-api",
+          "npm run test --workspace=ecotrack-app"
+        ]
+      },
+      "gaps": []
+    }
+  ]
+}

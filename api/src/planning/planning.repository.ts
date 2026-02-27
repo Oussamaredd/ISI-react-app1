@@ -1,5 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import {
   anomalyReports,
   auditLogs,
@@ -8,7 +8,6 @@ import {
   type DatabaseClient,
   reportExports,
   roles,
-  tickets,
   tourStops,
   tours,
   userRoles,
@@ -22,10 +21,13 @@ import type { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import type { GenerateReportDto } from './dto/generate-report.dto.js';
 import type { OptimizeTourDto } from './dto/optimize-tour.dto.js';
 import type { TriggerEmergencyCollectionDto } from './dto/trigger-emergency-collection.dto.js';
+import { createReportArtifact } from './report-artifact.utils.js';
 
 type LatLngPoint = { id: string; latitude: number | null; longitude: number | null };
 
 const EARTH_RADIUS_KM = 6371;
+const REPORT_KPI_ALLOWLIST = new Set(['tours', 'collections', 'anomalies']);
+const MAX_2OPT_PASSES = 20;
 
 const toNumberOrNull = (value: unknown) => {
   if (value == null) return null;
@@ -119,7 +121,8 @@ export class PlanningRepository {
         ? allCandidates.filter((item) => manualIds.has(item.id))
         : [...allCandidates].sort((left, right) => right.fillLevelPercent - left.fillLevelPercent);
 
-    const route = this.computeHeuristicRoute(selectedCandidates);
+    const heuristicRoute = this.computeHeuristicRoute(selectedCandidates);
+    const route = this.refineRouteWithTwoOpt(heuristicRoute);
     const totalDistanceKm = this.computeRouteDistance(route);
 
     return {
@@ -137,6 +140,28 @@ export class PlanningRepository {
 
   async createPlannedTour(dto: CreatePlannedTourDto, actorUserId: string) {
     return this.db.transaction(async (tx) => {
+      const uniqueOrderedContainerIds = Array.from(new Set(dto.orderedContainerIds));
+      if (uniqueOrderedContainerIds.length !== dto.orderedContainerIds.length) {
+        throw new BadRequestException('orderedContainerIds must not contain duplicate container IDs');
+      }
+
+      const selectedContainers = await tx
+        .select({
+          id: containers.id,
+          zoneId: containers.zoneId,
+        })
+        .from(containers)
+        .where(inArray(containers.id, uniqueOrderedContainerIds));
+
+      if (selectedContainers.length !== uniqueOrderedContainerIds.length) {
+        throw new BadRequestException('One or more orderedContainerIds were not found');
+      }
+
+      const hasCrossZoneContainer = selectedContainers.some((container) => container.zoneId !== dto.zoneId);
+      if (hasCrossZoneContainer) {
+        throw new BadRequestException('All orderedContainerIds must belong to the selected zone');
+      }
+
       const [createdTour] = await tx
         .insert(tours)
         .values({
@@ -178,12 +203,7 @@ export class PlanningRepository {
   }
 
   async getManagerDashboard() {
-    const [ticketsTotalRow, ticketsCompletedRow, ecoSummary, criticalContainers] = await Promise.all([
-      this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(tickets),
-      this.db
-        .select({ value: sql`count(*)`.mapWith(Number) })
-        .from(tickets)
-        .where(inArray(tickets.status, ['completed', 'closed', 'COMPLETED', 'CLOSED'])),
+    const [ecoSummary, criticalContainers] = await Promise.all([
       Promise.all([
         this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(containers),
         this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(zones),
@@ -207,15 +227,7 @@ export class PlanningRepository {
         .limit(20),
     ]);
 
-    const ticketsTotal = ticketsTotalRow[0]?.value ?? 0;
-    const ticketsCompleted = ticketsCompletedRow[0]?.value ?? 0;
-
     return {
-      ticketKpis: {
-        total: ticketsTotal,
-        completed: ticketsCompleted,
-        open: Math.max(ticketsTotal - ticketsCompleted, 0),
-      },
       ecoKpis: {
         containers: ecoSummary[0][0]?.value ?? 0,
         zones: ecoSummary[1][0]?.value ?? 0,
@@ -286,41 +298,16 @@ export class PlanningRepository {
   }
 
   async generateReport(dto: GenerateReportDto, actorUserId: string) {
-    const periodStart = new Date(dto.periodStart);
-    const periodEnd = new Date(dto.periodEnd);
+    const { periodStart, periodEnd } = this.normalizeReportPeriod(dto.periodStart, dto.periodEnd);
+    const selectedKpis = this.normalizeSelectedKpis(dto.selectedKpis);
 
-    const [tourCountRows, collectionCountRows, anomalyCountRows] = await Promise.all([
-      this.db
-        .select({ value: sql`count(*)`.mapWith(Number) })
-        .from(tours)
-        .where(and(gte(tours.scheduledFor, periodStart), sql`${tours.scheduledFor} <= ${periodEnd}`)),
-      this.db
-        .select({ value: sql`count(*)`.mapWith(Number) })
-        .from(collectionEvents)
-        .where(
-          and(
-            gte(collectionEvents.collectedAt, periodStart),
-            sql`${collectionEvents.collectedAt} <= ${periodEnd}`,
-          ),
-        ),
-      this.db
-        .select({ value: sql`count(*)`.mapWith(Number) })
-        .from(anomalyReports)
-        .where(and(gte(anomalyReports.reportedAt, periodStart), sql`${anomalyReports.reportedAt} <= ${periodEnd}`)),
-    ]);
+    const normalizedEmailTo = typeof dto.emailTo === 'string' ? dto.emailTo.trim() : '';
+    if (dto.sendEmail && normalizedEmailTo.length === 0) {
+      throw new BadRequestException('emailTo is required when sendEmail is true');
+    }
 
-    const reportPayload = {
-      periodStart: periodStart.toISOString(),
-      periodEnd: periodEnd.toISOString(),
-      selectedKpis: dto.selectedKpis,
-      metrics: {
-        tours: tourCountRows[0]?.value ?? 0,
-        collections: collectionCountRows[0]?.value ?? 0,
-        anomalies: anomalyCountRows[0]?.value ?? 0,
-      },
-    };
-
-    const fileContent = JSON.stringify(reportPayload, null, 2);
+    const reportPayload = await this.buildReportPayload(periodStart, periodEnd, selectedKpis);
+    const reportArtifact = createReportArtifact(reportPayload, dto.format);
 
     const [created] = await this.db
       .insert(reportExports)
@@ -328,14 +315,18 @@ export class PlanningRepository {
         requestedByUserId: actorUserId,
         periodStart,
         periodEnd,
-        selectedKpis: dto.selectedKpis,
-        format: dto.format ?? 'pdf',
+        selectedKpis,
+        format: reportArtifact.format,
         status: 'generated',
         sendEmail: dto.sendEmail ?? false,
-        emailTo: dto.sendEmail ? (dto.emailTo ?? null) : null,
-        fileContent,
+        emailTo: dto.sendEmail ? normalizedEmailTo : null,
+        fileContent: reportArtifact.encodedContent,
       })
       .returning();
+
+    if (!created) {
+      throw new Error('Failed to persist generated report');
+    }
 
     await this.db.insert(auditLogs).values({
       userId: actorUserId,
@@ -367,20 +358,32 @@ export class PlanningRepository {
 
   async regenerateReport(reportId: string, actorUserId: string) {
     const source = await this.getReportById(reportId);
+    const selectedKpis = this.normalizeSelectedKpis(source.selectedKpis);
+    const reportPayload = await this.buildReportPayload(
+      source.periodStart,
+      source.periodEnd,
+      selectedKpis,
+    );
+    const reportArtifact = createReportArtifact(reportPayload, source.format);
+
     const [created] = await this.db
       .insert(reportExports)
       .values({
         requestedByUserId: actorUserId,
         periodStart: source.periodStart,
         periodEnd: source.periodEnd,
-        selectedKpis: source.selectedKpis as string[],
-        format: source.format,
+        selectedKpis,
+        format: reportArtifact.format,
         status: 'generated',
         sendEmail: source.sendEmail,
         emailTo: source.emailTo,
-        fileContent: source.fileContent,
+        fileContent: reportArtifact.encodedContent,
       })
       .returning();
+
+    if (!created) {
+      throw new Error('Failed to regenerate report');
+    }
 
     await this.db.insert(auditLogs).values({
       userId: actorUserId,
@@ -392,6 +395,74 @@ export class PlanningRepository {
     });
 
     return created;
+  }
+
+  private normalizeReportPeriod(rawPeriodStart: unknown, rawPeriodEnd: unknown) {
+    const periodStart = rawPeriodStart instanceof Date ? rawPeriodStart : new Date(String(rawPeriodStart));
+    const periodEnd = rawPeriodEnd instanceof Date ? rawPeriodEnd : new Date(String(rawPeriodEnd));
+
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+      throw new BadRequestException('Invalid reporting period');
+    }
+
+    if (periodStart.getTime() > periodEnd.getTime()) {
+      throw new BadRequestException('periodStart must be before or equal to periodEnd');
+    }
+
+    return { periodStart, periodEnd };
+  }
+
+  private normalizeSelectedKpis(rawSelectedKpis: unknown) {
+    const selectedKpis = Array.isArray(rawSelectedKpis)
+      ? rawSelectedKpis
+          .map((kpi) => (typeof kpi === 'string' ? kpi.trim().toLowerCase() : ''))
+          .filter((kpi): kpi is string => kpi.length > 0)
+      : [];
+
+    if (selectedKpis.length === 0) {
+      throw new BadRequestException('At least one KPI must be selected');
+    }
+
+    const unsupportedKpis = selectedKpis.filter((kpi) => !REPORT_KPI_ALLOWLIST.has(kpi));
+    if (unsupportedKpis.length > 0) {
+      throw new BadRequestException(`Unsupported KPIs: ${unsupportedKpis.join(', ')}`);
+    }
+
+    return selectedKpis;
+  }
+
+  private async buildReportPayload(periodStart: Date, periodEnd: Date, selectedKpis: string[]) {
+    const [tourCountRows, collectionCountRows, anomalyCountRows] = await Promise.all([
+      this.db
+        .select({ value: sql`count(*)`.mapWith(Number) })
+        .from(tours)
+        .where(and(gte(tours.scheduledFor, periodStart), lte(tours.scheduledFor, periodEnd))),
+      this.db
+        .select({ value: sql`count(*)`.mapWith(Number) })
+        .from(collectionEvents)
+        .where(
+          and(
+            gte(collectionEvents.collectedAt, periodStart),
+            lte(collectionEvents.collectedAt, periodEnd),
+          ),
+        ),
+      this.db
+        .select({ value: sql`count(*)`.mapWith(Number) })
+        .from(anomalyReports)
+        .where(and(gte(anomalyReports.reportedAt, periodStart), lte(anomalyReports.reportedAt, periodEnd))),
+    ]);
+
+    return {
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      selectedKpis,
+      metrics: {
+        tours: tourCountRows[0]?.value ?? 0,
+        collections: collectionCountRows[0]?.value ?? 0,
+        anomalies: anomalyCountRows[0]?.value ?? 0,
+      },
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   private computeHeuristicRoute(candidates: Array<Record<string, unknown>>) {
@@ -443,6 +514,55 @@ export class PlanningRepository {
     return route;
   }
 
+  private refineRouteWithTwoOpt(route: Array<Record<string, unknown>>) {
+    if (route.length < 4) {
+      return route;
+    }
+
+    const optimized = [...route];
+    let didImprove = true;
+    let passCount = 0;
+
+    while (didImprove && passCount < MAX_2OPT_PASSES) {
+      didImprove = false;
+      passCount += 1;
+
+      for (let left = 1; left < optimized.length - 2; left += 1) {
+        for (let right = left + 1; right < optimized.length - 1; right += 1) {
+          const leftPrev = optimized[left - 1];
+          const leftNode = optimized[left];
+          const rightNode = optimized[right];
+          const rightNext = optimized[right + 1];
+
+          const currentDistance =
+            this.distanceBetweenNodes(leftPrev, leftNode) + this.distanceBetweenNodes(rightNode, rightNext);
+          const swappedDistance =
+            this.distanceBetweenNodes(leftPrev, rightNode) + this.distanceBetweenNodes(leftNode, rightNext);
+
+          if (swappedDistance + 0.0001 < currentDistance) {
+            const reversed = optimized.slice(left, right + 1).reverse();
+            optimized.splice(left, right - left + 1, ...reversed);
+            didImprove = true;
+          }
+        }
+      }
+    }
+
+    return optimized;
+  }
+
+  private distanceBetweenNodes(fromNode: Record<string, unknown>, toNode: Record<string, unknown>) {
+    return haversineDistanceKm(this.toLatLngPoint(fromNode), this.toLatLngPoint(toNode));
+  }
+
+  private toLatLngPoint(node: Record<string, unknown>): LatLngPoint {
+    return {
+      id: String(node.id),
+      latitude: toNumberOrNull(node.latitude),
+      longitude: toNumberOrNull(node.longitude),
+    };
+  }
+
   private computeRouteDistance(route: Array<Record<string, unknown>>) {
     if (route.length <= 1) {
       return 0;
@@ -454,18 +574,7 @@ export class PlanningRepository {
       const previous = route[index - 1];
       const current = route[index];
 
-      total += haversineDistanceKm(
-        {
-          id: String(previous.id),
-          latitude: toNumberOrNull(previous.latitude),
-          longitude: toNumberOrNull(previous.longitude),
-        },
-        {
-          id: String(current.id),
-          latitude: toNumberOrNull(current.latitude),
-          longitude: toNumberOrNull(current.longitude),
-        },
-      );
+      total += this.distanceBetweenNodes(previous, current);
     }
 
     return total;

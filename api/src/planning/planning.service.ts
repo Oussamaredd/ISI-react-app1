@@ -153,7 +153,10 @@ export class PlanningService {
   }
 
   issueStreamSession(authUser: RequestWithAuthUser['authUser']) {
-    if (!authUser?.id || !this.hasRealtimeRoleAccess(authUser.role, authUser.roles.map((role) => role.name))) {
+    if (
+      !authUser?.id ||
+      !this.hasRealtimeRoleAccess(authUser.role, this.readAdditionalRoleNames(authUser))
+    ) {
       throw new ForbiddenException('Insufficient permissions');
     }
 
@@ -161,7 +164,10 @@ export class PlanningService {
   }
 
   issueWebSocketSession(authUser: RequestWithAuthUser['authUser']) {
-    if (!authUser?.id || !this.hasRealtimeRoleAccess(authUser.role, authUser.roles.map((role) => role.name))) {
+    if (
+      !authUser?.id ||
+      !this.hasRealtimeRoleAccess(authUser.role, this.readAdditionalRoleNames(authUser))
+    ) {
       throw new ForbiddenException('Insufficient permissions');
     }
 
@@ -184,6 +190,24 @@ export class PlanningService {
     }
 
     return Array.from(roleNames).some((roleName) => STREAM_SESSION_ALLOWED_ROLES.has(roleName));
+  }
+
+  private readAdditionalRoleNames(authUser: RequestWithAuthUser['authUser']) {
+    if (!Array.isArray(authUser?.roles)) {
+      return [];
+    }
+
+    const roleNames: string[] = [];
+    for (const role of authUser.roles) {
+      if (typeof role?.name === 'string') {
+        const normalizedRoleName = role.name.trim();
+        if (normalizedRoleName) {
+          roleNames.push(normalizedRoleName);
+        }
+      }
+    }
+
+    return roleNames;
   }
 
   getRealtimeDiagnostics(): PlanningRealtimeDiagnostics {

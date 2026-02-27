@@ -185,17 +185,19 @@ export function SystemSettings() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-500">Loading system settings...</p>
+      <div className="ops-admin-panel">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-500">Loading system settings...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 ops-admin-panel">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -216,6 +218,7 @@ export function SystemSettings() {
           <Button
             variant="primary"
             type="submit"
+            form="system-settings-form"
             disabled={!hasChanges || isUpdating}
             className="flex items-center space-x-2"
           >
@@ -228,7 +231,7 @@ export function SystemSettings() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form id="system-settings-form" onSubmit={handleSubmit} className="space-y-8">
         {/* General Settings */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-3 mb-6">
@@ -500,9 +503,9 @@ export function SystemSettings() {
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               >
                 <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
-                <option value="JPY">JPY (¥)</option>
+                <option value="EUR">EUR (EUR)</option>
+                <option value="GBP">GBP (GBP)</option>
+                <option value="JPY">JPY (JPY)</option>
               </select>
             </div>
           </div>
@@ -614,3 +617,4 @@ export function SystemSettings() {
     </div>
   );
 }
+

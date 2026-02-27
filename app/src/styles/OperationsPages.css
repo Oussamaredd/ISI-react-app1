@@ -1,10 +1,12 @@
 .ops-page {
-  width: min(1200px, 100%);
+  width: 100%;
   margin: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   color: var(--text);
+  container-type: inline-size;
 }
 
 .ops-hero {
@@ -362,17 +364,28 @@
 }
 
 .ops-admin-shell {
-  width: min(1220px, 100%);
+  width: 100%;
   margin: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  container-type: inline-size;
 }
 
 .ops-admin-layout {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 1rem;
+}
+
+.ops-page > *,
+.ops-admin-shell > * {
+  min-width: 0;
+}
+
+.ops-admin-layout > main {
+  min-width: 0;
 }
 
 .ops-admin-nav {
@@ -413,6 +426,291 @@
   color: #f4f8ff;
   border-color: rgba(79, 140, 255, 0.56);
   background: rgba(79, 140, 255, 0.18);
+}
+
+.ops-admin-panel {
+  color: var(--text);
+}
+
+.ops-admin-panel .bg-white {
+  background: rgba(10, 15, 26, 0.88) !important;
+}
+
+.ops-admin-panel .bg-white.rounded-lg,
+.ops-admin-panel .rounded-lg.bg-white,
+.ops-admin-panel .bg-white.shadow-sm,
+.ops-admin-panel .bg-white.shadow-xl {
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 100% -20%, rgba(79, 140, 255, 0.12), transparent 52%),
+    rgba(10, 15, 26, 0.88) !important;
+}
+
+.ops-admin-panel .shadow-sm,
+.ops-admin-panel .shadow-xl {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25) !important;
+}
+
+.ops-admin-panel .text-gray-900 {
+  color: var(--text) !important;
+}
+
+.ops-admin-panel .text-gray-800,
+.ops-admin-panel .text-gray-700,
+.ops-admin-panel .text-gray-600,
+.ops-admin-panel .text-gray-500,
+.ops-admin-panel .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+.ops-admin-panel .text-red-600 {
+  color: #ffd8d8 !important;
+}
+
+.ops-admin-panel .bg-gray-50 {
+  background: rgba(8, 14, 27, 0.76) !important;
+}
+
+.ops-admin-panel .bg-gray-100 {
+  background: rgba(17, 28, 46, 0.86) !important;
+}
+
+.ops-admin-panel .border-gray-200,
+.ops-admin-panel .border-gray-300 {
+  border-color: rgba(129, 167, 246, 0.3) !important;
+}
+
+.ops-admin-panel .border-blue-400 {
+  border-color: rgba(79, 140, 255, 0.6) !important;
+}
+
+.ops-admin-panel .border-blue-500 {
+  border-color: rgba(79, 140, 255, 0.76) !important;
+}
+
+.ops-admin-panel .bg-blue-50 {
+  background: rgba(79, 140, 255, 0.15) !important;
+}
+
+.ops-admin-panel .text-blue-900,
+.ops-admin-panel .text-blue-800,
+.ops-admin-panel .text-blue-700,
+.ops-admin-panel .text-blue-600 {
+  color: #a9c8ff !important;
+}
+
+.ops-admin-panel .text-green-900,
+.ops-admin-panel .text-green-800,
+.ops-admin-panel .text-green-700,
+.ops-admin-panel .text-green-600 {
+  color: #9deec8 !important;
+}
+
+.ops-admin-panel .text-yellow-800 {
+  color: #ffdf9a !important;
+}
+
+.ops-admin-panel .text-violet-800,
+.ops-admin-panel .text-purple-800,
+.ops-admin-panel .text-indigo-800,
+.ops-admin-panel .text-sky-800,
+.ops-admin-panel .text-emerald-800,
+.ops-admin-panel .text-rose-800,
+.ops-admin-panel .text-pink-800 {
+  color: #c7d9ff !important;
+}
+
+.ops-admin-panel .bg-blue-100,
+.ops-admin-panel .bg-indigo-100,
+.ops-admin-panel .bg-purple-100,
+.ops-admin-panel .bg-violet-100,
+.ops-admin-panel .bg-sky-100 {
+  background: rgba(79, 140, 255, 0.16) !important;
+}
+
+.ops-admin-panel .bg-green-100,
+.ops-admin-panel .bg-emerald-100 {
+  background: rgba(39, 209, 127, 0.16) !important;
+}
+
+.ops-admin-panel .bg-yellow-100 {
+  background: rgba(246, 195, 91, 0.2) !important;
+}
+
+.ops-admin-panel .bg-red-100,
+.ops-admin-panel .bg-rose-100,
+.ops-admin-panel .bg-pink-100 {
+  background: rgba(255, 117, 117, 0.16) !important;
+}
+
+.ops-admin-panel .bg-gray-300 {
+  background: rgba(61, 81, 120, 0.62) !important;
+}
+
+.ops-admin-panel .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(129, 167, 246, 0.24) !important;
+}
+
+.ops-admin-panel select,
+.ops-admin-panel textarea {
+  border: 1px solid rgba(129, 167, 246, 0.32) !important;
+  border-radius: 10px;
+  background: rgba(12, 20, 36, 0.78) !important;
+  color: var(--text) !important;
+  outline: none;
+}
+
+.ops-admin-panel select:focus,
+.ops-admin-panel textarea:focus {
+  border-color: rgba(110, 178, 255, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2) !important;
+}
+
+.ops-admin-panel input[type="checkbox"] {
+  accent-color: #4f8cff;
+}
+
+.ops-admin-panel table {
+  width: 100%;
+}
+
+.ops-admin-panel tr:hover {
+  background: rgba(79, 140, 255, 0.08) !important;
+}
+
+.ops-admin-inline-link {
+  color: #a9c8ff;
+  font-weight: 600;
+}
+
+.ops-admin-inline-link:hover {
+  color: #d4e6ff;
+}
+
+.ops-admin-icon-btn {
+  border: 1px solid rgba(129, 167, 246, 0.34);
+  border-radius: 999px;
+  min-width: 2rem;
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 22, 36, 0.72);
+  color: #a9c8ff;
+}
+
+.ops-admin-icon-btn:hover:not(:disabled) {
+  border-color: rgba(168, 196, 255, 0.48);
+  color: #d4e6ff;
+}
+
+.ops-admin-icon-btn-danger {
+  color: #ffb8b8;
+}
+
+.ops-admin-icon-btn-success {
+  color: #9deec8;
+}
+
+.ops-admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 18, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.ops-admin-modal-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 100% -20%, rgba(79, 140, 255, 0.14), transparent 52%),
+    rgba(10, 15, 26, 0.95);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+}
+
+.ops-admin-modal-panel .text-gray-900 {
+  color: var(--text) !important;
+}
+
+.ops-admin-modal-panel .text-gray-800,
+.ops-admin-modal-panel .text-gray-700,
+.ops-admin-modal-panel .text-gray-600,
+.ops-admin-modal-panel .text-gray-500,
+.ops-admin-modal-panel .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+.ops-admin-modal-panel .text-red-600 {
+  color: #ffd8d8 !important;
+}
+
+.ops-admin-modal-panel .bg-gray-50 {
+  background: rgba(8, 14, 27, 0.76) !important;
+}
+
+.ops-admin-modal-panel .bg-gray-100,
+.ops-admin-modal-panel .bg-blue-100 {
+  background: rgba(79, 140, 255, 0.16) !important;
+}
+
+.ops-admin-modal-panel .border-gray-200,
+.ops-admin-modal-panel .border-gray-300 {
+  border-color: rgba(129, 167, 246, 0.32) !important;
+}
+
+.ops-admin-modal-panel .border-blue-500 {
+  border-color: rgba(79, 140, 255, 0.76) !important;
+}
+
+.ops-admin-modal-panel .bg-blue-50 {
+  background: rgba(79, 140, 255, 0.18) !important;
+}
+
+.ops-admin-modal-panel .text-blue-600,
+.ops-admin-modal-panel .text-blue-500 {
+  color: #a9c8ff !important;
+}
+
+.ops-admin-modal-panel .text-white {
+  color: #f6fbff !important;
+}
+
+.ops-admin-modal-panel .text-green-800 {
+  color: #9deec8 !important;
+}
+
+.ops-admin-modal-panel .text-red-800 {
+  color: #ffd7d7 !important;
+}
+
+.ops-admin-modal-panel input[type="checkbox"] {
+  accent-color: #4f8cff;
+}
+
+@container (max-width: 1080px) {
+  .ops-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-admin-nav {
+    position: static;
+  }
+}
+
+@container (max-width: 720px) {
+  .ops-grid-2,
+  .ops-grid-3,
+  .ops-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-actions > * {
+    width: 100%;
+  }
 }
 
 @media (max-width: 1080px) {

@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsDateString, IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class GenerateReportDto {
   @IsDateString()
@@ -13,6 +13,7 @@ export class GenerateReportDto {
 
   @IsOptional()
   @IsString()
+  @IsIn(['pdf', 'csv'])
   @MaxLength(10)
   format?: string;
 

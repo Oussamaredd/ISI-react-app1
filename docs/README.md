@@ -6,6 +6,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `../README.md` - repository quick start and canonical command surface
 - `ROADMAP.md` - development roadmap and progress tracking (canonical)
 - `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps
+- `PR_TASKS.md` - sprint gate tracker aligned with `ROADMAP.md`
 - `ARCHITECTURE_OVERVIEW.md` - layer boundaries and architecture contract
 - `ENVIRONMENT_SETUP.md` - host/Docker/deploy environment setup
 
@@ -57,6 +58,7 @@ npm run test
 npm run test:e2e
 npm run test:coverage
 npm run validate-env:all
+npm run validate-specs
 ```
 
 Build:
@@ -67,6 +69,7 @@ npm run build --workspace=ecotrack-app
 
 Frontend bundle budgets are enforced during `ecotrack-app` builds via `app/scripts/check-bundle-size.mjs`.
 Use `ECOTRACK_ENTRY_CHUNK_BUDGET_KB` and `ECOTRACK_LOGO_BUDGET_KB` to override default limits in CI or local runs.
+UI theme contract checks are enforced during `ecotrack-app` lint via `app/scripts/validate-theme-contract.mjs`.
 
 Database:
 ```bash

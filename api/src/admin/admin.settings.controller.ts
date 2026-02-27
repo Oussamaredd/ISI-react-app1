@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Inject,
   InternalServerErrorException,
   Post,
   Put,
@@ -23,7 +24,9 @@ import { DispatchTestNotificationDto } from './dto/dispatch-test-notification.dt
 @UseGuards(AdminGuard)
 export class AdminSettingsController {
   constructor(
+    @Inject(AdminSettingsService)
     private readonly settingsService: AdminSettingsService,
+    @Inject(AdminAuditService)
     private readonly auditService: AdminAuditService,
   ) {}
 

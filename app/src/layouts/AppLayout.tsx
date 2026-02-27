@@ -48,6 +48,15 @@ type PageMeta = {
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 721px)";
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "ecotrack.sidebar.collapsed";
+const SIDEBAR_ID = "app-sidebar-navigation";
+const FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
 
 const isTicketLifecycleRoute = (pathname: string) =>
   /^\/app\/tickets\/[^/]+\/(details|treat)$/.test(pathname);
@@ -87,9 +96,17 @@ const getUserAvatarUrl = (user: unknown): string | null => {
   return null;
 };
 
+const getFocusableElements = (container: HTMLElement): HTMLElement[] =>
+  Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.getClientRects().length > 0
+  );
+
 export default function AppLayout() {
   const { user } = useCurrentUser();
   const location = useLocation();
+  const sidebarRef = React.useRef<HTMLElement | null>(null);
+  const toggleButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const wasMobileSidebarOpenRef = React.useRef(false);
   const [isDesktop, setIsDesktop] = React.useState<boolean>(() =>
     typeof window === "undefined"
       ? true
@@ -105,6 +122,7 @@ export default function AppLayout() {
       );
     }
   );
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const canAccessAdmin = hasAdminAccess(user);
   const canAccessAgent = hasAgentAccess(user);
   const canAccessCitizen = hasCitizenAccess(user);
@@ -112,10 +130,15 @@ export default function AppLayout() {
   const displayName = user?.displayName || user?.name || user?.email || "User";
   const profileImageUrl = getUserAvatarUrl(user);
   const [hasAvatarError, setHasAvatarError] = React.useState(false);
+  const [isCollapsedToggleHovered, setIsCollapsedToggleHovered] = React.useState(false);
   const isSidebarCompact = isDesktop && isSidebarCollapsed;
-  const shellClassName = isSidebarCompact
-    ? "app-shell app-shell-collapsed"
-    : "app-shell";
+  const shellClassName = [
+    "app-shell",
+    isSidebarCompact ? "app-shell-collapsed" : "",
+    !isDesktop && isMobileSidebarOpen ? "app-shell-mobile-sidebar-open" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const hasProfileImage = Boolean(profileImageUrl) && !hasAvatarError;
 
   React.useEffect(() => {
@@ -156,6 +179,106 @@ export default function AppLayout() {
   React.useEffect(() => {
     setHasAvatarError(false);
   }, [profileImageUrl]);
+
+  React.useEffect(() => {
+    if (isDesktop) {
+      setIsMobileSidebarOpen(false);
+    }
+  }, [isDesktop]);
+
+  React.useEffect(() => {
+    if (!isSidebarCompact) {
+      setIsCollapsedToggleHovered(false);
+    }
+  }, [isSidebarCompact]);
+
+  React.useEffect(() => {
+    if (!isDesktop) {
+      setIsMobileSidebarOpen(false);
+    }
+  }, [location.pathname, isDesktop]);
+
+  const closeMobileSidebar = React.useCallback(() => {
+    setIsMobileSidebarOpen(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (isDesktop || !isMobileSidebarOpen || typeof document === "undefined") {
+      return;
+    }
+
+    const sidebarElement = sidebarRef.current;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusableElements = sidebarElement
+      ? getFocusableElements(sidebarElement)
+      : [];
+    const firstFocusable = focusableElements[0] ?? sidebarElement;
+    firstFocusable?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!sidebarElement) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMobileSidebar();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const scopedFocusableElements = getFocusableElements(sidebarElement);
+      if (scopedFocusableElements.length === 0) {
+        event.preventDefault();
+        sidebarElement.focus();
+        return;
+      }
+
+      const first = scopedFocusableElements[0];
+      const last = scopedFocusableElements[scopedFocusableElements.length - 1];
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isActiveInsideSidebar = Boolean(
+        activeElement && sidebarElement.contains(activeElement)
+      );
+
+      if (event.shiftKey) {
+        if (!isActiveInsideSidebar || activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        }
+        return;
+      }
+
+      if (!isActiveInsideSidebar || activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMobileSidebar, isDesktop, isMobileSidebarOpen]);
+
+  React.useEffect(() => {
+    if (isDesktop) {
+      wasMobileSidebarOpenRef.current = false;
+      return;
+    }
+
+    if (wasMobileSidebarOpenRef.current && !isMobileSidebarOpen) {
+      toggleButtonRef.current?.focus();
+    }
+
+    wasMobileSidebarOpenRef.current = isMobileSidebarOpen;
+  }, [isDesktop, isMobileSidebarOpen]);
 
   const navItems = React.useMemo<AppNavItem[]>(
     () => [
@@ -314,12 +437,42 @@ export default function AppLayout() {
       label: "Workspace",
       matches: () => true,
     };
-  const SidebarToggleIcon = isSidebarCompact
-    ? PanelLeftOpen
-    : PanelLeftClose;
-  const sidebarToggleLabel = isSidebarCompact
-    ? "Expand sidebar"
-    : "Collapse sidebar";
+  const isSidebarExpanded = isDesktop ? !isSidebarCompact : isMobileSidebarOpen;
+  const SidebarToggleIcon = isSidebarExpanded
+    ? PanelLeftClose
+    : PanelLeftOpen;
+  const sidebarToggleLabel = isSidebarExpanded
+    ? "Close sidebar"
+    : "Open sidebar";
+  const isMobileSidebarHidden = !isDesktop && !isMobileSidebarOpen;
+  const sidebarTopClassName = [
+    "app-sidebar-top",
+    isSidebarCompact && isCollapsedToggleHovered
+      ? "app-sidebar-top-toggle-hovered"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const brandLinkClassName = [
+    "app-brand-link",
+    isSidebarCompact && isCollapsedToggleHovered ? "app-brand-link-faded" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const handleSidebarToggle = () => {
+    if (isDesktop) {
+      setIsSidebarCollapsed((current) => !current);
+      return;
+    }
+    setIsMobileSidebarOpen((current) => !current);
+  };
+
+  const closeSidebarAfterNavigation = () => {
+    if (!isDesktop) {
+      closeMobileSidebar();
+    }
+  };
 
   const buildLinkClass = (isActive: boolean, utility = false) => {
     const classes = ["app-sidebar-link"];
@@ -332,10 +485,6 @@ export default function AppLayout() {
     return classes.join(" ");
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed((current) => !current);
-  };
-
   const renderNavLink = (item: AppNavItem) => {
     const Icon = item.icon;
     const isActive = item.matches(location.pathname);
@@ -344,6 +493,7 @@ export default function AppLayout() {
         key={item.to}
         to={item.to}
         className={buildLinkClass(isActive, Boolean(item.utility))}
+        onClick={closeSidebarAfterNavigation}
         aria-label={isSidebarCompact ? item.label : undefined}
         title={isSidebarCompact ? item.label : undefined}
       >
@@ -355,11 +505,30 @@ export default function AppLayout() {
 
   return (
     <div className={shellClassName}>
-      <aside className="app-sidebar" aria-label="Sidebar navigation">
-        <div className="app-sidebar-top">
-          <Link to="/app/dashboard" className="app-brand-link" aria-label="EcoTrack dashboard">
+      <aside
+        id={SIDEBAR_ID}
+        ref={sidebarRef}
+        className="app-sidebar"
+        aria-label="Sidebar navigation"
+        aria-hidden={isMobileSidebarHidden}
+        tabIndex={-1}
+      >
+        <div className={sidebarTopClassName}>
+          <Link to="/app/dashboard" className={brandLinkClassName} aria-label="EcoTrack dashboard">
             <BrandLogo imageClassName="app-brand-logo" textClassName="app-brand-wordmark" />
           </Link>
+          <button
+            type="button"
+            className="app-sidebar-toggle app-sidebar-toggle-inline"
+            onClick={handleSidebarToggle}
+            onMouseEnter={() => setIsCollapsedToggleHovered(true)}
+            onMouseLeave={() => setIsCollapsedToggleHovered(false)}
+            aria-label={sidebarToggleLabel}
+            aria-expanded={isSidebarExpanded}
+            aria-controls={SIDEBAR_ID}
+          >
+            <SidebarToggleIcon size={18} aria-hidden="true" />
+          </button>
         </div>
 
         <nav className="app-sidebar-nav" aria-label="Product navigation">
@@ -367,9 +536,46 @@ export default function AppLayout() {
         </nav>
 
         <div className="app-sidebar-bottom">
+          {utilityLinks.map((link) => renderNavLink(link))}
+          <LogoutButton
+            className="app-sidebar-logout"
+            label="Sign Out"
+            compact={isSidebarCompact}
+            icon={<LogOut size={16} />}
+          />
+        </div>
+      </aside>
+      {!isDesktop && (
+        <div
+          className="app-sidebar-backdrop"
+          onClick={closeMobileSidebar}
+          aria-hidden="true"
+        />
+      )}
+
+      <main className="app-main">
+        <header className="app-main-toolbar" aria-label="Page context">
+          <div className="app-main-toolbar-start">
+            {!isDesktop && !isMobileSidebarOpen && (
+              <button
+                ref={toggleButtonRef}
+                type="button"
+                className="app-sidebar-toggle app-sidebar-toggle-mobile-trigger"
+                onClick={handleSidebarToggle}
+                aria-label={sidebarToggleLabel}
+                aria-expanded={isSidebarExpanded}
+                aria-controls={SIDEBAR_ID}
+              >
+                <SidebarToggleIcon size={18} aria-hidden="true" />
+              </button>
+            )}
+            <div className="app-main-title">
+              <span>{currentPage.label}</span>
+            </div>
+          </div>
           {user && (
-            <div className="app-sidebar-account">
-              <span className="app-sidebar-account-avatar" aria-hidden="true">
+            <div className="app-header-account">
+              <span className="app-header-account-avatar" aria-hidden="true">
                 {hasProfileImage ? (
                   <img
                     src={profileImageUrl ?? ""}
@@ -380,33 +586,9 @@ export default function AppLayout() {
                   <User size={18} />
                 )}
               </span>
-              <span className="app-sidebar-account-name">{displayName}</span>
+              <span className="app-header-account-name">{displayName}</span>
             </div>
           )}
-          {utilityLinks.map((link) => renderNavLink(link))}
-          <LogoutButton
-            className="app-sidebar-logout"
-            label="Sign Out"
-            compact={isSidebarCompact}
-            icon={<LogOut size={16} />}
-          />
-        </div>
-      </aside>
-
-      <main className="app-main">
-        <header className="app-main-toolbar" aria-label="Page context">
-          <button
-            type="button"
-            className="app-sidebar-toggle"
-            onClick={toggleSidebar}
-            aria-label={sidebarToggleLabel}
-            aria-pressed={isSidebarCompact}
-          >
-            <SidebarToggleIcon size={18} aria-hidden="true" />
-          </button>
-          <div className="app-main-title">
-            <span>{currentPage.label}</span>
-          </div>
         </header>
 
         <Outlet />

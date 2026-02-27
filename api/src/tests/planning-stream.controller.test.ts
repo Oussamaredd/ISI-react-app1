@@ -151,6 +151,31 @@ describe('Planning stream controller', () => {
     expect(snapshotCallIndex).toBeGreaterThan(replayCallIndex);
   });
 
+  it('cleans up SSE connection when initial snapshot fetch fails', async () => {
+    planningServiceMock.getRealtimeDashboardSnapshotEvent.mockRejectedValueOnce(
+      new Error('snapshot unavailable'),
+    );
+
+    await expect(
+      controller.stream(
+        {
+          authUser: { id: 'user-1' },
+          headers: {},
+          on: requestOn,
+        } as any,
+        {
+          setHeader,
+          flushHeaders,
+          write,
+        } as any,
+      ),
+    ).rejects.toThrow('snapshot unavailable');
+
+    expect(planningServiceMock.registerSseConnection).toHaveBeenCalledTimes(1);
+    expect(planningServiceMock.unregisterSseConnection).toHaveBeenCalledTimes(1);
+    expect(planningServiceMock.subscribeRealtimeEvents).not.toHaveBeenCalled();
+  });
+
   it('issues a stream session for authorized manager/admin users', async () => {
     await expect(
       controller.issueStreamSession({

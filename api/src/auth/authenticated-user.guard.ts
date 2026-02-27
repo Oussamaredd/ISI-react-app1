@@ -1,72 +1,10 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { UsersService } from '../users/users.service.js';
 
 import { AuthService } from './auth.service.js';
 import type { RequestWithAuthUser } from './authorization.types.js';
 
-const ALL_PLATFORM_PERMISSIONS = [
-  'users.read',
-  'users.write',
-  'roles.read',
-  'roles.write',
-  'tickets.read',
-  'tickets.write',
-  'audit.read',
-  'settings.write',
-  'ecotrack.containers.read',
-  'ecotrack.containers.write',
-  'ecotrack.zones.read',
-  'ecotrack.zones.write',
-  'ecotrack.tours.read',
-  'ecotrack.tours.write',
-  'ecotrack.citizenReports.read',
-  'ecotrack.citizenReports.write',
-  'ecotrack.gamification.read',
-  'ecotrack.gamification.write',
-  'ecotrack.analytics.read',
-];
-
-const FALLBACK_ROLE_PERMISSIONS: Record<string, string[]> = {
-  super_admin: ALL_PLATFORM_PERMISSIONS,
-  admin: ALL_PLATFORM_PERMISSIONS,
-  manager: [
-    'users.read',
-    'tickets.read',
-    'audit.read',
-    'ecotrack.containers.read',
-    'ecotrack.zones.read',
-    'ecotrack.tours.read',
-    'ecotrack.tours.write',
-    'ecotrack.citizenReports.read',
-    'ecotrack.gamification.read',
-    'ecotrack.analytics.read',
-  ],
-  agent: [
-    'tickets.read',
-    'tickets.write',
-    'ecotrack.containers.read',
-    'ecotrack.tours.read',
-    'ecotrack.tours.write',
-    'ecotrack.citizenReports.read',
-    'ecotrack.citizenReports.write',
-  ],
-  citizen: [
-    'ecotrack.containers.read',
-    'ecotrack.citizenReports.read',
-    'ecotrack.citizenReports.write',
-    'ecotrack.gamification.read',
-  ],
-};
-
-const normalizeRole = (value: string) => value.trim().toLowerCase();
 const normalizePermission = (value: string) => value.trim().toLowerCase();
 
 @Injectable()
@@ -96,33 +34,15 @@ export class AuthenticatedUserGuard implements CanActivate {
     }
 
     const dbRoles = await this.usersService.getRolesForUser(dbUser.id);
-
-    const roleNames = new Set<string>();
     const permissions = new Set<string>();
 
-    if (dbUser.role) {
-      roleNames.add(normalizeRole(dbUser.role));
-    }
-
     for (const role of dbRoles) {
-      const roleName = role.name?.trim();
-      if (roleName) {
-        roleNames.add(normalizeRole(roleName));
-      }
-
       if (Array.isArray(role.permissions)) {
         for (const permission of role.permissions) {
           if (typeof permission === 'string' && permission.trim().length > 0) {
             permissions.add(normalizePermission(permission));
           }
         }
-      }
-    }
-
-    for (const roleName of roleNames) {
-      const fallbackPermissions = FALLBACK_ROLE_PERMISSIONS[roleName] ?? [];
-      for (const permission of fallbackPermissions) {
-        permissions.add(normalizePermission(permission));
       }
     }
 

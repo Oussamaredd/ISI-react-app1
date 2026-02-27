@@ -101,9 +101,9 @@ export function UserCreateModal({ onClose, roles }: UserCreateModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={handleClose} />
+        <div className="ops-admin-modal-overlay" onClick={handleClose} />
 
-        <div className="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+        <div className="ops-admin-modal-panel inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -117,7 +117,7 @@ export function UserCreateModal({ onClose, roles }: UserCreateModalProps) {
             <button
               onClick={handleClose}
               disabled={isPending}
-              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              className="ops-admin-icon-btn"
             >
               <X className="w-5 h-5" />
             </button>

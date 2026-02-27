@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsInt, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
 export class ValidateTourStopDto {
   @IsOptional()
@@ -15,13 +15,11 @@ export class ValidateTourStopDto {
   volumeLiters!: number;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(32)
+  @IsLatitude()
   latitude?: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(32)
+  @IsLongitude()
   longitude?: string;
 
   @IsOptional()

@@ -94,12 +94,12 @@ export function UserEditModal({ user, onClose, roles }: UserEditModalProps) {
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+          className="ops-admin-modal-overlay"
           onClick={handleClose}
         />
 
         {/* Modal panel */}
-        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+        <div className="ops-admin-modal-panel inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -118,7 +118,7 @@ export function UserEditModal({ user, onClose, roles }: UserEditModalProps) {
             <button
               onClick={handleClose}
               disabled={isLoading}
-              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              className="ops-admin-icon-btn"
             >
               <X className="w-5 h-5" />
             </button>
