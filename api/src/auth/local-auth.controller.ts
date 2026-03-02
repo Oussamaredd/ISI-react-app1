@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service.js';
+import { ChangePasswordDto } from './change-password.dto.js';
 import { ForgotPasswordDto } from './forgot-password.dto.js';
 import { LoginDto } from './login.dto.js';
 import { ResetPasswordDto } from './reset-password.dto.js';
@@ -47,8 +48,18 @@ export class LocalAuthController {
   async updateProfile(@Req() req: Request, @Body() dto: UpdateProfileDto) {
     const user = await this.authService.updateCurrentUserProfile(req, {
       displayName: dto.displayName,
+      avatarUrl: dto.avatarUrl,
     });
     return { user };
+  }
+
+  @Put('me/password')
+  @Throttle(AUTH_ABUSE_THROTTLE)
+  async changePassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
+    return this.authService.changeCurrentUserPassword(req, {
+      currentPassword: dto.currentPassword,
+      newPassword: dto.newPassword,
+    });
   }
 
   @Post('forgot-password')

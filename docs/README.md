@@ -21,6 +21,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
+- `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
 - `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
 - `runbooks/OAUTH_CALLBACK_REMEDIATION.md` - OAuth callback incident/remediation runbook
 

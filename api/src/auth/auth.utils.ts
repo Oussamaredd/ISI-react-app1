@@ -1,3 +1,5 @@
+import { resolveCorsOrigins } from '../config/cors-origins.js';
+
 const DEFAULT_APP_BASE_URL = 'http://localhost:5173';
 const DEFAULT_API_PORT = 3001;
 const DEFAULT_AUTH_COOKIE_NAME = 'auth_token';
@@ -87,9 +89,11 @@ export const getAppBaseUrl = () => {
     return explicit;
   }
 
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
-    : [];
+  const corsOrigins = resolveCorsOrigins({
+    corsOrigins: process.env.CORS_ORIGINS,
+    clientOrigin: process.env.CLIENT_ORIGIN,
+    nodeEnv: process.env.NODE_ENV,
+  });
 
   return corsOrigins[0] ?? DEFAULT_APP_BASE_URL;
 };

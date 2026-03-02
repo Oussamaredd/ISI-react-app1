@@ -1,15 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { useToast } from '../context/ToastContext';
-import { API_BASE } from '../services/api';
-import { withAuthHeader } from '../services/authToken';
+import { API_BASE, createApiHeaders, createApiRequestError } from '../services/api';
 
-const authFetch = (input: RequestInfo | URL, init: RequestInit = {}) =>
-  fetch(input, {
+const authFetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const response = await fetch(input, {
     credentials: 'include',
     ...init,
-    headers: Object.fromEntries(withAuthHeader(init.headers).entries()),
+    headers: createApiHeaders(init.headers),
   });
+
+  if (!response.ok) {
+    throw await createApiRequestError(response);
+  }
+
+  return response;
+};
 
 // User Management Hooks
 export function useUsers(filters = {}) {

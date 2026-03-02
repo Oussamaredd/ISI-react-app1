@@ -15,16 +15,18 @@ import {
 import type { Server, Socket } from 'socket.io';
 
 import { AuthService } from '../auth/auth.service.js';
+import { resolveCorsOrigins } from '../config/cors-origins.js';
 import { UsersService } from '../users/users.service.js';
 
 import { PlanningService, type PlanningStreamEvent } from './planning.service.js';
 
 const WS_KEEPALIVE_INTERVAL_MS = 25_000;
 const WS_SNAPSHOT_INTERVAL_MS = 10_000;
-const WS_ALLOWED_ORIGINS = (process.env.CORS_ORIGINS ?? process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const WS_ALLOWED_ORIGINS = resolveCorsOrigins({
+  corsOrigins: process.env.CORS_ORIGINS,
+  clientOrigin: process.env.CLIENT_ORIGIN,
+  nodeEnv: process.env.NODE_ENV,
+});
 
 @Injectable()
 @WebSocketGateway({

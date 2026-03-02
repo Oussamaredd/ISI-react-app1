@@ -207,7 +207,7 @@ const run = async () => {
     await checkMigrationStatus(rootEnv.DATABASE_URL);
   }
 
-  const apiPort = Number(rootEnv?.API_PORT || rootEnv?.PORT || 3001);
+  const apiPort = Number(rootEnv?.API_PORT || 3001);
   const liveStatus = await fetchStatus(`http://localhost:${apiPort}/health`);
   const apiLiveStatus = await fetchStatus(`http://localhost:${apiPort}/api/health/live`);
   const readyStatus = await fetchStatus(`http://localhost:${apiPort}/api/health/ready`);

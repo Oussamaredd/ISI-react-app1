@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'node:crypto';
 
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import bcryptPkg from 'bcryptjs';
 import type { Request } from 'express';
 import jwtPkg from 'jsonwebtoken';
@@ -36,6 +36,8 @@ const GOOGLE_EMAIL_CONFLICT_MESSAGE =
   'This email is already registered with Google sign-in. Please continue with Google.';
 const INVALID_RESET_TOKEN_MESSAGE = 'Reset token is invalid or expired.';
 const INVALID_EXCHANGE_CODE_MESSAGE = 'Sign-in code is invalid or expired.';
+const CURRENT_PASSWORD_INCORRECT_MESSAGE = 'Current password is incorrect.';
+const PASSWORD_CHANGE_LOCAL_ONLY_MESSAGE = 'Password changes are available only for email/password accounts.';
 const PASSWORD_RESET_EXPIRY_MINUTES = 30;
 const ACCESS_TOKEN_TYPE = 'access';
 const LEGACY_LOCAL_TOKEN_TYPE = 'local_access';
@@ -63,6 +65,8 @@ type LocalAuthSuccess = {
 type AuthExchangeCode = {
   code: string;
 };
+
+type LocalLoginSuccess = AuthExchangeCode & LocalAuthSuccess;
 
 type ExchangeCodeRecord = {
   user: AuthUser;
@@ -315,7 +319,7 @@ export class AuthService {
     };
   }
 
-  async loginLocal(email: string, password: string): Promise<AuthExchangeCode> {
+  async loginLocal(email: string, password: string): Promise<LocalLoginSuccess> {
     const normalizedEmail = this.normalizeEmail(email);
     const user = await this.usersService.findByEmail(normalizedEmail);
 
@@ -348,7 +352,14 @@ export class AuthService {
       avatarUrl: user.avatarUrl ?? null,
     });
 
-    return { code: exchangeCode };
+    const roles = await this.usersService.getRolesForUser(user.id);
+    const serialized = this.serializeUser(user, roles, 'local');
+
+    return {
+      code: exchangeCode,
+      accessToken: this.createAccessToken(serialized),
+      user: serialized,
+    };
   }
 
   async getCurrentUser(request: Pick<Request, 'headers'>) {
@@ -373,7 +384,7 @@ export class AuthService {
 
   async updateCurrentUserProfile(
     request: Pick<Request, 'headers'>,
-    params: { displayName: string },
+    params: { displayName: string; avatarUrl?: string },
   ) {
     const authUser = this.getAuthUserFromRequest(request);
     if (!authUser) {
@@ -393,6 +404,48 @@ export class AuthService {
     const roles = await this.usersService.getRolesForUser(updatedUser.id);
     const provider = updatedUser.authProvider === 'google' ? 'google' : 'local';
     return this.serializeUser(updatedUser, roles, provider);
+  }
+
+  async changeCurrentUserPassword(
+    request: Pick<Request, 'headers'>,
+    params: { currentPassword: string; newPassword: string },
+  ) {
+    const authUser = this.getAuthUserFromRequest(request);
+    if (!authUser) {
+      throw new UnauthorizedException();
+    }
+
+    const dbUser = await this.usersService.ensureUserForAuth(authUser);
+    if (!dbUser) {
+      throw new UnauthorizedException();
+    }
+
+    if (dbUser.isActive === false) {
+      throw new ForbiddenException('User account is inactive');
+    }
+
+    if (dbUser.authProvider !== 'local' || !dbUser.passwordHash) {
+      throw new ForbiddenException(PASSWORD_CHANGE_LOCAL_ONLY_MESSAGE);
+    }
+
+    const currentPassword = params.currentPassword;
+    const newPassword = params.newPassword;
+
+    const isCurrentPasswordValid = await compare(currentPassword, dbUser.passwordHash);
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException(CURRENT_PASSWORD_INCORRECT_MESSAGE);
+    }
+
+    const isReusedPassword = await compare(newPassword, dbUser.passwordHash);
+    if (isReusedPassword) {
+      throw new BadRequestException('New password must be different from your current password.');
+    }
+
+    const passwordHash = await this.hashPassword(newPassword);
+    await this.usersService.updatePasswordHash(dbUser.id, passwordHash);
+    await this.usersService.consumeAllPasswordResetTokensForUser(dbUser.id);
+
+    return { success: true };
   }
 
   async ensureGoogleSignInAllowed(user: AuthUser) {

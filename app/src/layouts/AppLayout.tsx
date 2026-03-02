@@ -130,7 +130,6 @@ export default function AppLayout() {
   const displayName = user?.displayName || user?.name || user?.email || "User";
   const profileImageUrl = getUserAvatarUrl(user);
   const [hasAvatarError, setHasAvatarError] = React.useState(false);
-  const [isCollapsedToggleHovered, setIsCollapsedToggleHovered] = React.useState(false);
   const isSidebarCompact = isDesktop && isSidebarCollapsed;
   const shellClassName = [
     "app-shell",
@@ -185,12 +184,6 @@ export default function AppLayout() {
       setIsMobileSidebarOpen(false);
     }
   }, [isDesktop]);
-
-  React.useEffect(() => {
-    if (!isSidebarCompact) {
-      setIsCollapsedToggleHovered(false);
-    }
-  }, [isSidebarCompact]);
 
   React.useEffect(() => {
     if (!isDesktop) {
@@ -445,20 +438,8 @@ export default function AppLayout() {
     ? "Close sidebar"
     : "Open sidebar";
   const isMobileSidebarHidden = !isDesktop && !isMobileSidebarOpen;
-  const sidebarTopClassName = [
-    "app-sidebar-top",
-    isSidebarCompact && isCollapsedToggleHovered
-      ? "app-sidebar-top-toggle-hovered"
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const brandLinkClassName = [
-    "app-brand-link",
-    isSidebarCompact && isCollapsedToggleHovered ? "app-brand-link-faded" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const sidebarTopClassName = "app-sidebar-top";
+  const brandLinkClassName = "app-brand-link";
 
   const handleSidebarToggle = () => {
     if (isDesktop) {
@@ -521,8 +502,6 @@ export default function AppLayout() {
             type="button"
             className="app-sidebar-toggle app-sidebar-toggle-inline"
             onClick={handleSidebarToggle}
-            onMouseEnter={() => setIsCollapsedToggleHovered(true)}
-            onMouseLeave={() => setIsCollapsedToggleHovered(false)}
             aria-label={sidebarToggleLabel}
             aria-expanded={isSidebarExpanded}
             aria-controls={SIDEBAR_ID}

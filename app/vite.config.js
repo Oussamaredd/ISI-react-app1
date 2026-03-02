@@ -1,6 +1,10 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const spawnRestricted = process.env.ECOTRACK_VITE_SPAWN_RESTRICTED === "1";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -10,9 +14,20 @@ export default defineConfig(({ mode }) => {
     base,
     plugins: [react()],
     root: ".",
+    optimizeDeps: spawnRestricted
+      ? {
+          noDiscovery: true,
+          include: [],
+        }
+      : undefined,
+    build: spawnRestricted
+      ? {
+          minify: false,
+        }
+      : undefined,
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
+        "@": path.resolve(currentDir, "./src"),
       },
     },
     server: {

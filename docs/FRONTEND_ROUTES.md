@@ -52,7 +52,8 @@ Authenticated shell behavior:
 - Sidebar bottom: Settings, Support, optional Admin Center, and Sign Out actions.
 - Sidebar toggle behavior:
   - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
-  - Desktop collapsed state: toggle remains in the sidebar top area and is revealed when hovering/focusing the logo area.
+  - Desktop expanded state: toggle is anchored at the right side of the sidebar top row (logo remains visible on the left).
+  - Desktop collapsed state: logo stays visible in the collapsed top slot; toggle is revealed in that same logo slot on hover/focus (no left/right jump during collapse/expand transitions).
   - Mobile (`max-width: 720px`): overlay drawer with dimmed backdrop; supports close via toggle, `Esc`, backdrop click, and route navigation.
   - Accessibility: toggle uses `aria-expanded` + `aria-controls`; mobile drawer traps focus while open, sets initial focus into the drawer, restores focus to toggle on close, and prevents background scroll.
 - Main content header is sticky and keeps both the page name and account identity (avatar + name) visible while scrolling.

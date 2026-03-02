@@ -10,8 +10,8 @@
     "start:debug": "npm run build && cross-env NODE_ENV=development node dist/main.js",
     "lint": "eslint . --ext ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test": "node ./scripts/run-vitest.mjs --configLoader runner --run",
+    "test:coverage": "node ./scripts/run-vitest.mjs --configLoader runner --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.10",

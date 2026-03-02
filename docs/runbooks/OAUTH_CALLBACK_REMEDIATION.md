@@ -8,7 +8,7 @@ This plan is focused on diagnosing and fixing callback routing/config mismatch w
 ## Confirmed Root Cause (Read-Only Diagnosis)
 - API runtime is configured for port `3001`:
   - `.env:5` -> `API_PORT=3001`
-  - `api/src/main.ts:18` -> API listens on `API_PORT` then `PORT` fallback.
+  - `api/src/main.ts` -> API listens on `API_PORT` only.
 - Global API prefix is `/api`:
   - `api/src/main.ts:9` -> `app.setGlobalPrefix('api')`.
 - OAuth callback route is `/api/auth/google/callback`:
@@ -18,7 +18,7 @@ This plan is focused on diagnosing and fixing callback routing/config mismatch w
   - `api/src/auth/auth.utils.ts:22-33` -> `GOOGLE_CALLBACK_URL` takes precedence.
 - Historical misconfigured values (resolved in current files) pointed to legacy host/route:
   - `GOOGLE_CALLBACK_URL=http://localhost:<legacy-api-port>/auth/google/callback`
-  - `PORT=<legacy-api-port>` alias in host env.
+  - `PORT=<legacy-api-port>` alias in host env (deprecated and no longer read).
 
 ### Root-Cause Statement
 OAuth callback fails because runtime callback URL resolves to `http://localhost:<legacy-api-port>/auth/google/callback`, while the API actually serves callback at `http://localhost:3001/api/auth/google/callback`.
@@ -71,7 +71,7 @@ Decision:
 - Chosen strategy: **B** (derive fallback from canonical API base/path when explicit value is absent), while allowing explicit `GOOGLE_CALLBACK_URL` overrides.
 - Canonical host and Docker callback URI: `http://localhost:3001/api/auth/google/callback`.
 - Legacy treatment:
-  - `PORT=<legacy-api-port>` is deprecated and will be neutralized for host runtime.
+  - `PORT=<legacy-api-port>` is deprecated and ignored by runtime/tooling.
   - Legacy callback path `/auth/google/callback` is invalid for this API and will be removed from active env sources/docs.
 
 ## Phase 3: Env + Config Alignment

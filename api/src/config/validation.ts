@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { resolveCorsOrigins } from './cors-origins.js';
+
 const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
 const GOOGLE_WEB_CLIENT_ID_PATTERN = /^\d+-[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
 
@@ -59,6 +61,26 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     throw new Error(
       "Invalid GOOGLE_CLIENT_ID format: expected '<numeric-project-id>-<client>.apps.googleusercontent.com'.",
     );
+  }
+
+  const corsOrigins = resolveCorsOrigins({
+    corsOrigins: result.data.CORS_ORIGINS,
+    clientOrigin: result.data.CLIENT_ORIGIN,
+    nodeEnv: result.data.NODE_ENV,
+  });
+
+  if (result.data.APP_URL) {
+    const appUrlOrigin = new URL(result.data.APP_URL).origin;
+    if (!corsOrigins.includes(appUrlOrigin)) {
+      throw new Error(`APP_URL origin (${appUrlOrigin}) must be listed in CORS_ORIGINS.`);
+    }
+  }
+
+  if (result.data.APP_BASE_URL) {
+    const appBaseUrlOrigin = new URL(result.data.APP_BASE_URL).origin;
+    if (!corsOrigins.includes(appBaseUrlOrigin)) {
+      throw new Error(`APP_BASE_URL origin (${appBaseUrlOrigin}) must be listed in CORS_ORIGINS.`);
+    }
   }
 
   return result.data;

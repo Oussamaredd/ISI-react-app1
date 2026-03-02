@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '../../components/branding/BrandLogo';
 import LoginButton from '../../components/LoginButton';
 import { useApiReady } from '../../hooks/useApiReady';
+import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
 
 const DEFAULT_REDIRECT = '/app';
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const spotlightOverlayRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const configuredApiBase =
     import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
   const { isApiReady } = useApiReady(configuredApiBase);
@@ -100,6 +102,16 @@ export default function LoginPage() {
 
     try {
       const payload = await authApi.login(email, password);
+
+      if (payload.accessToken && payload.user) {
+        login({
+          accessToken: payload.accessToken,
+          user: payload.user,
+        });
+        navigate(redirectTarget, { replace: true });
+        return;
+      }
+
       const params = new URLSearchParams();
       params.set('code', payload.code);
       if (redirectTarget.startsWith('/')) {

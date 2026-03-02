@@ -9,6 +9,7 @@ describe('LocalAuthController', () => {
     loginLocal: vi.fn(),
     getCurrentUser: vi.fn(),
     updateCurrentUserProfile: vi.fn(),
+    changeCurrentUserPassword: vi.fn(),
     getAuthCookieName: vi.fn(() => 'auth_token'),
     getAuthCookieOptions: vi.fn(() => ({
       httpOnly: true,
@@ -72,13 +73,39 @@ describe('LocalAuthController', () => {
       id: 'u1',
       email: 'local@example.com',
       displayName: 'Updated Name',
+      avatarUrl: 'https://cdn.ecotrack.dev/u1.png',
     });
 
     await expect(
-      controller.updateProfile({ headers: {} } as Request, { displayName: 'Updated Name' } as any),
+      controller.updateProfile(
+        { headers: {} } as Request,
+        {
+          displayName: 'Updated Name',
+          avatarUrl: 'https://cdn.ecotrack.dev/u1.png',
+        } as any,
+      ),
     ).resolves.toEqual({
-      user: { id: 'u1', email: 'local@example.com', displayName: 'Updated Name' },
+      user: {
+        id: 'u1',
+        email: 'local@example.com',
+        displayName: 'Updated Name',
+        avatarUrl: 'https://cdn.ecotrack.dev/u1.png',
+      },
     });
+  });
+
+  it('changePassword returns success payload', async () => {
+    authServiceMock.changeCurrentUserPassword.mockResolvedValueOnce({ success: true });
+
+    await expect(
+      controller.changePassword(
+        { headers: {} } as Request,
+        {
+          currentPassword: 'CurrentPass123!',
+          newPassword: 'UpdatedPass123!',
+        } as any,
+      ),
+    ).resolves.toEqual({ success: true });
   });
 
   it('logout clears auth cookie and returns success', () => {

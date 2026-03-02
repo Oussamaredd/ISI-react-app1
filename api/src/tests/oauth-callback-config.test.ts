@@ -86,4 +86,50 @@ describe('OAuth callback config', () => {
       }),
     ).toThrow(/Invalid GOOGLE_CLIENT_ID format/i);
   });
+
+  it('rejects wildcard CORS origins', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        CORS_ORIGINS: '*',
+      }),
+    ).toThrow(/wildcard/i);
+  });
+
+  it('rejects production CORS origins that are not https', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'production',
+        API_PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        CORS_ORIGINS: 'http://staging.ecotrack.example.com',
+      }),
+    ).toThrow(/must use https/i);
+  });
+
+  it('requires APP_URL origin to be listed in CORS_ORIGINS', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        APP_URL: 'https://app.ecotrack.example.com',
+        CORS_ORIGINS: 'https://staging.ecotrack.example.com',
+      }),
+    ).toThrow(/APP_URL origin/i);
+  });
+
+  it('accepts APP_URL origin when listed in CORS_ORIGINS', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        APP_URL: 'https://app.ecotrack.example.com',
+        CORS_ORIGINS: 'https://app.ecotrack.example.com',
+      }),
+    ).not.toThrow();
+  });
 });

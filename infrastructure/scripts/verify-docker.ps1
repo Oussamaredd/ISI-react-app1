@@ -12,22 +12,29 @@ $composeArgs = @('--env-file', $envFile, '-f', $composeFile)
 Write-Host 'Docker verification tests' -ForegroundColor Cyan
 Write-Host '=========================' -ForegroundColor Cyan
 
-# Test 1: base compose config
-Write-Host '1) Validating compose config...' -ForegroundColor Yellow
+# Test 1: env policy
+Write-Host '1) Validating docker env policy...' -ForegroundColor Yellow
+$validateEnvScript = Join-Path $repoRoot 'infrastructure\scripts\validate-env.mjs'
+$null = node $validateEnvScript --workflow docker-dev --files $envFile
+Write-Host 'OK: docker env policy is valid' -ForegroundColor Green
+
+# Test 2: base compose config
+Write-Host ''
+Write-Host '2) Validating compose config...' -ForegroundColor Yellow
 $null = docker compose @composeArgs config
 Write-Host 'OK: compose config is valid' -ForegroundColor Green
 
-# Test 2: profile configs
+# Test 3: profile configs
 Write-Host ''
-Write-Host '2) Validating profiles...' -ForegroundColor Yellow
+Write-Host '3) Validating profiles...' -ForegroundColor Yellow
 foreach ($profile in @('core', 'obs', 'quality')) {
   $null = docker compose @composeArgs --profile $profile config
   Write-Host "OK: profile '$profile' is valid" -ForegroundColor Green
 }
 
-# Test 3: required services
+# Test 4: required services
 Write-Host ''
-Write-Host '3) Checking service definitions...' -ForegroundColor Yellow
+Write-Host '4) Checking service definitions...' -ForegroundColor Yellow
 $fullConfig = docker compose @composeArgs --profile core --profile obs --profile quality config
 $services = @('db', 'migrate', 'backend', 'frontend', 'elasticsearch', 'logstash', 'kibana', 'prometheus', 'grafana')
 foreach ($service in $services) {
@@ -39,9 +46,9 @@ foreach ($service in $services) {
   }
 }
 
-# Test 4: network
+# Test 5: network
 Write-Host ''
-Write-Host '4) Checking network configuration...' -ForegroundColor Yellow
+Write-Host '5) Checking network configuration...' -ForegroundColor Yellow
 if ($fullConfig -match 'ticket-management-network') {
   Write-Host 'OK: ticket-management-network is defined' -ForegroundColor Green
 } else {
@@ -49,9 +56,9 @@ if ($fullConfig -match 'ticket-management-network') {
   exit 1
 }
 
-# Test 5: volumes
+# Test 6: volumes
 Write-Host ''
-Write-Host '5) Checking volumes...' -ForegroundColor Yellow
+Write-Host '6) Checking volumes...' -ForegroundColor Yellow
 foreach ($volume in @('db_data', 'es_data', 'prometheus-data', 'grafana-storage')) {
   if ($fullConfig -match "(?m)^\s*${volume}:") {
     Write-Host "OK: volume '$volume' is defined" -ForegroundColor Green
@@ -60,9 +67,9 @@ foreach ($volume in @('db_data', 'es_data', 'prometheus-data', 'grafana-storage'
   }
 }
 
-# Test 6: key env variables rendered
+# Test 7: key env variables rendered
 Write-Host ''
-Write-Host '6) Checking rendered env variables...' -ForegroundColor Yellow
+Write-Host '7) Checking rendered env variables...' -ForegroundColor Yellow
 foreach ($needle in @('DATABASE_URL:', 'POSTGRES_USER:', 'POSTGRES_DB:')) {
   if ($fullConfig -match [regex]::Escape($needle)) {
     Write-Host "OK: found '$needle' in rendered config" -ForegroundColor Green

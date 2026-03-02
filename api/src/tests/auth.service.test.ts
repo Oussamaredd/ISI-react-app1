@@ -1,4 +1,4 @@
-﻿import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../auth/auth.service.js';
@@ -202,11 +202,17 @@ describe('AuthService', () => {
       role: 'agent',
       isActive: true,
     });
-    usersServiceMock.getRolesForUser.mockResolvedValueOnce([{ id: 'role-1', name: 'agent' }]);
+    usersServiceMock.getRolesForUser.mockResolvedValue([{ id: 'role-1', name: 'agent' }]);
 
     const service = new AuthService(usersServiceMock as any);
     const loginResponse = await service.loginLocal('local@example.com', 'Password123!');
     expect(loginResponse.code).toBeTypeOf('string');
+    expect(loginResponse.accessToken).toBeTypeOf('string');
+    expect(loginResponse.user).toMatchObject({
+      id: 'u-1',
+      provider: 'local',
+      roles: [{ id: 'role-1', name: 'agent' }],
+    });
 
     const session = await service.exchangeCode(loginResponse.code);
     expect(session.accessToken).toBeTypeOf('string');
@@ -251,13 +257,122 @@ describe('AuthService', () => {
     await expect(
       service.updateCurrentUserProfile(
         { headers: { authorization: `Bearer ${accessToken}` } } as any,
-        { displayName: 'Updated Name' },
+        {
+          displayName: 'Updated Name',
+          avatarUrl: 'https://cdn.ecotrack.dev/updated.png',
+        },
       ),
     ).resolves.toMatchObject({
       id: 'u-1',
       displayName: 'Updated Name',
       roles: [{ id: 'role-1', name: 'agent' }],
     });
+
+    expect(usersServiceMock.updateUserProfile).toHaveBeenCalledWith('u-1', {
+      displayName: 'Updated Name',
+      avatarUrl: 'https://cdn.ecotrack.dev/updated.png',
+    });
+  });
+
+  it('changes password for local bearer user and revokes reset tokens', async () => {
+    const { default: bcryptPkg } = await import('bcryptjs');
+    const currentPasswordHash = await bcryptPkg.hash('CurrentPass123!', 10);
+    const service = new AuthService(usersServiceMock as any);
+    const accessToken = service.createLocalAccessToken({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+    });
+
+    usersServiceMock.ensureUserForAuth.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      authProvider: 'local',
+      passwordHash: currentPasswordHash,
+    });
+    usersServiceMock.updatePasswordHash.mockResolvedValueOnce({ id: 'u-1' });
+
+    await expect(
+      service.changeCurrentUserPassword(
+        { headers: { authorization: `Bearer ${accessToken}` } } as any,
+        {
+          currentPassword: 'CurrentPass123!',
+          newPassword: 'UpdatedPass123!',
+        },
+      ),
+    ).resolves.toEqual({ success: true });
+
+    expect(usersServiceMock.updatePasswordHash).toHaveBeenCalledTimes(1);
+    expect(usersServiceMock.consumeAllPasswordResetTokensForUser).toHaveBeenCalledWith('u-1');
+  });
+
+  it('rejects password change for Google account users', async () => {
+    const service = new AuthService(usersServiceMock as any);
+    const accessToken = service.createLocalAccessToken({
+      id: 'u-1',
+      email: 'google@example.com',
+      displayName: 'Google User',
+      avatarUrl: null,
+    });
+
+    usersServiceMock.ensureUserForAuth.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'google@example.com',
+      displayName: 'Google User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      authProvider: 'google',
+      passwordHash: null,
+    });
+
+    await expect(
+      service.changeCurrentUserPassword(
+        { headers: { authorization: `Bearer ${accessToken}` } } as any,
+        {
+          currentPassword: 'CurrentPass123!',
+          newPassword: 'UpdatedPass123!',
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects password change when new password matches current password', async () => {
+    const { default: bcryptPkg } = await import('bcryptjs');
+    const currentPasswordHash = await bcryptPkg.hash('CurrentPass123!', 10);
+    const service = new AuthService(usersServiceMock as any);
+    const accessToken = service.createLocalAccessToken({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+    });
+
+    usersServiceMock.ensureUserForAuth.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'agent',
+      isActive: true,
+      authProvider: 'local',
+      passwordHash: currentPasswordHash,
+    });
+
+    await expect(
+      service.changeCurrentUserPassword(
+        { headers: { authorization: `Bearer ${accessToken}` } } as any,
+        {
+          currentPassword: 'CurrentPass123!',
+          newPassword: 'CurrentPass123!',
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
 

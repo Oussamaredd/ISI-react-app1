@@ -8,6 +8,7 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
+import { resolveCorsOrigins } from './config/cors-origins.js';
 
 const resolveNestLoggerOption = (
   nodeEnv: string | undefined,
@@ -56,10 +57,11 @@ async function bootstrap() {
 
   const port = Number(process.env.API_PORT ?? 3001);
   const host = process.env.API_HOST ?? '0.0.0.0';
-  const origins = (process.env.CORS_ORIGINS ?? process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const origins = resolveCorsOrigins({
+    corsOrigins: process.env.CORS_ORIGINS,
+    clientOrigin: process.env.CLIENT_ORIGIN,
+    nodeEnv: process.env.NODE_ENV,
+  });
 
   app.enableCors({
     origin: origins,

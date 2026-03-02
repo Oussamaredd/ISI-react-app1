@@ -16,6 +16,7 @@ export const useStartAgentTour = () => {
     mutationFn: async (tourId: string) => apiClient.post(`/api/tours/${tourId}/start`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
+      queryClient.invalidateQueries({ queryKey: ['tour-activity'] });
     },
   });
 };

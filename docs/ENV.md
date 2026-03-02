@@ -37,6 +37,23 @@ Database package runtime note:
 - `LOG_LEVEL` for API logger level (`fatal|error|warn|info|debug|trace|silent`); in non-production, `debug|trace` also enables verbose Nest startup logs
 - `LOG_FORMAT` for API log output format (`json` or `pretty`); defaults to `pretty` outside production and `json` in production
 
+## CORS Origin Policy
+
+- `CORS_ORIGINS` is canonical for HTTP + WebSocket browser-origin allowlisting.
+- Values must be comma-separated origin roots (`scheme://host[:port]`) with no path/query/fragment.
+- Wildcard (`*`) is forbidden because API/WS CORS is credentialed.
+- Deploy workflows (`deploy-dev`, `deploy-staging`, `deploy-prod`) should use HTTPS origins only (localhost exceptions are for controlled local checks).
+- `APP_URL` should use one of the origins listed in `CORS_ORIGINS`.
+
+### Environment Defaults
+
+- host dev: allow local frontend origins and short-lived team-controlled dev origins only.
+- docker dev: allow only active local/docker frontend origins.
+- staging: allow only controlled staging frontend origin(s).
+- production: allow only owned production frontend origin(s).
+
+Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-control, and rollout steps.
+
 ## API Readiness Endpoint
 
 - Fast liveness probe: `GET /health` (returns HTTP `200` when the API process is listening)
@@ -52,14 +69,22 @@ Database package runtime note:
 
 - Google callback redirects to frontend callback page using backend app-base env:
   - `${APP_BASE_URL}/auth/callback?code=<exchangeCode>`
-- Local `POST /login` now returns `{ code }` (short-lived one-time exchange code), not JWT directly
-- Frontend callback page exchanges code via `POST /api/auth/exchange` to obtain `{ accessToken, user }`
-- Frontend stores `accessToken` in `localStorage` after successful exchange
+- Local `POST /login` returns `{ code, accessToken, user }`; `code` remains available for callback compatibility
+- Frontend uses the direct local session when `accessToken` is present, and the callback page can still exchange code via `POST /api/auth/exchange` to obtain `{ accessToken, user }`
+- Frontend stores `accessToken` in `localStorage` after successful sign-in/exchange
+- Frontend clears stale local bearer state when `/api/auth/status` resolves `authenticated: false` or protected API calls return `401`
 
 Deprecated aliases (temporary read support only):
 
 - `VITE_API_URL` -> `VITE_API_BASE_URL`
 - `DB_*` -> `DATABASE_URL`
+- `CLIENT_ORIGIN` -> `CORS_ORIGINS` (first origin)
+
+Validation behavior:
+
+- committed `*.example` env templates reject deprecated aliases
+- live runtime env files also fail validation when deprecated aliases are present
+- remove deprecated aliases from managed env files before running local or Docker workflows
 
 Removed runtime aliases (no longer read by API runtime):
 
@@ -76,7 +101,7 @@ Removed runtime aliases (no longer read by API runtime):
 
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
 - API/database/infrastructure secrets must never appear in app env files.
-- `APP_URL`/`CLIENT_ORIGIN` values must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
+- `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
 
 ## OAuth Callback Contract
 

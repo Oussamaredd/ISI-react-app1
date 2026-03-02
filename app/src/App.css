@@ -57,6 +57,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
+  min-height: 2.5rem;
   padding-bottom: 0.8rem;
   border-bottom: 1px solid var(--border);
 }
@@ -370,40 +371,42 @@
 .app-shell-collapsed .app-sidebar-top {
   justify-content: center;
   position: relative;
-  min-height: 2.5rem;
 }
 
 .app-shell-collapsed .app-brand-link {
   position: absolute;
-  top: 50%;
+  top: 0;
   left: 50%;
   width: 2.5rem;
   height: 2.5rem;
   justify-content: center;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
+  opacity: 1;
+  pointer-events: auto;
   z-index: 1;
-}
-
-.app-shell-collapsed .app-sidebar-top-toggle-hovered .app-brand-link-faded {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .app-shell-collapsed .app-sidebar-toggle-inline {
   position: absolute;
-  top: 50%;
+  top: 0;
   left: 50%;
   width: 2.5rem;
   height: 2.5rem;
-  transform: translate(-50%, -50%) scale(0.92);
+  transform: translateX(-50%) scale(0.92);
   opacity: 0;
   pointer-events: none;
   z-index: 2;
 }
 
-.app-shell-collapsed .app-brand-link:hover + .app-sidebar-toggle-inline,
-.app-shell-collapsed .app-sidebar-toggle-inline:hover {
-  transform: translate(-50%, -50%) scale(1);
+.app-shell-collapsed .app-sidebar-top:hover .app-brand-link,
+.app-shell-collapsed .app-sidebar-top:focus-within .app-brand-link {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-shell-collapsed .app-sidebar-top:hover .app-sidebar-toggle-inline,
+.app-shell-collapsed .app-sidebar-top:focus-within .app-sidebar-toggle-inline {
+  transform: translateX(-50%) scale(1);
   opacity: 1;
   pointer-events: auto;
 }
@@ -478,15 +481,137 @@
   color: var(--text-muted);
 }
 
-.app-settings-card {
-  margin-top: 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: rgba(10, 15, 26, 0.86);
-  padding: 1rem;
+.app-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.app-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr);
+  gap: 1rem;
+}
+
+.app-settings-form {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  max-width: 860px;
+  width: 100%;
+}
+
+.app-settings-overview-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.app-settings-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(158deg, rgba(11, 18, 32, 0.98), rgba(8, 14, 26, 0.92));
+  padding: clamp(0.8rem, 1.6vw, 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
+}
+
+.app-settings-card-primary {
+  min-height: auto;
+}
+
+.app-settings-card-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.app-settings-card-heading p {
+  margin: 0.38rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.app-settings-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(136, 169, 224, 0.24);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 16, 30, 0.72);
+}
+
+.app-settings-avatar-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.app-settings-avatar-button:focus,
+.app-settings-avatar-button:focus-visible {
+  outline: none;
+}
+
+.app-settings-avatar-button:focus-visible .app-settings-avatar-preview {
+  box-shadow: 0 0 0 3px rgba(112, 168, 255, 0.34);
+}
+
+.app-settings-avatar-input {
+  display: none;
+}
+
+.app-settings-avatar-preview {
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(132, 184, 255, 0.42);
+  background: rgba(79, 140, 255, 0.16);
+  color: #d6e8ff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.app-settings-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.app-settings-avatar-copy h3 {
+  margin: 0;
+  font-size: 0.93rem;
+}
+
+.app-settings-avatar-copy p {
+  margin: 0.24rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.app-settings-text-button {
+  margin-top: 0.5rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #a7cfff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
 }
 
 .app-settings-field {
@@ -498,21 +623,40 @@
 }
 
 .app-settings-field input {
-  height: 2.65rem;
+  height: 2.5rem;
   border-radius: 10px;
   border: 1px solid rgba(129, 167, 246, 0.32);
-  background: rgba(12, 20, 36, 0.78);
+  background: rgba(12, 20, 36, 0.82);
   color: var(--text);
-  padding: 0 0.75rem;
+  padding: 0 0.78rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.app-settings-field input:focus,
+.app-settings-field input:focus-visible {
+  outline: none;
+  border-color: rgba(138, 199, 255, 0.78);
+  box-shadow: 0 0 0 2px rgba(114, 186, 255, 0.26);
 }
 
 .app-settings-field input:disabled {
   opacity: 0.72;
 }
 
+.app-settings-hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.app-settings-inline-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .app-settings-message {
   margin: 0;
-  padding: 0.55rem 0.7rem;
+  padding: 0.58rem 0.72rem;
   border-radius: var(--radius-sm);
   border: 1px solid;
   font-size: 0.84rem;
@@ -525,14 +669,21 @@
 }
 
 .app-settings-message-success {
-  border-color: rgba(92, 225, 184, 0.36);
-  background: rgba(92, 225, 184, 0.15);
-  color: #d6fff3;
+  border-color: rgba(110, 173, 255, 0.4);
+  background: rgba(110, 173, 255, 0.14);
+  color: #dcebff;
 }
 
 .app-settings-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
+.app-settings-actions .app-settings-link {
+  margin-right: auto;
+  align-self: center;
 }
 
 .app-settings-actions button {
@@ -546,14 +697,129 @@
   cursor: pointer;
 }
 
+.app-settings-secondary-action {
+  color: var(--text);
+  border-color: rgba(132, 178, 255, 0.34);
+  background: rgba(12, 22, 38, 0.82);
+}
+
 .app-settings-actions button:disabled {
   opacity: 0.72;
   cursor: not-allowed;
 }
 
+.app-settings-summary-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+}
+
+.app-settings-summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding-bottom: 0.66rem;
+  border-bottom: 1px solid rgba(141, 170, 222, 0.2);
+}
+
+.app-settings-summary-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.app-settings-summary-item dt {
+  color: var(--text-muted);
+  font-size: 0.81rem;
+}
+
+.app-settings-summary-item dd {
+  margin: 0;
+  font-size: 0.89rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+
+.app-settings-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.55rem;
+  padding: 0 0.54rem;
+  border-radius: 999px;
+  border: 1px solid rgba(114, 176, 255, 0.45);
+  background: rgba(92, 156, 245, 0.16);
+  color: #d8eaff;
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.app-settings-security-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+}
+
+.app-settings-link {
+  align-self: flex-start;
+  color: #a7ceff;
+  font-weight: 600;
+  font-size: 0.83rem;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.app-settings-link-muted {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.app-settings-link:hover,
+.app-settings-link:focus-visible {
+  border-bottom-color: currentColor;
+}
+
+@container (max-width: 960px) {
+  .app-settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-settings-form {
+    max-width: none;
+  }
+
+  .app-settings-overview-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+}
+
 @container (max-width: 640px) {
+  .app-settings-form-grid,
+  .app-settings-overview-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .app-settings-avatar-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .app-settings-actions {
-    justify-content: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .app-settings-actions .app-settings-link {
+    margin-right: 0;
+    width: 100%;
   }
 
   .app-settings-actions button {

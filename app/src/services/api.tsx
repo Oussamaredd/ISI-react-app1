@@ -1,5 +1,5 @@
 // API client with centralized configuration and error handling
-import { withAuthHeader } from './authToken';
+import { clearAccessToken, withAuthHeader } from './authToken';
 
 const rawApiBase =
   import.meta.env.VITE_API_BASE_URL ??
@@ -12,13 +12,58 @@ export const API_BASE = trimmedApiBase.endsWith('/api')
   ? trimmedApiBase.slice(0, -4)
   : trimmedApiBase;
 
+export const AUTH_SESSION_INVALIDATED_EVENT = 'ecotrack:auth-session-invalidated';
+
+export class ApiRequestError extends Error {
+  status: number;
+  payload: unknown;
+
+  constructor(message: string, status: number, payload: unknown) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+export const invalidateClientSession = () => {
+  clearAccessToken();
+
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_INVALIDATED_EVENT));
+};
+
+const resolveApiErrorMessage = (payload: unknown, status: number) => {
+  if (payload && typeof payload === 'object') {
+    const errorPayload = payload as { error?: unknown; message?: unknown };
+
+    if (typeof errorPayload.error === 'string' && errorPayload.error.trim().length > 0) {
+      return errorPayload.error;
+    }
+
+    if (typeof errorPayload.message === 'string' && errorPayload.message.trim().length > 0) {
+      return errorPayload.message;
+    }
+  }
+
+  return `HTTP ${status}`;
+};
+
+export const buildApiUrl = (url: string) => `${API_BASE}${url}`;
+
+export const createApiHeaders = (headers?: HeadersInit) =>
+  Object.fromEntries(withAuthHeader(headers).entries());
+
 // Global error handler for API calls
 const handleApiError = (error) => {
   console.error('API Error:', error);
   throw error;
 };
 
-const parseJsonResponse = async (response: Response) => {
+export const parseJsonResponse = async (response: Response) => {
   if (response.status === 204) {
     return null;
   }
@@ -35,30 +80,52 @@ const parseJsonResponse = async (response: Response) => {
   }
 };
 
+export const createApiRequestError = async (response: Response) => {
+  const payload = await parseJsonResponse(response);
+
+  if (response.status === 401) {
+    invalidateClientSession();
+  }
+
+  return new ApiRequestError(
+    resolveApiErrorMessage(payload, response.status),
+    response.status,
+    payload,
+  );
+};
+
+export const ensureApiResponse = async (response: Response) => {
+  if (!response.ok) {
+    throw await createApiRequestError(response);
+  }
+
+  return response;
+};
+
+export const authorizedFetch = (url: string, init: RequestInit = {}) => {
+  const { headers, ...restInit } = init;
+
+  return fetch(buildApiUrl(url), {
+    credentials: 'include',
+    ...restInit,
+    headers: createApiHeaders(headers),
+  });
+};
+
 // Generic API wrapper
 export const apiClient = {
   get: async (url, options: any = {}) => {
     try {
-      const response = await fetch(`${API_BASE}${url}`, {
-        credentials: 'include',
+      const response = await authorizedFetch(url, {
         ...options,
         headers: {
-          ...Object.fromEntries(
-            withAuthHeader({
-              'Content-Type': 'application/json',
-              ...options.headers,
-            }).entries(),
-          ),
+          'Content-Type': 'application/json',
+          ...options.headers,
         },
       });
-      
-      if (!response.ok) {
-        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
-          error: `HTTP ${response.status}`,
-        };
-        throw new Error(error.error || `HTTP ${response.status}`);
-      }
-      
+
+      await ensureApiResponse(response);
+
       return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
@@ -67,28 +134,18 @@ export const apiClient = {
 
   post: async (url, data, options: any = {}) => {
     try {
-      const response = await fetch(`${API_BASE}${url}`, {
+      const response = await authorizedFetch(url, {
         method: 'POST',
-        credentials: 'include',
         ...options,
         headers: {
-          ...Object.fromEntries(
-            withAuthHeader({
-              'Content-Type': 'application/json',
-              ...options.headers,
-            }).entries(),
-          ),
+          'Content-Type': 'application/json',
+          ...options.headers,
         },
         body: JSON.stringify(data),
       });
-      
-      if (!response.ok) {
-        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
-          error: `HTTP ${response.status}`,
-        };
-        throw new Error(error.error || `HTTP ${response.status}`);
-      }
-      
+
+      await ensureApiResponse(response);
+
       return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
@@ -97,28 +154,18 @@ export const apiClient = {
 
   put: async (url, data, options: any = {}) => {
     try {
-      const response = await fetch(`${API_BASE}${url}`, {
+      const response = await authorizedFetch(url, {
         method: 'PUT',
-        credentials: 'include',
         ...options,
         headers: {
-          ...Object.fromEntries(
-            withAuthHeader({
-              'Content-Type': 'application/json',
-              ...options.headers,
-            }).entries(),
-          ),
+          'Content-Type': 'application/json',
+          ...options.headers,
         },
         body: JSON.stringify(data),
       });
-      
-      if (!response.ok) {
-        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
-          error: `HTTP ${response.status}`,
-        };
-        throw new Error(error.error || `HTTP ${response.status}`);
-      }
-      
+
+      await ensureApiResponse(response);
+
       return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);
@@ -127,21 +174,13 @@ export const apiClient = {
 
   delete: async (url, options = {}) => {
     try {
-      const { headers: optionHeaders, ...restOptions } = options as RequestInit;
-      const response = await fetch(`${API_BASE}${url}`, {
+      const response = await authorizedFetch(url, {
         method: 'DELETE',
-        credentials: 'include',
-        headers: Object.fromEntries(withAuthHeader(optionHeaders).entries()),
-        ...restOptions,
+        ...(options as RequestInit),
       });
-      
-      if (!response.ok) {
-        const error = ((await parseJsonResponse(response)) as { error?: string } | null) ?? {
-          error: `HTTP ${response.status}`,
-        };
-        throw new Error(error.error || `HTTP ${response.status}`);
-      }
-      
+
+      await ensureApiResponse(response);
+
       return parseJsonResponse(response);
     } catch (error) {
       return handleApiError(error);

@@ -76,11 +76,12 @@ If the check fails, restart `npm run dev` and read the API startup error in the 
 
 Local auth contract:
 
-- `POST /api/login` returns `{ code }` (short-lived exchange code)
+- `POST /api/login` returns `{ code, accessToken, user }` for local sign-in; `code` remains available for callback compatibility
 - `POST /api/signup` returns `{ accessToken, user }`
-- frontend exchanges login `code` via `POST /api/auth/exchange` to obtain `{ accessToken, user }`
+- frontend uses the direct local sign-in session when `accessToken` is present, and can still exchange login `code` via `POST /api/auth/exchange`
 - frontend stores `accessToken` in `localStorage`
 - protected API requests use `Authorization: Bearer <token>`
+- frontend clears stale local bearer state when protected API requests return `401`
 - reset endpoints are only `POST /api/forgot-password` and `POST /api/reset-password`
 - in production, forgot-password returns `204` with no token/url payload
 

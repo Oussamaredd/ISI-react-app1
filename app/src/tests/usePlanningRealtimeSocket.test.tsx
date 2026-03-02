@@ -11,9 +11,13 @@ vi.mock('socket.io-client', () => ({
   io: (...args: unknown[]) => ioMock(...args),
 }));
 
-vi.mock('../services/api', () => ({
-  API_BASE: 'http://localhost:3001',
-}));
+vi.mock('../services/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/api')>();
+  return {
+    ...actual,
+    API_BASE: 'http://localhost:3001',
+  };
+});
 
 type SocketHandlers = Record<string, (payload?: unknown) => void>;
 

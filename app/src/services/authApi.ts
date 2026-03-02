@@ -1,7 +1,9 @@
-import { API_BASE } from './api';
-import { withAuthHeader } from './authToken';
-
-const AUTH_API_BASE = `${API_BASE}/api`;
+import {
+  ApiRequestError,
+  authorizedFetch,
+  invalidateClientSession,
+  parseJsonResponse,
+} from './api';
 
 type AuthUser = {
   id: string;
@@ -22,38 +24,41 @@ type AuthSuccess = {
 
 type AuthCodeResponse = {
   code: string;
+  accessToken?: string;
+  user?: AuthUser;
 };
 
-async function parseAuthResponse(response: Response) {
-  if (response.status === 204) {
-    return null;
+const resolveAuthRequestPath = (path: string) => (path.startsWith('/api') ? path : `/api${path}`);
+
+const resolveAuthErrorMessage = (payload: unknown, status: number) => {
+  if (payload && typeof payload === 'object' && 'message' in payload) {
+    const message = (payload as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message;
+    }
   }
 
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    return null;
-  }
+  return `HTTP ${status}`;
+};
 
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
+async function authRequest(
+  path: string,
+  init: RequestInit = {},
+  options: { invalidateSessionOnUnauthorized?: boolean } = {},
+) {
+  const response = await authorizedFetch(resolveAuthRequestPath(path), init);
+  const payload = await parseJsonResponse(response);
 
-async function authRequest(path: string, init: RequestInit = {}) {
-  const response = await fetch(`${AUTH_API_BASE}${path}`, {
-    credentials: 'include',
-    ...init,
-    headers: Object.fromEntries(withAuthHeader(init.headers).entries()),
-  });
-
-  const payload = await parseAuthResponse(response);
   if (!response.ok) {
-    const message = payload && typeof payload === 'object' && 'message' in payload
-      ? String((payload as { message: string }).message)
-      : `HTTP ${response.status}`;
-    throw new Error(message);
+    if (response.status === 401 && options.invalidateSessionOnUnauthorized) {
+      invalidateClientSession();
+    }
+
+    throw new ApiRequestError(
+      resolveAuthErrorMessage(payload, response.status),
+      response.status,
+      payload,
+    );
   }
 
   return payload;
@@ -87,14 +92,24 @@ export const authApi = {
     }),
 
   me: () =>
-    authRequest('/me') as Promise<{ user: AuthUser }>,
+    authRequest('/me', {}, { invalidateSessionOnUnauthorized: true }) as Promise<{ user: AuthUser }>,
 
-  updateProfile: (displayName: string) =>
+  updateProfile: (displayName: string, avatarUrl?: string | null) =>
     authRequest('/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ displayName }),
-    }) as Promise<{ user: AuthUser }>,
+      body: JSON.stringify({
+        displayName,
+        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+      }),
+    }, { invalidateSessionOnUnauthorized: true }) as Promise<{ user: AuthUser }>,
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    authRequest('/me/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }, { invalidateSessionOnUnauthorized: true }) as Promise<{ success: boolean }>,
 
   forgotPassword: (email: string) =>
     authRequest('/forgot-password', {

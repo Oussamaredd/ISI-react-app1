@@ -80,7 +80,7 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
   it('covers agent start, validate, and anomaly reporting journey', async () => {
     const agentHooks = await import('../hooks/useAgentTours');
 
-    const startTour = vi.fn();
+    const startTour = vi.fn().mockResolvedValue({ firstActiveStopId: 'stop-1' });
     const validateStop = vi.fn().mockResolvedValue({ nextStopId: 'stop-2' });
     const reportAnomaly = vi.fn().mockResolvedValue({ managerAlertTriggered: true });
 
@@ -104,7 +104,11 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         itinerary: [{ stopId: 'stop-1', order: 1, latitude: '36.81', longitude: '10.19' }],
       },
     });
-    (agentHooks.useStartAgentTour as Mock).mockReturnValue({ mutate: startTour, isPending: false });
+    (agentHooks.useStartAgentTour as Mock).mockReturnValue({
+      mutate: startTour,
+      mutateAsync: startTour,
+      isPending: false,
+    });
     (agentHooks.useValidateTourStop as Mock).mockReturnValue({ mutateAsync: validateStop, isPending: false });
     (agentHooks.useAnomalyTypes as Mock).mockReturnValue({
       data: { anomalyTypes: [{ id: 'blocked', label: 'Blocked container access' }] },
@@ -130,7 +134,9 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         volumeLiters: 120,
       }),
     );
-    expect(await screen.findByRole('status')).toHaveTextContent(/auto-advanced to next stop/i);
+    expect(
+      await screen.findByText(/collection validated\. the route advanced to the next stop\./i),
+    ).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText(/Anomaly type/i), 'blocked');
     await user.type(screen.getByLabelText(/^Comments$/i), 'Road blocked by parked vehicle');
@@ -142,7 +148,9 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         anomalyTypeId: 'blocked',
       }),
     );
-    expect(await screen.findByRole('status')).toHaveTextContent(/manager alert triggered/i);
+    expect(
+      await screen.findByText(/anomaly reported and escalated to the manager queue\./i),
+    ).toBeInTheDocument();
   }, 20000);
 
   it('covers manager optimization and assignment journey', async () => {
@@ -160,17 +168,23 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       ],
     });
     const createTour = vi.fn().mockResolvedValue({ id: 'tour-1' });
+    const resetOptimization = vi.fn();
 
     (planningHooks.usePlanningZones as Mock).mockReturnValue({
       data: { zones: [{ id: 'zone-1', name: 'North Zone' }] },
+      isLoading: false,
+      isError: false,
     });
     (planningHooks.usePlanningAgents as Mock).mockReturnValue({
       data: { agents: [{ id: 'agent-1', displayName: 'Alex Agent', email: 'agent@example.com' }] },
+      isLoading: false,
+      isError: false,
     });
     (planningHooks.useOptimizeTourPlan as Mock).mockReturnValue({
       mutateAsync: optimizeRoute,
       isPending: false,
       data: { metrics: { totalDistanceKm: 8.4, estimatedDurationMinutes: 65 } },
+      reset: resetOptimization,
     });
     (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({ mutateAsync: createTour, isPending: false });
 
@@ -203,6 +217,147 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       }),
     );
     expect(await screen.findByRole('status')).toHaveTextContent(/created and assigned successfully/i);
+    expect(screen.getByRole('button', { name: /Tour Created/i })).toBeDisabled();
     expect(container.querySelector('[class*="sm:grid-cols-2"]')).toBeTruthy();
+  }, 15000);
+
+  it('clears a stale route when planning inputs change after optimization', async () => {
+    const planningHooks = await import('../hooks/usePlanning');
+
+    const optimizeRoute = vi.fn().mockResolvedValue({
+      route: [
+        {
+          id: 'container-1',
+          code: 'CTR-001',
+          label: 'North Hub',
+          fillLevelPercent: 88,
+          order: 1,
+        },
+      ],
+    });
+    const resetOptimization = vi.fn();
+
+    (planningHooks.usePlanningZones as Mock).mockReturnValue({
+      data: { zones: [{ id: 'zone-1', name: 'North Zone' }] },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.usePlanningAgents as Mock).mockReturnValue({
+      data: { agents: [] },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.useOptimizeTourPlan as Mock).mockReturnValue({
+      mutateAsync: optimizeRoute,
+      isPending: false,
+      data: { metrics: { totalDistanceKm: 8.4, estimatedDurationMinutes: 65 } },
+      reset: resetOptimization,
+    });
+    (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ManagerPlanningPage />);
+
+    await user.selectOptions(screen.getByLabelText(/^Zone$/i), 'zone-1');
+    await user.click(screen.getByRole('button', { name: /Run Optimization/i }));
+
+    expect(await screen.findByText(/CTR-001 - North Hub/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Create Planned Tour/i })).toBeEnabled();
+
+    await user.clear(screen.getByLabelText(/Fill threshold/i));
+    await user.type(screen.getByLabelText(/Fill threshold/i), '85');
+
+    await waitFor(() => {
+      expect(screen.queryByText(/CTR-001 - North Hub/i)).not.toBeInTheDocument();
+    });
+    expect(resetOptimization).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /Create Planned Tour/i })).toBeDisabled();
+  }, 15000);
+
+  it('explains when nearby tours reserve part of the route for the selected schedule', async () => {
+    const planningHooks = await import('../hooks/usePlanning');
+
+    (planningHooks.usePlanningZones as Mock).mockReturnValue({
+      data: { zones: [{ id: 'zone-1', name: 'North Zone' }] },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.usePlanningAgents as Mock).mockReturnValue({
+      data: { agents: [] },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.useOptimizeTourPlan as Mock).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({
+        route: [
+          {
+            id: 'container-1',
+            code: 'CTR-001',
+            label: 'North Hub',
+            fillLevelPercent: 88,
+            order: 1,
+          },
+        ],
+        metrics: {
+          deferredForNearbyTours: 2,
+        },
+      }),
+      isPending: false,
+      data: { metrics: { totalDistanceKm: 8.4, estimatedDurationMinutes: 65 } },
+      reset: vi.fn(),
+    });
+    (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ManagerPlanningPage />);
+
+    await user.selectOptions(screen.getByLabelText(/^Zone$/i), 'zone-1');
+    await user.click(screen.getByRole('button', { name: /Run Optimization/i }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /2 matching containers were skipped because they are already planned on nearby tours/i,
+    );
+  }, 15000);
+
+  it('shows a helpful error when optimization fails', async () => {
+    const planningHooks = await import('../hooks/usePlanning');
+
+    (planningHooks.usePlanningZones as Mock).mockReturnValue({
+      data: { zones: [{ id: 'zone-1', name: 'North Zone' }] },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.usePlanningAgents as Mock).mockReturnValue({
+      data: { agents: [] },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.useOptimizeTourPlan as Mock).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error('Optimization service unavailable.')),
+      isPending: false,
+      data: undefined,
+      reset: vi.fn(),
+    });
+    (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ManagerPlanningPage />);
+
+    await user.selectOptions(screen.getByLabelText(/^Zone$/i), 'zone-1');
+    await user.click(screen.getByRole('button', { name: /Run Optimization/i }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /optimization service unavailable/i,
+    );
+    expect(screen.queryByRole('button', { name: /Create Planned Tour/i })).toBeDisabled();
   }, 15000);
 });

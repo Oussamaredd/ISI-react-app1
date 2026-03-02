@@ -45,6 +45,16 @@ npm run db:seed
 npm run dev
 ```
 
+## Seeded Manual Test Credentials
+
+After `npm run db:seed`, the seeded manual test accounts are local email/password users. Each uses the same password: `Test!1234`.
+
+- `super_admin`: `a@admin.fr`, `superadmin@example.com`
+- `admin`: `admin@example.com`
+- `manager`: `manager@example.com`
+- `agent`: `test@ecotrack.local`, `agent@example.com`
+- `citizen`: `citizen@example.com`
+
 ## Validation Gate (Must Pass)
 
 ```bash

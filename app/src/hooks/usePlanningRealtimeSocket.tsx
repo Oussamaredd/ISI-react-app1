@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io, type Socket } from 'socket.io-client';
 
-import { API_BASE } from '../services/api';
-import { withAuthHeader } from '../services/authToken';
+import {
+  ApiRequestError,
+  API_BASE,
+  buildApiUrl,
+  createApiHeaders,
+  createApiRequestError,
+} from '../services/api';
 
 type PlanningSocketState = 'connected' | 'reconnecting' | 'fallback' | 'disabled';
 
@@ -31,14 +36,18 @@ class WebSocketSessionRequestError extends Error {
 
 const requestWebSocketSessionToken = async () => {
   for (const endpoint of WEBSOCKET_SESSION_ENDPOINTS) {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildApiUrl(endpoint), {
       method: 'POST',
       credentials: 'include',
-      headers: Object.fromEntries(withAuthHeader().entries()),
+      headers: createApiHeaders(),
     });
 
     if (response.status === 404) {
       continue;
+    }
+
+    if (response.status === 401) {
+      throw await createApiRequestError(response);
     }
 
     if (!response.ok) {
@@ -135,6 +144,11 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
           },
         });
       } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 401) {
+          setConnectionState('fallback');
+          return;
+        }
+
         if (
           error instanceof WebSocketSessionRequestError &&
           error.status >= 400 &&

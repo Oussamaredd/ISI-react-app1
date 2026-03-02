@@ -1,9 +1,20 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  esbuild: {
+    target: 'es2022',
+    tsconfigRaw: {
+      compilerOptions: {
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        useDefineForClassFields: false,
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/tests/**/*.test.ts'],
+    pool: 'threads',
     // Nest integration-style suites can starve each other under file-level parallelism on Windows CI/dev.
     // Keep API tests deterministic for full monorepo runs.
     fileParallelism: false,

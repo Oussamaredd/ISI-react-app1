@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { withAuthHeader } from '../services/authToken';
-import { API_BASE } from '../services/api';
+import {
+  ApiRequestError,
+  buildApiUrl,
+  createApiHeaders,
+  createApiRequestError,
+} from '../services/api';
 
 type PlanningStreamState = 'connected' | 'reconnecting' | 'fallback' | 'disabled';
 
@@ -24,7 +28,7 @@ type StreamSessionPayload = {
 };
 
 const toStreamUrl = (sessionToken: string, lastEventId: string | null) => {
-  const streamUrl = new URL(`${API_BASE}/api/planning/stream`);
+  const streamUrl = new URL(buildApiUrl('/api/planning/stream'));
   streamUrl.searchParams.set('stream_session', sessionToken);
 
   if (lastEventId) {
@@ -36,14 +40,18 @@ const toStreamUrl = (sessionToken: string, lastEventId: string | null) => {
 
 const requestStreamSessionToken = async () => {
   for (const endpoint of STREAM_SESSION_ENDPOINTS) {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildApiUrl(endpoint), {
       method: 'POST',
       credentials: 'include',
-      headers: Object.fromEntries(withAuthHeader().entries()),
+      headers: createApiHeaders(),
     });
 
     if (response.status === 404) {
       continue;
+    }
+
+    if (response.status === 401) {
+      throw await createApiRequestError(response);
     }
 
     if (!response.ok) {
@@ -137,6 +145,11 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
           withCredentials: true,
         });
       } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 401) {
+          setConnectionState('fallback');
+          return;
+        }
+
         if (
           error instanceof StreamSessionRequestError &&
           error.status >= 400 &&

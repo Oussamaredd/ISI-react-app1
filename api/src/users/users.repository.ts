@@ -220,18 +220,29 @@ export class UsersRepository {
     return updated ?? null;
   }
 
-  async updateUserProfile(userId: string, params: { displayName: string }) {
+  async updateUserProfile(userId: string, params: { displayName: string; avatarUrl?: string }) {
     const displayName = params.displayName.trim();
     if (!displayName) {
       throw new BadRequestException('Display name is required.');
     }
 
+    const nextAvatarUrl = this.normalizeAvatarUrl(params.avatarUrl);
+    const updatePayload: {
+      displayName: string;
+      updatedAt: Date;
+      avatarUrl?: string | null;
+    } = {
+      displayName,
+      updatedAt: new Date(),
+    };
+
+    if (nextAvatarUrl !== undefined) {
+      updatePayload.avatarUrl = nextAvatarUrl;
+    }
+
     const [updated] = await this.db
       .update(users)
-      .set({
-        displayName,
-        updatedAt: new Date(),
-      })
+      .set(updatePayload)
       .where(eq(users.id, userId))
       .returning();
 
@@ -240,6 +251,37 @@ export class UsersRepository {
     }
 
     return updated;
+  }
+
+  private normalizeAvatarUrl(avatarUrl?: string) {
+    if (avatarUrl === undefined) {
+      return undefined;
+    }
+
+    const normalized = avatarUrl.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.length > 1_500_000) {
+      throw new BadRequestException('Avatar image payload is too large.');
+    }
+
+    const isDataImageUrl = /^data:image\/(png|jpeg|jpg|webp);base64,[a-zA-Z0-9+/=]+$/i.test(normalized);
+    if (isDataImageUrl) {
+      return normalized;
+    }
+
+    try {
+      const parsed = new URL(normalized);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        throw new BadRequestException('Avatar URL must use http or https.');
+      }
+    } catch {
+      throw new BadRequestException('Avatar URL must be a valid http or https URL.');
+    }
+
+    return normalized;
   }
 
   async createPasswordResetToken(params: { userId: string; tokenHash: string; expiresAt: Date }) {

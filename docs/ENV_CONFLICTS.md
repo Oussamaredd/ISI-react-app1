@@ -18,7 +18,7 @@ Last updated: 2026-02-11
 | Deprecated | Canonical | Sunset Rule |
 | --- | --- | --- |
 | `VITE_API_URL` | `VITE_API_BASE_URL` | Keep read support in frontend code temporarily; stop writing this key in env files now. |
-| `PORT` | `API_PORT` | Removed from API runtime fallback; keep only as legacy local-env artifact until local files are cleaned. |
+| `PORT` | `API_PORT` | Removed from runtime and tooling fallbacks; keep only as legacy local-env artifact until local files are cleaned. |
 | `API_URL` | `API_BASE_URL` | Removed from API runtime callback derivation; use `API_BASE_URL` when explicit API base URL is needed. |
 | `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_PORT` | `DATABASE_URL` | Keep only when needed for local DB bootstrap tooling; runtime resolution uses `DATABASE_URL`. |
 | `CLIENT_ORIGIN` | `CORS_ORIGINS` (first origin) | Keep optional for backward compatibility; canonical docs and templates use `CORS_ORIGINS`. |

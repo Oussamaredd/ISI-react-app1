@@ -6,9 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setAccessToken } from '../services/authToken';
 import { usePlanningRealtimeStream } from '../hooks/usePlanningRealtimeStream';
 
-vi.mock('../services/api', () => ({
-  API_BASE: 'http://localhost:3001',
-}));
+vi.mock('../services/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/api')>();
+  return {
+    ...actual,
+    API_BASE: 'http://localhost:3001',
+  };
+});
 
 type EventHandler = (event: Event) => void;
 

@@ -17,17 +17,43 @@ type RoutePoint = {
   order: number;
 };
 
+const toLocalDateTimeInputValue = (date: Date) => {
+  const offsetInMilliseconds = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetInMilliseconds).toISOString().slice(0, 16);
+};
+
+const toScheduledIsoString = (value: string) => {
+  if (value.trim().length === 0) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
+};
+
+const getErrorMessage = (error: unknown, fallbackMessage: string) =>
+  error instanceof Error && error.message.trim().length > 0
+    ? error.message
+    : fallbackMessage;
+
 export default function ManagerPlanningPage() {
   const [name, setName] = useState("Daily Optimized Tour");
   const [zoneId, setZoneId] = useState("");
   const [scheduledFor, setScheduledFor] = useState(() =>
-    new Date().toISOString().slice(0, 16),
+    toLocalDateTimeInputValue(new Date()),
   );
   const [fillThresholdPercent, setFillThresholdPercent] = useState(70);
   const [assignedAgentId, setAssignedAgentId] = useState("");
   const [orderedRoute, setOrderedRoute] = useState<RoutePoint[]>([]);
+  const [planCreated, setPlanCreated] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [statusTone, setStatusTone] = useState<"success" | "error">("success");
+  const [statusTone, setStatusTone] = useState<"success" | "error" | "info">(
+    "success",
+  );
 
   const zonesQuery = usePlanningZones();
   const agentsQuery = usePlanningAgents();
@@ -45,30 +71,94 @@ export default function ManagerPlanningPage() {
     );
   }, [optimizeMutation.data]);
 
+  const scheduledForIsoString = toScheduledIsoString(scheduledFor);
+  const zonePlaceholderLabel = zonesQuery.isLoading
+    ? "Loading zones..."
+    : zonesQuery.isError
+      ? "Unable to load zones"
+      : "Select zone";
+  const agentPlaceholderLabel = agentsQuery.isLoading
+    ? "Loading agents..."
+    : agentsQuery.isError
+      ? "Unable to load agents"
+      : "Unassigned";
+
+  const resetOptimizationState = () => {
+    setOrderedRoute([]);
+    setPlanCreated(false);
+    optimizeMutation.reset?.();
+  };
+
+  const clearStatus = () => {
+    setStatusMessage("");
+  };
+
   const optimizeRoute = async () => {
-    if (!zoneId || !scheduledFor) {
+    if (!zoneId) {
       setStatusTone("error");
-      setStatusMessage("Select zone and schedule before optimizing.");
+      setStatusMessage("Select a zone before optimizing.");
       return;
     }
 
-    setStatusMessage("");
-    const response = (await optimizeMutation.mutateAsync({
-      zoneId,
-      scheduledFor: new Date(scheduledFor).toISOString(),
-      fillThresholdPercent,
-    })) as { route?: RoutePoint[] };
+    if (!scheduledForIsoString) {
+      setStatusTone("error");
+      setStatusMessage("Enter a valid schedule before optimizing.");
+      return;
+    }
 
-    setOrderedRoute(Array.isArray(response.route) ? response.route : []);
+    clearStatus();
+    setPlanCreated(false);
+
+    try {
+      const response = (await optimizeMutation.mutateAsync({
+        zoneId,
+        scheduledFor: scheduledForIsoString,
+        fillThresholdPercent,
+      })) as {
+        route?: RoutePoint[];
+        metrics?: { deferredForNearbyTours?: number };
+      };
+
+      const nextRoute = Array.isArray(response.route) ? response.route : [];
+      const deferredForNearbyTours = response.metrics?.deferredForNearbyTours ?? 0;
+      setOrderedRoute(nextRoute);
+
+      if (nextRoute.length === 0) {
+        setStatusTone("info");
+        setStatusMessage(
+          deferredForNearbyTours > 0
+            ? "All matching containers are already planned on nearby tours for this schedule. Pick another time or adjust the threshold."
+            : "No containers match this zone and fill threshold yet.",
+        );
+        return;
+      }
+
+      setStatusTone("success");
+      setStatusMessage(
+        deferredForNearbyTours > 0
+          ? `Route generated. ${deferredForNearbyTours} matching container${
+              deferredForNearbyTours === 1 ? " was" : "s were"
+            } skipped because ${
+              deferredForNearbyTours === 1 ? "it is" : "they are"
+            } already planned on nearby tours.`
+          : "Route generated. Review the stop order, then create the tour.",
+      );
+    } catch (error) {
+      setOrderedRoute([]);
+      setStatusTone("error");
+      setStatusMessage(getErrorMessage(error, "Failed to optimize the route."));
+    }
   };
 
   const moveRouteItem = (index: number, direction: -1 | 1) => {
-    setOrderedRoute((current) => {
-      const nextIndex = index + direction;
-      if (nextIndex < 0 || nextIndex >= current.length) {
-        return current;
-      }
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= orderedRoute.length) {
+      return;
+    }
 
+    clearStatus();
+    setPlanCreated(false);
+    setOrderedRoute((current) => {
       const next = [...current];
       const [item] = next.splice(index, 1);
       next.splice(nextIndex, 0, item);
@@ -83,23 +173,41 @@ export default function ManagerPlanningPage() {
       return;
     }
 
-    setStatusMessage("");
+    if (name.trim().length === 0) {
+      setStatusTone("error");
+      setStatusMessage("Enter a tour name before creating the tour.");
+      return;
+    }
+
+    if (!scheduledForIsoString) {
+      setStatusTone("error");
+      setStatusMessage("Enter a valid schedule before creating the tour.");
+      return;
+    }
+
+    clearStatus();
 
     try {
       await createMutation.mutateAsync({
-        name,
+        name: name.trim(),
         zoneId,
-        scheduledFor: new Date(scheduledFor).toISOString(),
+        scheduledFor: scheduledForIsoString,
         assignedAgentId: assignedAgentId || undefined,
         orderedContainerIds: orderedRoute.map((item) => item.id),
       });
 
+      setPlanCreated(true);
       setStatusTone("success");
-      setStatusMessage("Planned tour created and assigned successfully.");
+      setStatusMessage(
+        assignedAgentId
+          ? "Planned tour created and assigned successfully."
+          : "Planned tour created successfully.",
+      );
     } catch (error) {
+      setPlanCreated(false);
       setStatusTone("error");
       setStatusMessage(
-        error instanceof Error ? error.message : "Failed to create planned tour.",
+        getErrorMessage(error, "Failed to create planned tour."),
       );
     }
   };
@@ -109,8 +217,8 @@ export default function ManagerPlanningPage() {
       <header className="ops-hero">
         <h1>Tour Planning Wizard</h1>
         <p>
-          Configure zone, threshold, and schedule to generate a clean route plan
-          and assign the best available agent.
+          Configure zone, threshold, and schedule to prepare a route plan, then
+          optionally assign an agent before creating the tour.
         </p>
       </header>
 
@@ -124,7 +232,11 @@ export default function ManagerPlanningPage() {
               id="manager-planning-tour-name"
               className="ops-input"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                clearStatus();
+                setPlanCreated(false);
+                setName(event.target.value);
+              }}
             />
           </div>
 
@@ -136,9 +248,18 @@ export default function ManagerPlanningPage() {
               id="manager-planning-scheduled-for"
               type="datetime-local"
               className="ops-input"
+              aria-describedby="manager-planning-scheduled-for-help"
               value={scheduledFor}
-              onChange={(event) => setScheduledFor(event.target.value)}
+              onChange={(event) => {
+                clearStatus();
+                setScheduledFor(event.target.value);
+                resetOptimizationState();
+              }}
             />
+            <p id="manager-planning-scheduled-for-help" className="ops-subtle">
+              Uses your local time and also avoids containers already reserved on
+              nearby tours for the selected schedule.
+            </p>
           </div>
 
           <div className="ops-field">
@@ -149,15 +270,28 @@ export default function ManagerPlanningPage() {
               id="manager-planning-zone"
               className="ops-select"
               value={zoneId}
-              onChange={(event) => setZoneId(event.target.value)}
+              disabled={zonesQuery.isLoading || zonesQuery.isError}
+              onChange={(event) => {
+                clearStatus();
+                setZoneId(event.target.value);
+                resetOptimizationState();
+              }}
             >
-              <option value="">Select zone</option>
+              <option value="">{zonePlaceholderLabel}</option>
               {zones.map((zone) => (
                 <option key={zone.id} value={zone.id}>
                   {zone.name}
                 </option>
               ))}
             </select>
+            {zonesQuery.isError ? (
+              <p className="ops-subtle" role="status" aria-live="polite">
+                Zone data could not be loaded. Refresh the page and try again.
+              </p>
+            ) : null}
+            {!zonesQuery.isLoading && !zonesQuery.isError && zones.length === 0 ? (
+              <p className="ops-subtle">No zones are available yet.</p>
+            ) : null}
           </div>
 
           <div className="ops-field">
@@ -171,7 +305,11 @@ export default function ManagerPlanningPage() {
               max={100}
               className="ops-input"
               value={fillThresholdPercent}
-              onChange={(event) => setFillThresholdPercent(Number(event.target.value))}
+              onChange={(event) => {
+                clearStatus();
+                setFillThresholdPercent(Number(event.target.value) || 0);
+                resetOptimizationState();
+              }}
             />
           </div>
 
@@ -183,15 +321,32 @@ export default function ManagerPlanningPage() {
               id="manager-planning-assigned-agent"
               className="ops-select"
               value={assignedAgentId}
-              onChange={(event) => setAssignedAgentId(event.target.value)}
+              disabled={agentsQuery.isLoading}
+              onChange={(event) => {
+                clearStatus();
+                setPlanCreated(false);
+                setAssignedAgentId(event.target.value);
+              }}
             >
-              <option value="">Unassigned</option>
+              <option value="">{agentPlaceholderLabel}</option>
               {agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.displayName || agent.email}
                 </option>
               ))}
             </select>
+            {agentsQuery.isError ? (
+              <p className="ops-subtle" role="status" aria-live="polite">
+                Agent data could not be loaded. You can still create the tour
+                without assigning anyone yet.
+              </p>
+            ) : null}
+            {!agentsQuery.isLoading && !agentsQuery.isError && agents.length === 0 ? (
+              <p className="ops-subtle">
+                No active agents are available right now. The tour can stay
+                unassigned.
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -200,7 +355,9 @@ export default function ManagerPlanningPage() {
             type="button"
             className="ops-btn ops-btn-primary"
             onClick={optimizeRoute}
-            disabled={optimizeMutation.isPending}
+            disabled={
+              optimizeMutation.isPending || zonesQuery.isLoading || zonesQuery.isError
+            }
           >
             {optimizeMutation.isPending ? "Optimizing..." : "Run Optimization"}
           </button>
@@ -209,9 +366,15 @@ export default function ManagerPlanningPage() {
             type="button"
             className="ops-btn ops-btn-success"
             onClick={submitTour}
-            disabled={createMutation.isPending || orderedRoute.length === 0}
+            disabled={
+              createMutation.isPending || orderedRoute.length === 0 || planCreated
+            }
           >
-            {createMutation.isPending ? "Creating..." : "Create Planned Tour"}
+            {createMutation.isPending
+              ? "Creating..."
+              : planCreated
+                ? "Tour Created"
+                : "Create Planned Tour"}
           </button>
         </div>
       </article>
@@ -267,7 +430,9 @@ export default function ManagerPlanningPage() {
           className={
             statusTone === "success"
               ? "ops-status ops-status-success"
-              : "ops-status ops-status-error"
+              : statusTone === "info"
+                ? "ops-status ops-status-info"
+                : "ops-status ops-status-error"
           }
           role="status"
           aria-live="polite"

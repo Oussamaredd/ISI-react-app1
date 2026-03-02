@@ -21,9 +21,14 @@ POST /logout
 GET /auth/status
 GET /auth/me
 GET /me
+PUT /me
+PUT /me/password
 POST /forgot-password
 POST /reset-password
 ```
+
+`PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP).
+`PUT /me/password` requires `currentPassword` and strong `newPassword` (12+ chars with uppercase, lowercase, number, and symbol) and is available for local accounts only.
 
 OAuth endpoints:
 
@@ -75,6 +80,14 @@ POST /tours/:tourId/anomalies
 GET /tours/:tourId/activity
 ```
 
+Agent tour execution notes:
+- `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, and a `routeSummary` block.
+- `POST /api/tours/:tourId/start` is safe to repeat while the tour is already `in_progress`; completed tours are rejected.
+- `POST /api/tours/:tourId/stops/:stopId/validate` accepts only the active stop for new validations. Repeating the same completed-stop validation returns the latest route state without creating a duplicate collection event.
+- The current web workflow uses manual container confirmation plus optional browser geolocation. The optional `qrCode` field remains available for future mobile clients, but it is not required for the platform UI.
+- `POST /api/tours/:tourId/anomalies` accepts `severity` values `low`, `medium`, `high`, or `critical`.
+- `photoUrl` in anomaly payloads must be a valid `http`/`https` URL when provided.
+
 ### Manager Planning and Reports
 
 ```text
@@ -96,13 +109,17 @@ POST /planning/reports/:reportId/regenerate
 Report generation supports:
 - `format: "pdf"` for binary PDF download
 - `format: "csv"` for Excel-compatible CSV download
+- local day-boundary reporting windows (`periodStart` / `periodEnd` should be sent using the manager's local timezone window, not forced UTC midnight)
 - `periodStart <= periodEnd` validation
 - `selectedKpis` restricted to `tours`, `collections`, `anomalies`
 - `emailTo` required when `sendEmail=true`
+- `GET /planning/reports/history` returns the 100 most recent exports, including `format`, `sendEmail`, and delivery `status`
+- when `sendEmail=true`, the API writes a MIME email artifact to `api/.runtime/report-outbox` in development and updates report `status` to `email_delivered` or `email_delivery_failed`
 - `POST /planning/reports/:reportId/regenerate` recalculates metrics and regenerates file content from the source report period/KPIs.
 
 GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and tour stop validation are validated as latitude/longitude coordinates.
 `manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
+`POST /planning/optimize-tour` excludes containers already assigned to non-terminal tours in the same zone within `+/- 120 minutes` of `scheduledFor`; explicitly supplied `manualContainerIds` still override that schedule deferral.
 `orderedContainerIds` in `POST /planning/create-tour` must all belong to the selected `zoneId`.
 
 ### Analytics and Gamification

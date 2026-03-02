@@ -19,7 +19,7 @@ const session = {
 };
 
 function AuthProbe() {
-  const { login, getAuthHeaders, isLoading } = useAuth();
+  const { login, getAuthHeaders, isAuthenticated, isLoading } = useAuth();
   const headers = getAuthHeaders();
 
   return (
@@ -28,6 +28,7 @@ function AuthProbe() {
         set-session
       </button>
       <p data-testid="auth-header">{headers.Authorization ?? ''}</p>
+      <p data-testid="auth-is-authenticated">{String(isAuthenticated)}</p>
       <p data-testid="auth-loading">{String(isLoading)}</p>
     </div>
   );
@@ -103,6 +104,73 @@ describe('useAuth local storage', () => {
     });
 
     expect(abortableFetch).toHaveBeenCalledTimes(3);
+  });
+
+  test('keeps stored bearer state when auth status checks fail transiently', async () => {
+    vi.useFakeTimers();
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, 'persisted-token');
+
+    const abortableFetch = vi.fn((_: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise<Response>((_, reject) => {
+        const signal = init?.signal;
+
+        const rejectAbort = () => {
+          reject(new DOMException('Aborted', 'AbortError'));
+        };
+
+        if (signal?.aborted) {
+          rejectAbort();
+          return;
+        }
+
+        signal?.addEventListener('abort', rejectAbort, { once: true });
+      });
+    });
+
+    vi.stubGlobal('fetch', abortableFetch as unknown as typeof fetch);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20000);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-loading').textContent).toBe('false');
+    });
+
+    expect(screen.getByTestId('auth-header').textContent).toBe('Bearer persisted-token');
+    expect(screen.getByTestId('auth-is-authenticated').textContent).toBe('true');
+  });
+
+  test('clears stale stored bearer when auth status reports unauthenticated', async () => {
+    window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, 'stale-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ authenticated: false }),
+      })),
+    );
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-loading').textContent).toBe('false');
+    });
+
+    expect(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(screen.getByTestId('auth-header').textContent).toBe('');
+    expect(screen.getByTestId('auth-is-authenticated').textContent).toBe('false');
   });
 });
 

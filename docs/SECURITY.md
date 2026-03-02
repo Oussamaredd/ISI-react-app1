@@ -62,6 +62,7 @@ npm run validate-env:all
 - Use cryptographically secure random generation.
 - Keep secrets in runtime env injection, not source files.
 - Enforce env-policy validation in CI before build/deploy.
+- Keep `CORS_ORIGINS` on strict, explicit allowlists per environment (no wildcard origins).
 
 ## API Runtime Hardening
 

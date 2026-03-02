@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, IsUrl, MaxLength } from 'class-validator';
 
 export class ReportAnomalyDto {
   @IsUUID()
@@ -14,12 +14,20 @@ export class ReportAnomalyDto {
   comments?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl(
+    {
+      require_protocol: true,
+    },
+    {
+      message: 'photoUrl must be a valid http/https URL',
+    },
+  )
   @MaxLength(500)
   photoUrl?: string;
 
   @IsOptional()
   @IsString()
+  @IsIn(['low', 'medium', 'high', 'critical'])
   @MaxLength(20)
   severity?: string;
 }

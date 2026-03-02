@@ -211,6 +211,8 @@ const ROLE_SEEDS: RoleSeed[] = [
   },
 ];
 
+const MANUAL_TEST_PASSWORD_HASH = '$2a$10$UQth0tiCN3PWdZN8C8pEeuFJ.6ceJ/MP46cz/TAxZ/r6EFjuifdv2';
+
 const USER_SEEDS: UserSeed[] = [
   {
     email: 'test@ecotrack.local',
@@ -219,7 +221,7 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['agent'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: '$2a$10$a9vsUVq25Tk/tpF4zduryOsGZeimJCpl09DlQGhFdlXA4RVtJwH/u',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -229,7 +231,7 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['super_admin', 'admin'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: '$2a$10$X4kLANVeriBVxSHuozgKHufwJQlCuhKCtcSHYF12XuX6eytyrZ5Da',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -238,8 +240,8 @@ const USER_SEEDS: UserSeed[] = [
     role: 'super_admin',
     assignedRoles: ['super_admin', 'admin'],
     isActive: true,
-    authProvider: 'google',
-    passwordHash: null,
+    authProvider: 'local',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -248,8 +250,8 @@ const USER_SEEDS: UserSeed[] = [
     role: 'admin',
     assignedRoles: ['admin'],
     isActive: true,
-    authProvider: 'google',
-    passwordHash: null,
+    authProvider: 'local',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -258,8 +260,8 @@ const USER_SEEDS: UserSeed[] = [
     role: 'manager',
     assignedRoles: ['manager'],
     isActive: true,
-    authProvider: 'google',
-    passwordHash: null,
+    authProvider: 'local',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -268,8 +270,8 @@ const USER_SEEDS: UserSeed[] = [
     role: 'agent',
     assignedRoles: ['agent'],
     isActive: true,
-    authProvider: 'google',
-    passwordHash: null,
+    authProvider: 'local',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -278,8 +280,8 @@ const USER_SEEDS: UserSeed[] = [
     role: 'citizen',
     assignedRoles: ['citizen'],
     isActive: true,
-    authProvider: 'google',
-    passwordHash: null,
+    authProvider: 'local',
+    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
 ];
@@ -376,8 +378,8 @@ const CONTAINER_SEEDS: ContainerSeed[] = [
     status: 'available',
     fillLevelPercent: 35,
     zoneCode: 'ZONE-DOWNTOWN',
-    latitude: '36.8065',
-    longitude: '10.1815',
+    latitude: '48.8566',
+    longitude: '2.3522',
   },
   {
     code: 'CTR-1002',
@@ -385,8 +387,8 @@ const CONTAINER_SEEDS: ContainerSeed[] = [
     status: 'attention_required',
     fillLevelPercent: 82,
     zoneCode: 'ZONE-DOWNTOWN',
-    latitude: '36.8081',
-    longitude: '10.1769',
+    latitude: '48.8589',
+    longitude: '2.3540',
   },
   {
     code: 'CTR-2001',
@@ -394,8 +396,8 @@ const CONTAINER_SEEDS: ContainerSeed[] = [
     status: 'available',
     fillLevelPercent: 55,
     zoneCode: 'ZONE-HARBOR',
-    latitude: '36.8128',
-    longitude: '10.2051',
+    latitude: '48.8362',
+    longitude: '2.3700',
   },
 ];
 
@@ -405,7 +407,7 @@ const TOUR_SEEDS: TourSeed[] = [
     status: 'planned',
     zoneCode: 'ZONE-DOWNTOWN',
     assignedAgentEmail: 'agent@example.com',
-    scheduledForOffsetDays: 1,
+    scheduledForOffsetDays: 0,
     stopContainerCodes: ['CTR-1002', 'CTR-1001'],
   },
 ];
@@ -416,8 +418,8 @@ const CITIZEN_REPORT_SEEDS: CitizenReportSeed[] = [
     reporterEmail: 'citizen@example.com',
     status: 'submitted',
     description: 'Container is almost full and lids are hard to close.',
-    latitude: '36.8081',
-    longitude: '10.1769',
+    latitude: '48.8589',
+    longitude: '2.3540',
   },
 ];
 

@@ -6,6 +6,7 @@ import {
   collectionEvents,
   containers,
   type DatabaseClient,
+  type ReportExport,
   reportExports,
   roles,
   tourStops,
@@ -22,12 +23,22 @@ import type { GenerateReportDto } from './dto/generate-report.dto.js';
 import type { OptimizeTourDto } from './dto/optimize-tour.dto.js';
 import type { TriggerEmergencyCollectionDto } from './dto/trigger-emergency-collection.dto.js';
 import { createReportArtifact } from './report-artifact.utils.js';
+import {
+  deliverReportByEmail,
+  REPORT_STATUS_EMAIL_DELIVERED,
+  REPORT_STATUS_EMAIL_DELIVERY_FAILED,
+  REPORT_STATUS_GENERATED,
+} from './report-delivery.utils.js';
 
 type LatLngPoint = { id: string; latitude: number | null; longitude: number | null };
 
 const EARTH_RADIUS_KM = 6371;
 const REPORT_KPI_ALLOWLIST = new Set(['tours', 'collections', 'anomalies']);
 const MAX_2OPT_PASSES = 20;
+const SCHEDULE_CONFLICT_WINDOW_MINUTES = 120;
+const TERMINAL_TOUR_STATUSES = new Set(['completed', 'closed', 'cancelled']);
+const AVERAGE_ROUTE_SPEED_KMH = 24;
+const STOP_SERVICE_DURATION_MINUTES = 4;
 
 const toNumberOrNull = (value: unknown) => {
   if (value == null) return null;
@@ -116,10 +127,18 @@ export class PlanningRepository {
     }
 
     const manualIds = new Set(dto.manualContainerIds ?? []);
+    const scheduledFor = new Date(dto.scheduledFor);
+    const blockedContainerIds = await this.getBlockedContainerIdsForSchedule(dto.zoneId, scheduledFor);
+    const deferredForNearbyTours = allCandidates.filter(
+      (item) => blockedContainerIds.has(item.id) && !manualIds.has(item.id),
+    ).length;
+    const eligibleCandidates = allCandidates.filter(
+      (item) => !blockedContainerIds.has(item.id) || manualIds.has(item.id),
+    );
     const selectedCandidates =
       manualIds.size > 0
-        ? allCandidates.filter((item) => manualIds.has(item.id))
-        : [...allCandidates].sort((left, right) => right.fillLevelPercent - left.fillLevelPercent);
+        ? eligibleCandidates.filter((item) => manualIds.has(item.id))
+        : [...eligibleCandidates].sort((left, right) => right.fillLevelPercent - left.fillLevelPercent);
 
     const heuristicRoute = this.computeHeuristicRoute(selectedCandidates);
     const route = this.refineRouteWithTwoOpt(heuristicRoute);
@@ -133,7 +152,12 @@ export class PlanningRepository {
       })),
       metrics: {
         totalDistanceKm: Number(totalDistanceKm.toFixed(2)),
-        estimatedDurationMinutes: Math.round((totalDistanceKm / 24) * 60 + route.length * 4),
+        estimatedDurationMinutes: this.estimateRouteDurationMinutes(totalDistanceKm, route.length),
+        deferredForNearbyTours,
+      },
+      scheduleContext: {
+        scheduledFor: scheduledFor.toISOString(),
+        conflictWindowMinutes: SCHEDULE_CONFLICT_WINDOW_MINUTES,
       },
     };
   }
@@ -149,6 +173,8 @@ export class PlanningRepository {
         .select({
           id: containers.id,
           zoneId: containers.zoneId,
+          latitude: containers.latitude,
+          longitude: containers.longitude,
         })
         .from(containers)
         .where(inArray(containers.id, uniqueOrderedContainerIds));
@@ -177,12 +203,23 @@ export class PlanningRepository {
         throw new Error('Failed to create planned tour');
       }
 
+      const orderedContainers = dto.orderedContainerIds.map((containerId) => {
+        const match = selectedContainers.find((container) => container.id === containerId);
+        if (!match) {
+          throw new BadRequestException('One or more orderedContainerIds were not found');
+        }
+
+        return match;
+      });
+      const stopEtas = this.computeStopEtas(orderedContainers, new Date(dto.scheduledFor));
+
       await tx.insert(tourStops).values(
         dto.orderedContainerIds.map((containerId, index) => ({
           tourId: createdTour.id,
           containerId,
           stopOrder: index + 1,
           status: 'pending',
+          eta: stopEtas[index],
         })),
       );
 
@@ -275,6 +312,7 @@ export class PlanningRepository {
         containerId: container.id,
         stopOrder: 1,
         status: 'pending',
+        eta: emergencyTour.scheduledFor,
       });
 
       await tx.insert(auditLogs).values({
@@ -301,7 +339,7 @@ export class PlanningRepository {
     const { periodStart, periodEnd } = this.normalizeReportPeriod(dto.periodStart, dto.periodEnd);
     const selectedKpis = this.normalizeSelectedKpis(dto.selectedKpis);
 
-    const normalizedEmailTo = typeof dto.emailTo === 'string' ? dto.emailTo.trim() : '';
+    const normalizedEmailTo = this.normalizeRecipientEmail(dto.emailTo);
     if (dto.sendEmail && normalizedEmailTo.length === 0) {
       throw new BadRequestException('emailTo is required when sendEmail is true');
     }
@@ -317,7 +355,7 @@ export class PlanningRepository {
         periodEnd,
         selectedKpis,
         format: reportArtifact.format,
-        status: 'generated',
+        status: REPORT_STATUS_GENERATED,
         sendEmail: dto.sendEmail ?? false,
         emailTo: dto.sendEmail ? normalizedEmailTo : null,
         fileContent: reportArtifact.encodedContent,
@@ -336,15 +374,15 @@ export class PlanningRepository {
       oldValues: null,
       newValues: {
         sendEmail: dto.sendEmail ?? false,
-        emailTo: dto.emailTo ?? null,
+        emailTo: dto.sendEmail ? normalizedEmailTo : null,
       },
     });
 
-    return created;
+    return this.finalizeReportDelivery(created, actorUserId);
   }
 
   async listReportHistory() {
-    return this.db.select().from(reportExports).orderBy(desc(reportExports.createdAt)).limit(50);
+    return this.db.select().from(reportExports).orderBy(desc(reportExports.createdAt)).limit(100);
   }
 
   async getReportById(reportId: string) {
@@ -374,7 +412,7 @@ export class PlanningRepository {
         periodEnd: source.periodEnd,
         selectedKpis,
         format: reportArtifact.format,
-        status: 'generated',
+        status: REPORT_STATUS_GENERATED,
         sendEmail: source.sendEmail,
         emailTo: source.emailTo,
         fileContent: reportArtifact.encodedContent,
@@ -394,7 +432,57 @@ export class PlanningRepository {
       newValues: { regeneratedFrom: reportId },
     });
 
-    return created;
+    return this.finalizeReportDelivery(created, actorUserId);
+  }
+
+  private async finalizeReportDelivery(report: ReportExport, actorUserId: string) {
+    if (!report.sendEmail || !report.emailTo) {
+      return report;
+    }
+
+    try {
+      const delivery = await deliverReportByEmail(report);
+      const updatedReport = await this.updateReportStatus(report.id, REPORT_STATUS_EMAIL_DELIVERED);
+
+      await this.db.insert(auditLogs).values({
+        userId: actorUserId,
+        action: 'manager_report_email_delivered',
+        resourceType: 'report_exports',
+        resourceId: report.id,
+        oldValues: { status: report.status },
+        newValues: {
+          status: updatedReport.status,
+          deliveryChannel: delivery.channel,
+          deliveredAt: delivery.deliveredAt,
+          deliveryStatus: delivery.status,
+          outboxPath: delivery.outboxPath,
+          recipient: delivery.recipient,
+        },
+      });
+
+      return updatedReport;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown delivery error';
+      const updatedReport = await this.updateReportStatus(report.id, REPORT_STATUS_EMAIL_DELIVERY_FAILED);
+
+      await this.db.insert(auditLogs).values({
+        userId: actorUserId,
+        action: 'manager_report_email_failed',
+        resourceType: 'report_exports',
+        resourceId: report.id,
+        oldValues: { status: report.status },
+        newValues: {
+          status: updatedReport.status,
+          error: errorMessage,
+          recipient: report.emailTo,
+        },
+      });
+
+      return {
+        ...updatedReport,
+        deliveryError: errorMessage,
+      };
+    }
   }
 
   private normalizeReportPeriod(rawPeriodStart: unknown, rawPeriodEnd: unknown) {
@@ -429,6 +517,74 @@ export class PlanningRepository {
     }
 
     return selectedKpis;
+  }
+
+  private normalizeRecipientEmail(rawEmail: unknown) {
+    if (typeof rawEmail !== 'string') {
+      return '';
+    }
+
+    return rawEmail.trim().toLowerCase();
+  }
+
+  private async updateReportStatus(reportId: string, status: string) {
+    const [updated] = await this.db
+      .update(reportExports)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(reportExports.id, reportId))
+      .returning();
+
+    if (!updated) {
+      throw new Error('Failed to update report status');
+    }
+
+    return updated;
+  }
+
+  private async getBlockedContainerIdsForSchedule(zoneId: string, scheduledFor: Date) {
+    if (Number.isNaN(scheduledFor.getTime())) {
+      return new Set<string>();
+    }
+
+    const windowStart = new Date(scheduledFor.getTime() - SCHEDULE_CONFLICT_WINDOW_MINUTES * 60_000);
+    const windowEnd = new Date(scheduledFor.getTime() + SCHEDULE_CONFLICT_WINDOW_MINUTES * 60_000);
+
+    const scheduledStops = await this.db
+      .select({
+        containerId: tourStops.containerId,
+        tourStatus: tours.status,
+      })
+      .from(tourStops)
+      .innerJoin(tours, eq(tourStops.tourId, tours.id))
+      .where(
+        and(
+          eq(tours.zoneId, zoneId),
+          gte(tours.scheduledFor, windowStart),
+          lte(tours.scheduledFor, windowEnd),
+        ),
+      );
+
+    const blockedContainerIds = new Set<string>();
+    for (const scheduledStop of scheduledStops) {
+      if (this.isTerminalTourStatus(scheduledStop.tourStatus)) {
+        continue;
+      }
+
+      blockedContainerIds.add(scheduledStop.containerId);
+    }
+
+    return blockedContainerIds;
+  }
+
+  private isTerminalTourStatus(status: unknown) {
+    if (typeof status !== 'string') {
+      return false;
+    }
+
+    return TERMINAL_TOUR_STATUSES.has(status.trim().toLowerCase());
   }
 
   private async buildReportPayload(periodStart: Date, periodEnd: Date, selectedKpis: string[]) {
@@ -578,5 +734,39 @@ export class PlanningRepository {
     }
 
     return total;
+  }
+
+  private estimateRouteDurationMinutes(totalDistanceKm: number, stopCount: number) {
+    return Math.round((totalDistanceKm / AVERAGE_ROUTE_SPEED_KMH) * 60 + stopCount * STOP_SERVICE_DURATION_MINUTES);
+  }
+
+  private estimateLegTravelMinutes(fromNode: Record<string, unknown>, toNode: Record<string, unknown>) {
+    const distanceKm = this.distanceBetweenNodes(fromNode, toNode);
+    if (distanceKm <= 0) {
+      return 0;
+    }
+
+    return Math.max(1, Math.round((distanceKm / AVERAGE_ROUTE_SPEED_KMH) * 60));
+  }
+
+  private computeStopEtas(route: Array<Record<string, unknown>>, scheduledFor: Date) {
+    if (route.length === 0) {
+      return [];
+    }
+
+    const stopEtas: Date[] = [new Date(scheduledFor)];
+
+    for (let index = 1; index < route.length; index += 1) {
+      const previousEta = stopEtas[index - 1];
+      const travelMinutes = this.estimateLegTravelMinutes(route[index - 1], route[index]);
+      const eta = new Date(
+        previousEta.getTime() +
+          (STOP_SERVICE_DURATION_MINUTES + travelMinutes) * 60_000,
+      );
+
+      stopEtas.push(eta);
+    }
+
+    return stopEtas;
   }
 }

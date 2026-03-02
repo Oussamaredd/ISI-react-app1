@@ -34,6 +34,16 @@ type TourFilters = {
   offset: number;
 };
 
+type LatLngPoint = {
+  latitude: number | null;
+  longitude: number | null;
+};
+
+const TERMINAL_TOUR_STATUSES = new Set(['completed', 'closed', 'cancelled']);
+const EARTH_RADIUS_KM = 6371;
+const AVERAGE_ROUTE_SPEED_KMH = 24;
+const STOP_SERVICE_DURATION_MINUTES = 4;
+
 @Injectable()
 export class ToursRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
@@ -73,7 +83,7 @@ export class ToursRepository {
   }
 
   async getAgentTour(agentUserId: string) {
-    const [tour] = await this.db
+    const assignedTours = await this.db
       .select({
         id: tours.id,
         name: tours.name,
@@ -81,12 +91,14 @@ export class ToursRepository {
         scheduledFor: tours.scheduledFor,
         zoneId: tours.zoneId,
         zoneName: zones.name,
+        updatedAt: tours.updatedAt,
       })
       .from(tours)
       .leftJoin(zones, eq(tours.zoneId, zones.id))
       .where(eq(tours.assignedAgentId, agentUserId))
-      .orderBy(asc(tours.scheduledFor))
-      .limit(1);
+      .orderBy(asc(tours.scheduledFor));
+
+    const tour = this.selectActionableTour(assignedTours);
 
     if (!tour) {
       return null;
@@ -116,9 +128,12 @@ export class ToursRepository {
       itinerary: stops.map((stop) => ({
         stopId: stop.id,
         order: stop.stopOrder,
+        status: stop.status,
+        eta: stop.eta,
         latitude: stop.latitude,
         longitude: stop.longitude,
       })),
+      routeSummary: this.buildRouteSummary(tour.scheduledFor, stops),
     };
   }
 
@@ -133,11 +148,25 @@ export class ToursRepository {
         throw new ForbiddenException('You are not assigned to this tour');
       }
 
-      const [updatedTour] = await tx
-        .update(tours)
-        .set({ status: 'in_progress', updatedAt: new Date() })
-        .where(eq(tours.id, tourId))
-        .returning();
+      if (this.isTerminalStatus(tour.status)) {
+        throw new BadRequestException('Completed tours cannot be restarted.');
+      }
+
+      const [activeStop] = await tx
+        .select()
+        .from(tourStops)
+        .where(and(eq(tourStops.tourId, tourId), eq(tourStops.status, 'active')))
+        .orderBy(asc(tourStops.stopOrder))
+        .limit(1);
+
+      let updatedTour = tour;
+      if (tour.status !== 'in_progress') {
+        [updatedTour] = await tx
+          .update(tours)
+          .set({ status: 'in_progress', updatedAt: new Date() })
+          .where(eq(tours.id, tourId))
+          .returning();
+      }
 
       const [firstPendingStop] = await tx
         .select()
@@ -146,16 +175,31 @@ export class ToursRepository {
         .orderBy(asc(tourStops.stopOrder))
         .limit(1);
 
-      if (firstPendingStop) {
+      const activeStopId = activeStop?.id ?? firstPendingStop?.id ?? null;
+
+      if (!activeStop && firstPendingStop) {
         await tx
           .update(tourStops)
           .set({ status: 'active', updatedAt: new Date() })
           .where(eq(tourStops.id, firstPendingStop.id));
       }
 
+      if (tour.status !== 'in_progress') {
+        await tx.insert(auditLogs).values({
+          userId: actorUserId,
+          action: 'tour_started',
+          resourceType: 'tours',
+          resourceId: tourId,
+          oldValues: null,
+          newValues: {
+            firstActiveStopId: activeStopId,
+          },
+        });
+      }
+
       return {
         ...updatedTour,
-        firstActiveStopId: firstPendingStop?.id ?? null,
+        firstActiveStopId: activeStopId,
       };
     });
   }
@@ -169,6 +213,10 @@ export class ToursRepository {
 
       if (tour.assignedAgentId && tour.assignedAgentId !== actorUserId) {
         throw new ForbiddenException('You are not assigned to this tour');
+      }
+
+      if (this.isTerminalStatus(tour.status)) {
+        throw new BadRequestException('This tour has already been completed.');
       }
 
       const [stop] = await tx
@@ -198,6 +246,26 @@ export class ToursRepository {
 
       if (qrCode && qrCode !== stop.containerCode) {
         throw new BadRequestException('QR code mismatch. Use manual fallback selection if needed.');
+      }
+
+      if (stop.status === 'completed') {
+        const [existingActiveStop] = await tx
+          .select()
+          .from(tourStops)
+          .where(and(eq(tourStops.tourId, tourId), eq(tourStops.status, 'active')))
+          .orderBy(asc(tourStops.stopOrder))
+          .limit(1);
+
+        return {
+          event: null,
+          validatedStopId: stop.id,
+          nextStopId: existingActiveStop?.id ?? null,
+          alreadyValidated: true,
+        };
+      }
+
+      if (stop.status !== 'active') {
+        throw new BadRequestException('Only the active stop can be validated.');
       }
 
       const [event] = await tx
@@ -334,7 +402,7 @@ export class ToursRepository {
       throw new NotFoundException('Tour not found');
     }
 
-    const [collectionRows, anomalyRows] = await Promise.all([
+    const [collectionRows, anomalyRows, auditRows] = await Promise.all([
       this.db
         .select({
           id: collectionEvents.id,
@@ -367,9 +435,26 @@ export class ToursRepository {
         .from(anomalyReports)
         .leftJoin(users, eq(anomalyReports.reporterUserId, users.id))
         .where(eq(anomalyReports.tourId, tourId)),
+      this.db
+        .select({
+          id: auditLogs.id,
+          createdAt: auditLogs.createdAt,
+          type: sql<string>`'tour_started'`,
+          details: sql`jsonb_build_object('action', ${auditLogs.action})`,
+          actorDisplayName: users.displayName,
+        })
+        .from(auditLogs)
+        .leftJoin(users, eq(auditLogs.userId, users.id))
+        .where(
+          and(
+            eq(auditLogs.resourceType, 'tours'),
+            eq(auditLogs.resourceId, tourId),
+            eq(auditLogs.action, 'tour_started'),
+          ),
+        ),
     ]);
 
-    return [...collectionRows, ...anomalyRows].sort(
+    return [...collectionRows, ...anomalyRows, ...auditRows].sort(
       (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
     );
   }
@@ -473,5 +558,141 @@ export class ToursRepository {
     }
 
     return conditions.length > 0 ? and(...conditions) : undefined;
+  }
+
+  private selectActionableTour<
+    T extends {
+      status: string;
+      scheduledFor: Date;
+    },
+  >(assignedTours: T[]) {
+    const nonTerminalTours = assignedTours.filter((tour) => !this.isTerminalStatus(tour.status));
+    if (nonTerminalTours.length === 0) {
+      return null;
+    }
+
+    const activeTour = nonTerminalTours.find(
+      (tour) => this.normalizeStatus(tour.status) === 'in_progress',
+    );
+    if (activeTour) {
+      return activeTour;
+    }
+
+    const now = Date.now();
+    const upcomingTours = nonTerminalTours
+      .filter((tour) => new Date(tour.scheduledFor).getTime() >= now)
+      .sort(
+        (left, right) =>
+          new Date(left.scheduledFor).getTime() - new Date(right.scheduledFor).getTime(),
+      );
+    if (upcomingTours.length > 0) {
+      return upcomingTours[0];
+    }
+
+    return [...nonTerminalTours].sort(
+      (left, right) =>
+        new Date(right.scheduledFor).getTime() - new Date(left.scheduledFor).getTime(),
+    )[0];
+  }
+
+  private buildRouteSummary(
+    scheduledFor: Date,
+    stops: Array<{
+      status: string;
+      stopOrder: number;
+      latitude?: string | null;
+      longitude?: string | null;
+    }>,
+  ) {
+    const totalStops = stops.length;
+    const completedStops = stops.filter((stop) => this.normalizeStatus(stop.status) === 'completed').length;
+    const activeStop =
+      stops.find((stop) => this.normalizeStatus(stop.status) === 'active') ??
+      stops.find((stop) => this.normalizeStatus(stop.status) === 'pending') ??
+      null;
+    const remainingStops = Math.max(0, totalStops - completedStops);
+    const totalDistanceKm = this.computeRouteDistanceKm(stops);
+
+    return {
+      totalStops,
+      completedStops,
+      remainingStops,
+      activeStopOrder: activeStop?.stopOrder ?? null,
+      completionPercent: totalStops === 0 ? 0 : Math.round((completedStops / totalStops) * 100),
+      totalDistanceKm: Number(totalDistanceKm.toFixed(2)),
+      estimatedDurationMinutes: Math.round(
+        (totalDistanceKm / AVERAGE_ROUTE_SPEED_KMH) * 60 + totalStops * STOP_SERVICE_DURATION_MINUTES,
+      ),
+      isOverdue: new Date(scheduledFor).getTime() < Date.now(),
+    };
+  }
+
+  private computeRouteDistanceKm(
+    stops: Array<{
+      latitude?: string | null;
+      longitude?: string | null;
+    }>,
+  ) {
+    if (stops.length <= 1) {
+      return 0;
+    }
+
+    let total = 0;
+    for (let index = 1; index < stops.length; index += 1) {
+      total += this.distanceBetweenStops(stops[index - 1], stops[index]);
+    }
+
+    return total;
+  }
+
+  private distanceBetweenStops(
+    fromStop: { latitude?: string | null; longitude?: string | null },
+    toStop: { latitude?: string | null; longitude?: string | null },
+  ) {
+    const from = this.toLatLngPoint(fromStop);
+    const to = this.toLatLngPoint(toStop);
+
+    if (
+      from.latitude == null ||
+      from.longitude == null ||
+      to.latitude == null ||
+      to.longitude == null
+    ) {
+      return 0;
+    }
+
+    const dLat = this.toRadians(to.latitude - from.latitude);
+    const dLng = this.toRadians(to.longitude - from.longitude);
+    const lat1 = this.toRadians(from.latitude);
+    const lat2 = this.toRadians(to.latitude);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return EARTH_RADIUS_KM * c;
+  }
+
+  private toLatLngPoint(stop: { latitude?: string | null; longitude?: string | null }): LatLngPoint {
+    const latitude = stop.latitude == null ? null : Number(stop.latitude);
+    const longitude = stop.longitude == null ? null : Number(stop.longitude);
+
+    return {
+      latitude: Number.isFinite(latitude) ? latitude : null,
+      longitude: Number.isFinite(longitude) ? longitude : null,
+    };
+  }
+
+  private toRadians(value: number) {
+    return (value * Math.PI) / 180;
+  }
+
+  private normalizeStatus(status: string | null | undefined) {
+    return status?.trim().toLowerCase() ?? '';
+  }
+
+  private isTerminalStatus(status: string | null | undefined) {
+    return TERMINAL_TOUR_STATUSES.has(this.normalizeStatus(status));
   }
 }

@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-import { API_BASE } from '../services/api';
+import { AUTH_SESSION_INVALIDATED_EVENT, API_BASE, createApiHeaders } from '../services/api';
 import { authApi, type AuthSuccess, type AuthUser } from '../services/authApi';
-import { clearAccessToken, getAccessToken, setAccessToken, withAuthHeader } from '../services/authToken';
+import { clearAccessToken, getAccessToken, setAccessToken } from '../services/authToken';
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -21,7 +21,7 @@ const AUTH_RETRY_DELAY_MS = 300;
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAccessToken()));
   const [isLoading, setIsLoading] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           {
             credentials: 'include',
             signal: requestController.signal,
-            headers: Object.fromEntries(withAuthHeader().entries()),
+            headers: createApiHeaders(),
           },
         );
 
@@ -83,6 +83,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             authenticated?: boolean;
             user?: AuthUser;
           };
+
+          if (!payload.authenticated && getAccessToken()) {
+            clearAccessToken();
+          }
+
           applyAuthenticatedState(payload.authenticated ? (payload.user ?? null) : null);
           setIsLoading(false);
           return;
@@ -106,8 +111,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
+    if (getAccessToken()) {
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      return;
+    }
+
     applyAuthenticatedState(null);
     setIsLoading(false);
+  }, [applyAuthenticatedState]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleSessionInvalidated = () => {
+      abortControllerRef.current?.abort();
+      clearAccessToken();
+      applyAuthenticatedState(null);
+      setIsLoading(false);
+    };
+
+    window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
+    };
   }, [applyAuthenticatedState]);
 
   useEffect(() => {
@@ -130,6 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     (session: AuthSuccess) => {
       setAccessToken(session.accessToken);
       applyAuthenticatedState(session.user);
+      setIsLoading(false);
     },
     [applyAuthenticatedState],
   );
@@ -142,6 +172,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       clearAccessToken();
       applyAuthenticatedState(null);
+      setIsLoading(false);
     }
   }, [applyAuthenticatedState]);
 
