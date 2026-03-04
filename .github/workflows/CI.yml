@@ -211,7 +211,13 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
           if [[ -n "${SONAR_TOKEN}" && -n "${SONAR_HOST_URL}" ]]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            sonar_probe_url="${SONAR_HOST_URL%/}/api/server/version"
+            if curl --silent --show-error --fail --max-time 10 "$sonar_probe_url" > /dev/null; then
+              echo "enabled=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "Skipping SonarQube Analysis because SONAR_HOST_URL is unreachable from this runner."
+            fi
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "Skipping SonarQube Analysis because SONAR_TOKEN or SONAR_HOST_URL is not configured."
