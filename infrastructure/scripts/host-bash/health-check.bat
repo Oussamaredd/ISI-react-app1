@@ -14,7 +14,7 @@ echo.
 
 echo Checking running containers...
 docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" ps
-if %errorlevel% equ 0 (
+if !errorlevel! equ 0 (
     set "DOCKER_READY=1"
 ) else (
     echo Docker Compose - UNHEALTHY
@@ -42,7 +42,7 @@ if "!DOCKER_READY!"=="1" (
 echo.
 echo Testing frontend UI...
 curl -fsS http://localhost:3000 >nul 2>&1
-if %errorlevel% equ 0 (
+if !errorlevel! equ 0 (
     echo Frontend UI - HEALTHY
 ) else (
     echo Frontend UI - UNHEALTHY
@@ -51,28 +51,47 @@ if %errorlevel% equ 0 (
 
 echo Testing frontend edge readiness...
 curl -fsS http://localhost:3000/api/health/ready >nul 2>&1
-if %errorlevel% equ 0 (
+if !errorlevel! equ 0 (
     echo Frontend edge readiness - HEALTHY
 ) else (
     echo Frontend edge readiness - UNHEALTHY
     set "HAS_FAILURE=1"
 )
 
-echo Testing backend liveness...
-curl -fsS http://localhost:3001/health >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Backend liveness - HEALTHY
+echo Testing backend host port closure...
+curl -sS --connect-timeout 2 http://localhost:3001/health >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Backend host port - HEALTHY, closed to the host
 ) else (
-    echo Backend liveness - UNHEALTHY
+    echo Backend host port - UNHEALTHY, exposed to the host
     set "HAS_FAILURE=1"
 )
 
-echo Testing backend readiness...
-curl -fsS http://localhost:3001/api/health/ready >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Backend readiness - HEALTHY
+echo Testing backend internal liveness...
+if "!DOCKER_READY!"=="1" (
+    docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" exec -T backend curl -fsS http://localhost:3001/health >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Backend internal liveness - HEALTHY
+    ) else (
+        echo Backend internal liveness - UNHEALTHY
+        set "HAS_FAILURE=1"
+    )
 ) else (
-    echo Backend readiness - UNHEALTHY
+    echo Backend internal liveness - UNHEALTHY
+    set "HAS_FAILURE=1"
+)
+
+echo Testing backend internal readiness...
+if "!DOCKER_READY!"=="1" (
+    docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" exec -T backend curl -fsS http://localhost:3001/api/health/ready >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo Backend internal readiness - HEALTHY
+    ) else (
+        echo Backend internal readiness - UNHEALTHY
+        set "HAS_FAILURE=1"
+    )
+) else (
+    echo Backend internal readiness - UNHEALTHY
     set "HAS_FAILURE=1"
 )
 

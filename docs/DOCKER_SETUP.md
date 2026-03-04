@@ -27,20 +27,26 @@ Workspace wrappers:
 npm run infra:up
 npm run infra:down
 npm run infra:health
+npm run smoke-test
 ```
 
 `npm run infra:health` exits non-zero if Docker is unreachable or any core service is unhealthy.
+`npm run smoke-test` validates the strict Docker single-entrypoint contract and the OAuth callback path on the `3000` edge.
 
 ## Expected Core State
 
 - `ticket_db`: healthy
 - `ticket_migrate`: exited successfully
 - `ticket_backend`: healthy
-- `ticket_frontend`: running
+- `ticket_frontend`: healthy
 
-Backend health semantics:
-- liveness: `GET http://localhost:3001/health`
-- readiness (container/LB probe): `GET http://localhost:3001/api/health/ready`
+## Port Contract
+
+- Browser-facing entrypoint: `http://localhost:3000`
+- Browser-facing API: `http://localhost:3000/api`
+- Backend keeps `API_PORT=3001` internally on the Docker network only
+- Host `3001` should remain closed during Docker dev; if it is reachable, the single-entrypoint contract is broken
+- Backend liveness/readiness checks run inside the backend container on `http://localhost:3001/health` and `http://localhost:3001/api/health/ready`
 
 ## Migration Commands
 

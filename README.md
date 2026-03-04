@@ -52,18 +52,26 @@ Optional service-scoped templates:
 cp api/.env.example api/.env
 ```
 
-Default local endpoints:
+## Port Contract
 
-- Frontend: `http://localhost:5173`
-- Frontend edge API: `http://localhost:5173/api`
-- Frontend edge health: `http://localhost:5173/health`
-- Frontend edge readiness: `http://localhost:5173/api/health/ready`
-- API (direct): `http://localhost:3001/api`
-- API liveness: `http://localhost:3001/health`
-- API readiness: `http://localhost:3001/api/health/ready`
-- API diagnostics: `http://localhost:3001/api/health/database`
+Host/native dev:
 
-The browser should use the frontend origin for `/api` and `/health`, while `http://localhost:3001` stays available for direct API checks. If frontend `/api/*` requests fail, verify the API process directly with:
+- Browser entrypoint: `http://localhost:5173`
+- Public edge API: `http://localhost:5173/api`
+- Public edge health: `http://localhost:5173/health`
+- API process listen port (direct host diagnostics only): `http://localhost:3001`
+- Root `npm run dev` waits on `http://localhost:3001/api/health/ready` before Vite starts
+
+Docker dev:
+
+- Sole browser entrypoint: `http://localhost:3000`
+- Public edge API: `http://localhost:3000/api`
+- Public edge health: `http://localhost:3000/health`
+- Backend container still listens on `API_PORT=3001`, but that port is internal-only and not published to the host
+
+Use `5173` or `3000` in the browser. Use direct `3001` only for host-native API diagnostics. In Docker, `3000` is the only browser-facing entrypoint.
+
+If host-native frontend `/api/*` requests fail, verify the API process directly with:
 
 ```bash
 curl -f http://localhost:3001/health
@@ -74,10 +82,14 @@ If the readiness check fails, `npm run dev` will stop before launching the front
 
 ## Auth Routes (Host/Docker)
 
-- Login: `http://localhost:5173/login`
-- Signup: `http://localhost:5173/signup`
-- Forgot password: `http://localhost:5173/forgot-password`
-- Reset password: `http://localhost:5173/reset-password`
+The frontend auth routes are path-stable across host and Docker:
+
+- `/login`
+- `/signup`
+- `/forgot-password`
+- `/reset-password`
+
+Resolve them on the frontend origin defined in the Port Contract (`5173` for host dev, `3000` for Docker dev).
 
 Local auth contract:
 
@@ -106,6 +118,7 @@ Local auth contract:
 ```bash
 cp infrastructure/environments/.env.docker.example infrastructure/environments/.env.docker
 npm run infra:up
+npm run smoke-test
 ```
 
 Equivalent compose command:
@@ -114,13 +127,7 @@ Equivalent compose command:
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core up --build -d
 ```
 
-Default Docker browser entrypoints:
-
-- Frontend: `http://localhost:3000`
-- Frontend edge API: `http://localhost:3000/api`
-- Frontend edge health: `http://localhost:3000/health`
-- Frontend edge readiness: `http://localhost:3000/api/health/ready`
-- API (direct): `http://localhost:3001/api`
+Docker uses the Port Contract above: `http://localhost:3000` is the only browser-facing entrypoint, and the backend keeps `API_PORT=3001` on the internal Docker network.
 
 ## Env Key Canonicalization
 
@@ -153,8 +160,10 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run db:migrate` - run Drizzle migrations
 - `npm run db:seed` - run seeders
 - `npm run infra:up` / `npm run infra:down` / `npm run infra:health` - Docker lifecycle wrappers
+- `npm run smoke-test` - strict Docker edge smoke test (public `3000` edge + internal backend health)
 
 `npm run infra:health` is a strict gate: it exits non-zero when Docker is unreachable or any core service health check fails.
+`npm run smoke-test` validates the single-entrypoint Docker contract: host `3001` stays closed, internal backend `3001` stays healthy, and OAuth `/api/auth/google` still emits the `3000` callback origin.
 
 ## Architecture Contract
 

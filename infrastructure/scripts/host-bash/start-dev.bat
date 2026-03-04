@@ -64,7 +64,7 @@ docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" ps
 echo.
 echo Service URLs:
 echo    Frontend: http://localhost:3000
-echo    Backend:  http://localhost:3001/api
+echo    Backend:  internal-only on container port 3001 (use the frontend edge on http://localhost:3000/api)
 echo.
 echo To view logs: docker compose -f infrastructure/docker-compose.yml logs -f
 echo.

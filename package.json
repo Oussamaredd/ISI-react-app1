@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=22.0.0",
     "npm": ">=9.0.0"
   },
   "scripts": {
@@ -49,7 +49,8 @@
     "validate-specs": "node ./infrastructure/scripts/validate-spec-contracts.mjs",
     "infra:up": "npm run docker:dev --workspace=ecotrack-infrastructure",
     "infra:down": "npm run docker:down --workspace=ecotrack-infrastructure",
-    "infra:health": "npm run health --workspace=ecotrack-infrastructure"
+    "infra:health": "npm run health --workspace=ecotrack-infrastructure",
+    "smoke-test": "npm run smoke --workspace=ecotrack-infrastructure"
   },
   "workspaces": [
     "app",

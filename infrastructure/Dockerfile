@@ -3,7 +3,7 @@
 # Monorepo build image for the API service.
 # Uses the root workspace lockfile and builds database + API packages.
 
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /workspace
 
 COPY package*.json ./
@@ -21,7 +21,7 @@ COPY . .
 RUN npm run build --workspace=ecotrack-database
 RUN npm run build --workspace=ecotrack-api
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /workspace
 ENV NODE_ENV=production
 

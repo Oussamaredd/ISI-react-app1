@@ -88,6 +88,7 @@ Infrastructure:
 ```bash
 npm run infra:up
 npm run infra:health
+npm run smoke-test
 npm run infra:down
 ```
 

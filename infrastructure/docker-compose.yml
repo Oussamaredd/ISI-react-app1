@@ -48,9 +48,9 @@ services:
       dockerfile: infrastructure/Dockerfile
     container_name: ticket_backend
     restart: unless-stopped
-    ports:
-      # Keep the direct API port for explicit local diagnostics; browser traffic should use frontend.
-      - "3001:3001"
+    expose:
+      # Keep the API listener on 3001 for the internal Docker network only.
+      - "3001"
     env_file:
       - ./environments/.env.docker
     depends_on:

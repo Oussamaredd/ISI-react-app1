@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -56,7 +56,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -81,7 +81,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -141,7 +141,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -163,11 +163,32 @@ jobs:
           name: backend-coverage
           path: api/coverage
 
+  sonar-gate:
+    name: Sonar Gate
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check SonarQube configuration
+        id: check
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          if [[ -n "${SONAR_TOKEN}" && -n "${SONAR_HOST_URL}" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarQube Analysis because SONAR_TOKEN or SONAR_HOST_URL is not configured."
+          fi
+
   sonar:
     name: SonarQube Analysis
-    if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
+    if: ${{ needs.sonar-gate.outputs.enabled == 'true' }}
     runs-on: self-hosted
-    needs: [frontend, backend]
+    needs: [frontend, backend, sonar-gate]
 
     steps:
       - uses: actions/checkout@v4
@@ -189,7 +210,7 @@ jobs:
       - name: Install Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Sonar Scanner
         run: npm install -g sonar-scanner

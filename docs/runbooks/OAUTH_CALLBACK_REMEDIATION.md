@@ -8,7 +8,7 @@ This plan is focused on diagnosing and fixing callback routing/config mismatch w
 Current contract note:
 - Host dev public callback URI: `http://localhost:5173/api/auth/google/callback`
 - Docker dev public callback URI: `http://localhost:3000/api/auth/google/callback`
-- Direct API callback route on `http://localhost:3001/api/auth/google/callback` remains available for diagnostics, but it is no longer the canonical browser-facing callback origin.
+- Direct API callback route on `http://localhost:3001/api/auth/google/callback` remains available only in host-native diagnostics; in Docker dev, the backend `3001` port is internal-only and browser traffic must use `http://localhost:3000`.
 
 ## Confirmed Root Cause (Read-Only Diagnosis)
 - API runtime is configured for port `3001`:
@@ -161,7 +161,7 @@ Execution notes:
 - Root cause for persisted issue: stale Docker runtime/image state (services restarted without a clean recreate using current code/env).
 - Applied operational fix: `npm run infra:down` then `npm run infra:up` (with rebuild/recreate).
 - Post-fix probe:
-  - `curl -D - http://localhost:3001/api/auth/google` now returns `redirect_uri=http://localhost:5173/api/auth/google/callback`.
+  - `curl -D - http://localhost:3000/api/auth/google` now returns `redirect_uri=http://localhost:3000/api/auth/google/callback`.
   - `http://localhost:<legacy-api-port>/auth/google/callback` remains unreachable (expected for legacy path).
 - Browser-interactive OAuth callback/cookie verification still requires manual run against the Google auth screen.
 

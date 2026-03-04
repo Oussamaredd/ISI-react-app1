@@ -224,15 +224,15 @@ echo "🏗️ Checking infrastructure..."
 docker compose up -d
 sleep 30
 docker compose ps
+npm run infra:health
 
-# Health checks
+# Smoke checks
 echo "🏥 Checking health..."
-curl -f http://localhost:3000 || exit 1
-curl -f http://localhost:3001/api/health || exit 1
+npm run smoke-test
 
 # Demo verification
 echo "🎮 Verifying demo..."
-curl -f http://localhost:3001/api/tickets
+curl -f http://localhost:3000/api/tickets
 curl -f http://localhost:9090/targets
 
 echo "✅ Portfolio ready!"

@@ -5,7 +5,9 @@
 EcoTrack exposes a REST API for citizen reporting, agent tour execution, manager planning, support workflows, and admin governance.
 
 - Browser-facing base URL (host dev): `http://localhost:5173/api`
-- Direct API base URL (local backend port): `http://localhost:3001/api`
+- Browser-facing base URL (Docker dev): `http://localhost:3000/api`
+- Direct API base URL (host-native backend diagnostics only): `http://localhost:3001/api`
+- In Docker, the backend `3001` port is internal-only; browser traffic must enter through the `3000` edge
 - Auth mode: JWT bearer token (`Authorization: Bearer <token>`) with cookie support for web auth flows
 - Response format: JSON
 - Correlation: `X-Request-Id` is returned on responses and reused from `x-request-id` when provided

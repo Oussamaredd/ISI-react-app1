@@ -58,6 +58,7 @@ const WORKFLOW_RULES = {
       'JWT_ACCESS_SECRET',
       'JWT_ACCESS_EXPIRES_IN',
       'CORS_ORIGINS',
+      'APP_URL',
       'MIGRATE_COMMAND',
       'ENABLE_SEED_DATA',
       'SEED_COMMAND',
@@ -511,6 +512,42 @@ function checkWorkflowAlignmentPolicy(entries, workflow, errors) {
       errors.push(
         `${workflow}: VITE_API_BASE_URL must resolve to the same public API origin as API_BASE_URL (${normalizedApiBaseUrl}).`,
       );
+    }
+  }
+
+  if (workflow === 'docker-dev') {
+    if (entries.has('APP_URL')) {
+      const rawAppUrl = String(entries.get('APP_URL') ?? '').trim();
+      const normalizedAppUrl = rawAppUrl
+        ? rawAppUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+        : null;
+
+      if (normalizedAppUrl && normalizedAppUrl !== normalizedApiBaseUrl) {
+        errors.push(
+          `${workflow}: APP_URL must resolve to the same public edge origin as API_BASE_URL (${normalizedApiBaseUrl}).`,
+        );
+      }
+    }
+
+    const apiPort = Number(String(entries.get('API_PORT') ?? '').trim());
+    if (Number.isFinite(apiPort) && apiPort > 0) {
+      try {
+        const parsed = new URL(normalizedApiBaseUrl);
+        const resolvedPort = parsed.port
+          ? Number(parsed.port)
+          : parsed.protocol === 'https:'
+            ? 443
+            : 80;
+        const isLoopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+
+        if (isLoopback && resolvedPort === apiPort) {
+          errors.push(
+            `${workflow}: API_BASE_URL must target the frontend edge origin, not the direct API listen port (${normalizedApiBaseUrl}).`,
+          );
+        }
+      } catch {
+        errors.push(`${workflow}: API_BASE_URL must be a valid URL for docker-dev alignment checks.`);
+      }
     }
   }
 }

@@ -37,6 +37,19 @@ Agent tour mapping note:
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - `GOOGLE_CALLBACK_URL` for OAuth redirect callback (required in deploy templates; canonical path is fixed and should match `API_BASE_URL + /api/auth/google/callback`)
 
+## Port Contract
+
+- Host/native dev:
+  - Browser entrypoint: `http://localhost:5173`
+  - Public edge API/health: `http://localhost:5173/api` and `http://localhost:5173/health`
+  - API process listen port for direct host diagnostics: `http://localhost:3001`
+- Docker dev:
+  - Sole browser entrypoint: `http://localhost:3000`
+  - Public edge API/health: `http://localhost:3000/api` and `http://localhost:3000/health`
+  - Backend keeps `API_PORT=3001` on the internal Docker network only; host `3001` should stay closed
+- `API_PORT` is the backend listen port, not the browser entrypoint.
+- `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
+
 ## Optional API Hardening Keys
 
 - `RATE_LIMIT_WINDOW_MS` for global throttling window (default `60000`)
@@ -70,7 +83,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
 - Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
-- Local `npm run dev` waits on `http://localhost:3001/api/health/ready` before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status
+- Local `npm run dev` waits on the host direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status
 
 ## Auth Exchange Flow
 
@@ -120,6 +133,7 @@ Removed runtime aliases (no longer read by API runtime):
 - `GOOGLE_CLIENT_ID` must use Google Web OAuth client format (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - When `API_BASE_URL` is not set and `GOOGLE_CALLBACK_URL` points at localhost, its port must match `API_PORT`
 - Google Console authorized redirect URI must exactly match runtime callback URI
+- In Docker, the callback must be reached through the frontend edge on `3000`; the backend `3001` port is internal-only
 
 ## Database Naming
 
