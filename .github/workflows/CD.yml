@@ -35,6 +35,8 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_cd
       API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
       SESSION_SECRET: cd-session-secret
       JWT_SECRET: cd-jwt-secret
       JWT_EXPIRES_IN: 7d
@@ -42,7 +44,7 @@ jobs:
       JWT_ACCESS_EXPIRES_IN: 15m
       GOOGLE_CLIENT_ID: 1234567890-cd.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: cd-google-client-secret
-      GOOGLE_CALLBACK_URL: http://localhost:3001/api/auth/google/callback
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
       CORS_ORIGINS: http://localhost:5173
     steps:
       - name: Checkout code
@@ -70,7 +72,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     env:
       VITE_BASE: /${{ github.event.repository.name }}/
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || vars.API_BASE_URL || vars.APP_URL }}
     
     steps:
       - name: Checkout code
@@ -89,7 +91,7 @@ jobs:
       - name: Validate deploy frontend env
         run: |
           if [ -z "${VITE_API_BASE_URL}" ]; then
-            echo "Missing required repository variable: VITE_API_BASE_URL"
+            echo "Missing required repository variable: define VITE_API_BASE_URL, API_BASE_URL, or APP_URL."
             echo "Set it in Settings > Secrets and variables > Actions > Variables."
             exit 1
           fi

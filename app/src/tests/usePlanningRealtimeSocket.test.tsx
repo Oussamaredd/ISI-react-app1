@@ -4,20 +4,13 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePlanningRealtimeSocket } from '../hooks/usePlanningRealtimeSocket';
+import { buildApiUrl } from '../services/api';
 
 const ioMock = vi.fn();
 
 vi.mock('socket.io-client', () => ({
   io: (...args: unknown[]) => ioMock(...args),
 }));
-
-vi.mock('../services/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../services/api')>();
-  return {
-    ...actual,
-    API_BASE: 'http://localhost:5173',
-  };
-});
 
 type SocketHandlers = Record<string, (payload?: unknown) => void>;
 
@@ -71,7 +64,7 @@ describe('usePlanningRealtimeSocket', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/api/planning/ws-session',
+      buildApiUrl('/api/planning/ws-session'),
       expect.objectContaining({ method: 'POST' }),
     );
 
@@ -156,12 +149,12 @@ describe('usePlanningRealtimeSocket', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      'http://localhost:5173/api/planning/ws-session',
+      buildApiUrl('/api/planning/ws-session'),
       expect.objectContaining({ method: 'POST' }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'http://localhost:5173/api/planning/ws/session',
+      buildApiUrl('/api/planning/ws/session'),
       expect.objectContaining({ method: 'POST' }),
     );
   });

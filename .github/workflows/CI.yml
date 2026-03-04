@@ -127,6 +127,8 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
       API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
       SESSION_SECRET: ci-session-secret
       JWT_SECRET: ci-jwt-secret
       JWT_EXPIRES_IN: 7d
@@ -134,7 +136,7 @@ jobs:
       JWT_ACCESS_EXPIRES_IN: 15m
       GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: ci-google-client-secret
-      GOOGLE_CALLBACK_URL: http://localhost:3001/api/auth/google/callback
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
       CORS_ORIGINS: http://localhost:5173
     steps:
       - uses: actions/checkout@v4
