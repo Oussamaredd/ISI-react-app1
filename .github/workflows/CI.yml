@@ -150,6 +150,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build database workspace for backend dependency
+        run: npm run build --workspace=ecotrack-database
+
       - name: Typecheck backend
         run: npm run typecheck --workspace=ecotrack-api
 
