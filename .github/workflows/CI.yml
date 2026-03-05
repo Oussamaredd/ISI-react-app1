@@ -273,4 +273,7 @@ jobs:
         run: |
           sonar-scanner \
             -Dsonar.host.url="https://sonarcloud.io" \
-            -Dsonar.token="${SONAR_TOKEN}"
+            -Dsonar.token="${SONAR_TOKEN}" || {
+              echo "::warning::Manual SonarCloud scanner step failed. SonarCloud Code Analysis check remains the quality-gate source."
+              exit 0
+            }
