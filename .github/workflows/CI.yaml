@@ -1,0 +1,798 @@
+name: CI Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full_run:
+        description: Force full CI lanes (ignore changed-path filters)
+        required: false
+        type: boolean
+        default: false
+      run_extended_quality:
+        description: Run extended quality checks (K6/ZAP/mutation/visual/lighthouse)
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-integration-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      api: ${{ steps.filter.outputs.api }}
+      database: ${{ steps.filter.outputs.database }}
+      infrastructure: ${{ steps.filter.outputs.infrastructure }}
+      ci: ${{ steps.filter.outputs.ci }}
+      root: ${{ steps.filter.outputs.root }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            app:
+              - 'app/**'
+            api:
+              - 'api/**'
+            database:
+              - 'database/**'
+            infrastructure:
+              - 'infrastructure/**'
+            ci:
+              - '.github/workflows/**'
+            root:
+              - 'package.json'
+              - 'package-lock.json'
+              - 'AGENTS.md'
+              - 'sonar-project.properties'
+
+  preflight:
+    name: Preflight - CDC Contracts and Architecture
+    runs-on: ubuntu-latest
+    needs: [changes]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate env policies and templates
+        run: npm run validate-env:all
+
+      - name: CDC Contracts - validate traceability matrix
+        run: npm run validate-specs
+
+      - name: Architecture boundaries lint
+        run: npm run lint
+
+      - name: Generate CDC evidence summary artifact
+        run: node infrastructure/scripts/ci/generate-cdc-summary.mjs
+
+      - name: Upload CDC evidence summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cdc-summary
+          path: |
+            tmp/ci/cdc-summary.json
+            tmp/ci/cdc-summary.md
+
+  database:
+    name: Database CI
+    runs-on: ubuntu-latest
+    needs: [changes, preflight]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_run == 'true') ||
+      needs.changes.outputs.app == 'true' ||
+      needs.changes.outputs.database == 'true' ||
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.infrastructure == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.root == 'true'
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketdb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ticketdb_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build database workspace
+        run: npm run build --workspace=ecotrack-database
+
+      - name: Typecheck database workspace
+        run: npm run typecheck --workspace=ecotrack-database
+
+      - name: Run database migrations
+        run: npm run db:migrate --workspace=ecotrack-database
+
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    needs: [changes, preflight]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_run == 'true') ||
+      needs.changes.outputs.app == 'true' ||
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.database == 'true' ||
+      needs.changes.outputs.infrastructure == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.root == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npm run typecheck --workspace=ecotrack-app
+
+      - name: Frontend key-journey E2E tests
+        run: npm run test:e2e --workspace=ecotrack-app
+
+      - name: Realtime Contract Gate
+        run: npm run test:realtime --workspace=ecotrack-app
+
+      - name: Frontend coverage tests
+        run: npm run test:coverage --workspace=ecotrack-app
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: app/coverage
+
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    needs: [changes, preflight]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_run == 'true') ||
+      needs.changes.outputs.app == 'true' ||
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.database == 'true' ||
+      needs.changes.outputs.infrastructure == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.root == 'true'
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketdb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ticketdb_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
+      API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
+      SESSION_SECRET: ci-session-secret
+      JWT_SECRET: ci-jwt-secret
+      JWT_EXPIRES_IN: 7d
+      JWT_ACCESS_SECRET: ci-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck backend
+        run: npm run typecheck --workspace=ecotrack-api
+
+      - name: Migrate database before backend tests
+        run: npm run db:migrate --workspace=ecotrack-database
+
+      - name: Backend tests
+        run: npm run test:api
+
+      - name: Backend coverage tests
+        run: npm run test:coverage:api
+
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: api/coverage
+
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: [changes, preflight]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_run == 'true') ||
+      needs.changes.outputs.app == 'true' ||
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.database == 'true' ||
+      needs.changes.outputs.infrastructure == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.root == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image using infrastructure Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./infrastructure/Dockerfile
+          push: false
+          load: false
+
+  sonar-gate:
+    name: SonarCloud Gate
+    runs-on: ubuntu-latest
+    needs: [changes, frontend, backend]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_run == 'true') ||
+      needs.changes.outputs.app == 'true' ||
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.database == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.root == 'true'
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+      reason: ${{ steps.check.outputs.reason }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check SonarCloud configuration
+        id: check
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [[ -z "${SONAR_TOKEN}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing-sonar-token" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarCloud analysis because SONAR_TOKEN is missing."
+            exit 0
+          fi
+
+          sonar_project_key="$(grep -E '^sonar\.projectKey=' sonar-project.properties | head -n1 | cut -d= -f2- | tr -d '\r')"
+          if [[ -z "${sonar_project_key}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing-sonar-project-key" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarCloud analysis because sonar.projectKey is missing in sonar-project.properties."
+            exit 0
+          fi
+
+          sonar_settings_json="$(curl -fsS --retry 3 --retry-delay 2 "https://sonarcloud.io/api/settings/values?component=${sonar_project_key}&keys=sonar.autoscan.enabled" || true)"
+          autoscan_enabled="$(
+            SONAR_SETTINGS_JSON="${sonar_settings_json}" node -e "
+              const raw = process.env.SONAR_SETTINGS_JSON || '';
+              try {
+                const payload = JSON.parse(raw);
+                const setting = (payload.settings || []).find((entry) => entry.key === 'sonar.autoscan.enabled');
+                process.stdout.write(String(setting?.value ?? 'false').toLowerCase());
+              } catch {
+                process.stdout.write('unknown');
+              }
+            "
+          )"
+
+          if [[ "${autoscan_enabled}" == "true" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=sonar-automatic-analysis-enabled" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarCloud CI scan because Automatic Analysis is enabled for ${sonar_project_key}. Disable Automatic Analysis in SonarCloud project settings to re-enable CI scan and quality gate."
+            exit 0
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "reason=ready" >> "$GITHUB_OUTPUT"
+
+  sonar:
+    name: SonarCloud Analysis and Quality Gate
+    if: ${{ needs.sonar-gate.outputs.enabled == 'true' }}
+    runs-on: ubuntu-latest
+    needs: [sonar-gate]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: app/coverage
+
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: api/coverage
+
+      - name: SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: SonarCloud quality gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+        timeout-minutes: 10
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+  ci-required:
+    name: CI Required
+    runs-on: ubuntu-latest
+    needs: [changes, preflight, database, frontend, backend, docker-build, sonar-gate, sonar]
+    if: always()
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      FULL_RUN: ${{ github.event.inputs.full_run }}
+      CHANGED_APP: ${{ needs.changes.outputs.app }}
+      CHANGED_API: ${{ needs.changes.outputs.api }}
+      CHANGED_DATABASE: ${{ needs.changes.outputs.database }}
+      CHANGED_INFRASTRUCTURE: ${{ needs.changes.outputs.infrastructure }}
+      CHANGED_CI: ${{ needs.changes.outputs.ci }}
+      CHANGED_ROOT: ${{ needs.changes.outputs.root }}
+      PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+      DATABASE_RESULT: ${{ needs.database.result }}
+      FRONTEND_RESULT: ${{ needs.frontend.result }}
+      BACKEND_RESULT: ${{ needs.backend.result }}
+      DOCKER_BUILD_RESULT: ${{ needs.docker-build.result }}
+      SONAR_GATE_RESULT: ${{ needs.sonar-gate.result }}
+      SONAR_GATE_ENABLED: ${{ needs.sonar-gate.outputs.enabled }}
+      SONAR_RESULT: ${{ needs.sonar.result }}
+    steps:
+      - name: Evaluate required jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          should_run_all=false
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            should_run_all=true
+          elif [[ "${EVENT_NAME}" == "workflow_dispatch" && "${FULL_RUN}" == "true" ]]; then
+            should_run_all=true
+          fi
+
+          should_run_database="${should_run_all}"
+          should_run_frontend="${should_run_all}"
+          should_run_backend="${should_run_all}"
+          should_run_docker_build="${should_run_all}"
+          should_run_sonar_gate="${should_run_all}"
+
+          if [[ "${should_run_database}" != "true" ]]; then
+            if [[ "${CHANGED_APP}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_API}" == "true" || "${CHANGED_INFRASTRUCTURE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
+              should_run_database=true
+            fi
+          fi
+
+          if [[ "${should_run_frontend}" != "true" ]]; then
+            if [[ "${CHANGED_APP}" == "true" || "${CHANGED_API}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_INFRASTRUCTURE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
+              should_run_frontend=true
+            fi
+          fi
+
+          if [[ "${should_run_backend}" != "true" ]]; then
+            if [[ "${CHANGED_APP}" == "true" || "${CHANGED_API}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_INFRASTRUCTURE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
+              should_run_backend=true
+            fi
+          fi
+
+          if [[ "${should_run_docker_build}" != "true" ]]; then
+            if [[ "${CHANGED_APP}" == "true" || "${CHANGED_API}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_INFRASTRUCTURE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
+              should_run_docker_build=true
+            fi
+          fi
+
+          if [[ "${should_run_sonar_gate}" != "true" ]]; then
+            if [[ "${CHANGED_APP}" == "true" || "${CHANGED_API}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
+              should_run_sonar_gate=true
+            fi
+          fi
+
+          failures=0
+
+          require_job() {
+            local job_name="$1"
+            local should_run="$2"
+            local result="$3"
+
+            if [[ "${should_run}" == "true" && "${result}" != "success" ]]; then
+              echo "::error::${job_name} expected success, got ${result}"
+              failures=1
+            fi
+          }
+
+          if [[ "${PREFLIGHT_RESULT}" != "success" ]]; then
+            echo "::error::Preflight expected success, got ${PREFLIGHT_RESULT}"
+            failures=1
+          fi
+
+          require_job "Database CI" "${should_run_database}" "${DATABASE_RESULT}"
+          require_job "Frontend CI" "${should_run_frontend}" "${FRONTEND_RESULT}"
+          require_job "Backend CI" "${should_run_backend}" "${BACKEND_RESULT}"
+          require_job "Docker Build Check" "${should_run_docker_build}" "${DOCKER_BUILD_RESULT}"
+          require_job "SonarCloud Gate" "${should_run_sonar_gate}" "${SONAR_GATE_RESULT}"
+
+          if [[ "${should_run_sonar_gate}" == "true" && "${SONAR_GATE_RESULT}" == "success" && "${SONAR_GATE_ENABLED}" == "true" && "${SONAR_RESULT}" != "success" ]]; then
+            echo "::error::SonarCloud analysis expected success, got ${SONAR_RESULT}"
+            failures=1
+          fi
+
+          if [[ "${failures}" -ne 0 ]]; then
+            echo "CI Required checks failed."
+            exit 1
+          fi
+
+          echo "CI Required checks passed."
+
+  quality-preflight:
+    name: Extended Quality Preflight
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+  k6-load-smoke:
+    name: Extended - K6 Load Smoke
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketdb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ticketdb_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
+      API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
+      SESSION_SECRET: ci-session-secret
+      JWT_SECRET: ci-jwt-secret
+      JWT_EXPIRES_IN: 7d
+      JWT_ACCESS_SECRET: ci-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Migrate database
+        run: npm run db:migrate --workspace=ecotrack-database
+
+      - name: Build backend
+        run: npm run build --workspace=ecotrack-api
+
+      - name: Start backend
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          npm run start --workspace=ecotrack-api > tmp/ci/k6-api.out.log 2> tmp/ci/k6-api.err.log &
+
+      - name: Wait for backend readiness
+        run: node infrastructure/scripts/wait-for-api-ready.mjs --url http://127.0.0.1:3001/api/health/ready
+
+      - name: Setup K6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run K6 smoke scenario
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          k6 run --summary-export tmp/ci/k6-summary.json infrastructure/performance/k6/api-health-smoke.js
+
+      - name: Upload K6 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-quality-report
+          path: |
+            tmp/ci/k6-summary.json
+            tmp/ci/k6-api.out.log
+            tmp/ci/k6-api.err.log
+
+  zap-baseline:
+    name: Extended - ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketdb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ticketdb_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
+      API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
+      SESSION_SECRET: ci-session-secret
+      JWT_SECRET: ci-jwt-secret
+      JWT_EXPIRES_IN: 7d
+      JWT_ACCESS_SECRET: ci-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Migrate database
+        run: npm run db:migrate --workspace=ecotrack-database
+
+      - name: Build backend
+        run: npm run build --workspace=ecotrack-api
+
+      - name: Start backend
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          npm run start --workspace=ecotrack-api > tmp/ci/zap-api.out.log 2> tmp/ci/zap-api.err.log &
+
+      - name: Wait for backend readiness
+        run: node infrastructure/scripts/wait-for-api-ready.mjs --url http://127.0.0.1:3001/api/health/ready
+
+      - name: Run ZAP baseline scan
+        shell: bash
+        run: |
+          docker run --rm --network host \
+            -v "${PWD}/tmp/ci:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:3001/api/health \
+            -r zap-report.html \
+            -w zap-report.md \
+            -J zap-report.json \
+            -m 5
+
+      - name: Upload ZAP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-quality-report
+          path: |
+            tmp/ci/zap-report.html
+            tmp/ci/zap-report.md
+            tmp/ci/zap-report.json
+            tmp/ci/zap-api.out.log
+            tmp/ci/zap-api.err.log
+
+  mutation:
+    name: Extended - Mutation Gate Hook
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    continue-on-error: true
+    env:
+      ENABLE_MUTATION_GATE: ${{ vars.CI_ENABLE_MUTATION_GATE || '0' }}
+      CI_QUALITY_STRICT: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation gate hook
+        run: node infrastructure/scripts/ci/run-mutation-gate.mjs
+
+  visual-regression:
+    name: Extended - Visual Regression Hook
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    continue-on-error: true
+    env:
+      ENABLE_VISUAL_GATE: ${{ vars.CI_ENABLE_VISUAL_GATE || '0' }}
+      PERCY_COMMAND: ${{ vars.CI_PERCY_COMMAND || '' }}
+      PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run visual regression hook
+        run: node infrastructure/scripts/ci/run-visual-gate.mjs
+
+  lighthouse:
+    name: Extended - Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    continue-on-error: true
+    env:
+      ENABLE_LIGHTHOUSE_GATE: ${{ vars.CI_ENABLE_LIGHTHOUSE_GATE || '1' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build --workspace=ecotrack-app
+
+      - name: Run Lighthouse CI gate
+        run: node infrastructure/scripts/ci/run-lighthouse-gate.mjs
+
+      - name: Upload Lighthouse artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-quality-report
+          path: tmp/ci/lighthouse
+
+  quality-summary:
+    name: Extended Quality Summary
+    runs-on: ubuntu-latest
+    needs: [k6-load-smoke, zap-baseline, mutation, visual-regression, lighthouse]
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.run_extended_quality == 'true' }}
+    steps:
+      - name: Publish quality summary
+        shell: bash
+        run: |
+          {
+            echo "## Extended quality lanes"
+            echo "- K6: ${{ needs.k6-load-smoke.result }}"
+            echo "- ZAP: ${{ needs.zap-baseline.result }}"
+            echo "- Mutation: ${{ needs.mutation.result }}"
+            echo "- Visual: ${{ needs.visual-regression.result }}"
+            echo "- Lighthouse: ${{ needs.lighthouse.result }}"
+            echo ""
+            echo "Non-blocking lanes remain configured with continue-on-error while thresholds are stabilized."
+          } >> "$GITHUB_STEP_SUMMARY"

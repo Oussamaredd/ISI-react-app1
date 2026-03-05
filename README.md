@@ -181,10 +181,8 @@ See `docs/README.md` for organized documentation by domain (setup, env, operatio
 
 ## CI/CD
 
-- `ci-pr.yml`: PR-focused preflight + path-aware workspace lanes + strict Sonar gate (when `SONAR_TOKEN` is configured); supports manual `workflow_dispatch` with `full_run=true` to force all lanes
-- `ci-main.yml`: main-branch preflight + full workspace lanes on `push` to `main` + strict Sonar gate; supports manual `workflow_dispatch` with `full_run=true`
-- `ci-quality-nightly.yml`: nightly/manual M10 quality lanes (K6, ZAP baseline, mutation hook, visual hook, Lighthouse)
+- `CI.yaml`: unified CI Integration workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes
 - `CD.yml`: deployment workflow with pre-deploy validation and release checks
-- Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and artifact/report lanes that can be promoted to blocking checks later.
+- Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 
 

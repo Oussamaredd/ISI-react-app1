@@ -64,6 +64,11 @@ Agent tour mapping note:
 - SonarCloud organization and project key are pinned in `sonar-project.properties`
 - In GitHub Actions, set `SONAR_TOKEN` as a repository secret
 - If mirrored in local/backend env files for onboarding, keep placeholder values only
+- `PERCY_TOKEN` as repository secret to enable visual-regression publishing in `CI.yaml` when dispatching `run_extended_quality=true`
+- `CI_PERCY_COMMAND` as repository variable for the visual snapshot command executed by Percy
+- `CI_ENABLE_MUTATION_GATE` as repository variable (`0` or `1`) to enable mutation gate execution
+- `CI_ENABLE_VISUAL_GATE` as repository variable (`0` or `1`) to enable Percy hook execution
+- `CI_ENABLE_LIGHTHOUSE_GATE` as repository variable (`0` or `1`) to enable Lighthouse lane execution
 
 ## CORS Origin Policy
 
@@ -91,7 +96,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
 - Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
-- Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status
+- Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status (default wait timeout: `180000ms`)
 
 ## Auth Exchange Flow
 

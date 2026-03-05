@@ -19,10 +19,8 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
-- `.github/workflows/ci-pr.yml` - PR preflight + path-aware CI lanes (triggered on `pull_request` to `main`, plus `workflow_dispatch` with optional `full_run=true` override)
-- `.github/workflows/ci-main.yml` - main-branch preflight + full CI lanes on `push` to `main` (plus `workflow_dispatch`; use `full_run=true` to force all lanes manually)
-- `.github/workflows/ci-quality-nightly.yml` - nightly/manual M10 quality lanes (scheduled daily at `02:00 UTC` plus `workflow_dispatch`)
-- SonarCloud CI scanner lanes in `ci-pr.yml` and `ci-main.yml` run only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
+- `.github/workflows/CI.yaml` - unified `CI Integration` workflow for PR/main with path-aware lanes, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
+- SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - Sonar coverage gate currently excludes `database/**`, `api/src/modules/users/users.repository.ts`, and `api/src/modules/admin/admin.settings.repository.ts` pending dedicated coverage instrumentation alignment
 - `.github/workflows/CD.yml` - deployment workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
