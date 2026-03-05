@@ -1,0 +1,300 @@
+name: CI Quality Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-quality-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-preflight:
+    name: Quality Preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+  k6-load-smoke:
+    name: M10.2 - K6 Load Smoke
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketdb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ticketdb_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
+      API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
+      SESSION_SECRET: ci-session-secret
+      JWT_SECRET: ci-jwt-secret
+      JWT_EXPIRES_IN: 7d
+      JWT_ACCESS_SECRET: ci-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Migrate database
+        run: npm run db:migrate --workspace=ecotrack-database
+
+      - name: Build backend
+        run: npm run build --workspace=ecotrack-api
+
+      - name: Start backend
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          npm run start --workspace=ecotrack-api > tmp/ci/k6-api.out.log 2> tmp/ci/k6-api.err.log &
+
+      - name: Wait for backend readiness
+        run: node infrastructure/scripts/wait-for-api-ready.mjs --url http://127.0.0.1:3001/api/health/ready
+
+      - name: Setup K6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run K6 smoke scenario
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          k6 run --summary-export tmp/ci/k6-summary.json infrastructure/performance/k6/api-health-smoke.js
+
+      - name: Upload K6 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-quality-report
+          path: |
+            tmp/ci/k6-summary.json
+            tmp/ci/k6-api.out.log
+            tmp/ci/k6-api.err.log
+
+  zap-baseline:
+    name: M10.3 - ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketdb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ticketdb_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
+      API_PORT: 3001
+      API_BASE_URL: http://localhost:5173
+      APP_URL: http://localhost:5173
+      SESSION_SECRET: ci-session-secret
+      JWT_SECRET: ci-jwt-secret
+      JWT_EXPIRES_IN: 7d
+      JWT_ACCESS_SECRET: ci-jwt-access-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      GOOGLE_CLIENT_ID: 1234567890-ci.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
+      CORS_ORIGINS: http://localhost:5173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Migrate database
+        run: npm run db:migrate --workspace=ecotrack-database
+
+      - name: Build backend
+        run: npm run build --workspace=ecotrack-api
+
+      - name: Start backend
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          npm run start --workspace=ecotrack-api > tmp/ci/zap-api.out.log 2> tmp/ci/zap-api.err.log &
+
+      - name: Wait for backend readiness
+        run: node infrastructure/scripts/wait-for-api-ready.mjs --url http://127.0.0.1:3001/api/health/ready
+
+      - name: Run ZAP baseline scan
+        shell: bash
+        run: |
+          docker run --rm --network host \
+            -v "${PWD}/tmp/ci:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:3001/api/health \
+            -r zap-report.html \
+            -w zap-report.md \
+            -J zap-report.json \
+            -m 5
+
+      - name: Upload ZAP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-quality-report
+          path: |
+            tmp/ci/zap-report.html
+            tmp/ci/zap-report.md
+            tmp/ci/zap-report.json
+            tmp/ci/zap-api.out.log
+            tmp/ci/zap-api.err.log
+
+  mutation:
+    name: M10.4 - Mutation Gate Hook
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    continue-on-error: true
+    env:
+      ENABLE_MUTATION_GATE: ${{ vars.CI_ENABLE_MUTATION_GATE || '0' }}
+      CI_QUALITY_STRICT: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation gate hook
+        run: node infrastructure/scripts/ci/run-mutation-gate.mjs
+
+  visual-regression:
+    name: M10.5 - Visual Regression Hook
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    continue-on-error: true
+    env:
+      ENABLE_VISUAL_GATE: ${{ vars.CI_ENABLE_VISUAL_GATE || '0' }}
+      PERCY_COMMAND: ${{ vars.CI_PERCY_COMMAND || '' }}
+      PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run visual regression hook
+        run: node infrastructure/scripts/ci/run-visual-gate.mjs
+
+  lighthouse:
+    name: M10.8 - Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: [quality-preflight]
+    continue-on-error: true
+    env:
+      ENABLE_LIGHTHOUSE_GATE: ${{ vars.CI_ENABLE_LIGHTHOUSE_GATE || '1' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build --workspace=ecotrack-app
+
+      - name: Run Lighthouse CI gate
+        run: node infrastructure/scripts/ci/run-lighthouse-gate.mjs
+
+      - name: Upload Lighthouse artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-quality-report
+          path: tmp/ci/lighthouse
+
+  quality-summary:
+    name: Quality Nightly Summary
+    runs-on: ubuntu-latest
+    needs: [k6-load-smoke, zap-baseline, mutation, visual-regression, lighthouse]
+    if: always()
+    steps:
+      - name: Publish quality summary
+        shell: bash
+        run: |
+          {
+            echo "## Nightly quality lanes"
+            echo "- M10.2 K6: ${{ needs.k6-load-smoke.result }}"
+            echo "- M10.3 ZAP: ${{ needs.zap-baseline.result }}"
+            echo "- M10.4 Mutation: ${{ needs.mutation.result }}"
+            echo "- M10.5 Visual: ${{ needs.visual-regression.result }}"
+            echo "- M10.8 Lighthouse: ${{ needs.lighthouse.result }}"
+            echo ""
+            echo "Non-blocking lanes are configured with continue-on-error while thresholds are stabilized."
+          } >> "$GITHUB_STEP_SUMMARY"

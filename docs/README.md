@@ -19,6 +19,10 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
+- `.github/workflows/ci-pr.yml` - PR preflight + path-aware CI lanes
+- `.github/workflows/ci-main.yml` - main-branch preflight + path-aware CI lanes
+- `.github/workflows/ci-quality-nightly.yml` - nightly/manual M10 quality lanes
+- `.github/workflows/CD.yml` - deployment workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
 - `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
@@ -66,6 +70,10 @@ npm run test:coverage
 npm run test:coverage:api
 npm run validate-env:all
 npm run validate-specs
+node infrastructure/scripts/ci/generate-cdc-summary.mjs
+node infrastructure/scripts/ci/run-mutation-gate.mjs
+node infrastructure/scripts/ci/run-visual-gate.mjs
+node infrastructure/scripts/ci/run-lighthouse-gate.mjs
 ```
 
 Build:

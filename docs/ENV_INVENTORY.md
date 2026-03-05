@@ -91,6 +91,11 @@ Visibility legend:
 | SESSION_MAX_AGE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECURE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| CI_ENABLE_LIGHTHOUSE_GATE | infrastructure | private | ci | optional quality-lane toggle (`0` or `1`) |
+| CI_ENABLE_MUTATION_GATE | infrastructure | private | ci | optional mutation-lane toggle (`0` or `1`) |
+| CI_ENABLE_VISUAL_GATE | infrastructure | private | ci | optional visual-lane toggle (`0` or `1`) |
+| CI_PERCY_COMMAND | infrastructure | private | ci | optional Percy execution command for visual snapshots |
+| PERCY_TOKEN | infrastructure | private | ci | optional Percy authentication token for visual-regression publishing |
 | SONAR_ORGANIZATION | infrastructure | private | ci | optional SonarCloud org override for manual/legacy scanner wiring |
 | SONAR_PROJECT_KEY | infrastructure | private | ci | optional SonarCloud project-key override for manual/legacy scanner wiring |
 | SONAR_TOKEN | infrastructure | private | ci | canonical SonarCloud CI analysis token |
