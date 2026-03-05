@@ -23,6 +23,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `.github/workflows/ci-main.yml` - main-branch preflight + full CI lanes on `push` to `main` (plus `workflow_dispatch`; use `full_run=true` to force all lanes manually)
 - `.github/workflows/ci-quality-nightly.yml` - nightly/manual M10 quality lanes (scheduled daily at `02:00 UTC` plus `workflow_dispatch`)
 - SonarCloud CI scanner lanes in `ci-pr.yml` and `ci-main.yml` run only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
+- Sonar coverage gate currently excludes `database/**`, `api/src/modules/users/users.repository.ts`, and `api/src/modules/admin/admin.settings.repository.ts` pending dedicated coverage instrumentation alignment
 - `.github/workflows/CD.yml` - deployment workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
