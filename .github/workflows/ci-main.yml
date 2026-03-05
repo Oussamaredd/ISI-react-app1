@@ -307,6 +307,9 @@ jobs:
       enabled: ${{ steps.check.outputs.enabled }}
       reason: ${{ steps.check.outputs.reason }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Check SonarCloud configuration
         id: check
         shell: bash
