@@ -39,7 +39,7 @@ Deprecated aliases (read-only compatibility window):
 ### Docker dev
 
 - Single source: `infrastructure/environments/.env.docker`
-- `migrate` and `backend` must resolve the same `DATABASE_URL` source
+- `backend` resolves `DATABASE_URL` from this source
 
 ### Deployed environments
 

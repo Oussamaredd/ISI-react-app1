@@ -24,23 +24,6 @@ services:
     networks:
       - ticket-management-network
 
-  migrate:
-    profiles: ["core"]
-    build:
-      context: ..
-      dockerfile: infrastructure/Dockerfile
-    container_name: ticket_migrate
-    restart: "no"
-    working_dir: /workspace
-    env_file:
-      - ./environments/.env.docker
-    depends_on:
-      db:
-        condition: service_healthy
-    command: ["sh", "-c", "./infrastructure/scripts/migrate.sh up"]
-    networks:
-      - ticket-management-network
-
   backend:
     profiles: ["core"]
     build:
@@ -56,8 +39,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/api/health/ready"]
       interval: 30s
@@ -139,7 +120,7 @@ services:
       - ticket-management-network
 
   prometheus:
-    profiles: ["quality"]
+    profiles: ["obs"]
     image: prom/prometheus:v2.45.0
     container_name: prometheus
     restart: unless-stopped
@@ -152,7 +133,7 @@ services:
       - ticket-management-network
 
   grafana:
-    profiles: ["quality"]
+    profiles: ["obs"]
     image: grafana/grafana:10.4.2
     container_name: grafana
     restart: unless-stopped

@@ -27,7 +27,7 @@ Write-Host 'OK: compose config is valid' -ForegroundColor Green
 # Test 3: profile configs
 Write-Host ''
 Write-Host '3) Validating profiles...' -ForegroundColor Yellow
-foreach ($profile in @('core', 'obs', 'quality')) {
+foreach ($profile in @('core', 'obs')) {
   $null = docker compose @composeArgs --profile $profile config
   Write-Host "OK: profile '$profile' is valid" -ForegroundColor Green
 }
@@ -35,8 +35,8 @@ foreach ($profile in @('core', 'obs', 'quality')) {
 # Test 4: required services
 Write-Host ''
 Write-Host '4) Checking service definitions...' -ForegroundColor Yellow
-$fullConfig = docker compose @composeArgs --profile core --profile obs --profile quality config
-$services = @('db', 'migrate', 'backend', 'frontend', 'elasticsearch', 'logstash', 'kibana', 'prometheus', 'grafana')
+$fullConfig = docker compose @composeArgs --profile core --profile obs config
+$services = @('db', 'backend', 'frontend', 'elasticsearch', 'logstash', 'kibana', 'prometheus', 'grafana')
 foreach ($service in $services) {
   if ($fullConfig -match "(?m)^\s*${service}:") {
     Write-Host "OK: service '$service' is defined" -ForegroundColor Green

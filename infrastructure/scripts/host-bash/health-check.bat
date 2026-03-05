@@ -22,24 +22,6 @@ if !errorlevel! equ 0 (
 )
 
 echo.
-echo Testing migration step...
-if "!DOCKER_READY!"=="1" (
-    set MIGRATE_STATUS=
-    set MIGRATE_EXIT=
-    for /f %%s in ('docker inspect -f "{{.State.Status}}" ticket_migrate 2^>nul') do set MIGRATE_STATUS=%%s
-    for /f %%e in ('docker inspect -f "{{.State.ExitCode}}" ticket_migrate 2^>nul') do set MIGRATE_EXIT=%%e
-    if /I "!MIGRATE_STATUS!"=="exited" if "!MIGRATE_EXIT!"=="0" (
-        echo Migration - HEALTHY
-    ) else (
-        echo Migration - UNHEALTHY
-        set "HAS_FAILURE=1"
-    )
-) else (
-    echo Migration - UNHEALTHY
-    set "HAS_FAILURE=1"
-)
-
-echo.
 echo Testing frontend UI...
 curl -fsS http://localhost:3000 >nul 2>&1
 if !errorlevel! equ 0 (

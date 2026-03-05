@@ -223,14 +223,19 @@ jobs:
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
         run: |
-          if [[ -n "${SONAR_TOKEN}" && -n "${SONAR_ORGANIZATION}" && -n "${SONAR_PROJECT_KEY}" ]]; then
+          missing=()
+          [[ -z "${SONAR_TOKEN}" ]] && missing+=("SONAR_TOKEN")
+          [[ -z "${SONAR_ORGANIZATION}" ]] && missing+=("SONAR_ORGANIZATION")
+          [[ -z "${SONAR_PROJECT_KEY}" ]] && missing+=("SONAR_PROJECT_KEY")
+
+          if [[ "${#missing[@]}" -eq 0 ]]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping SonarCloud Analysis because SONAR_TOKEN, SONAR_ORGANIZATION, or SONAR_PROJECT_KEY is not configured."
+            echo "Skipping SonarCloud Analysis because missing keys: ${missing[*]}"
           fi
 
   sonar:
@@ -269,8 +274,8 @@ jobs:
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
         run: |
           sonar-scanner \
             -Dsonar.host.url="https://sonarcloud.io" \

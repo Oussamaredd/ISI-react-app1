@@ -4,8 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
-const CANONICAL_MIGRATE_COMMAND = 'npm run db:migrate --workspace=ecotrack-database';
-const CANONICAL_SEED_COMMAND = 'npm run db:seed --workspace=ecotrack-database';
 const LEGACY_FRONTEND_PATHS = new Set([
   '/auth',
   '/dashboard',
@@ -59,9 +57,6 @@ const WORKFLOW_RULES = {
       'JWT_ACCESS_EXPIRES_IN',
       'CORS_ORIGINS',
       'APP_URL',
-      'MIGRATE_COMMAND',
-      'ENABLE_SEED_DATA',
-      'SEED_COMMAND',
     ],
   },
   'deploy-dev': {
@@ -556,45 +551,6 @@ function checkWorkflowAlignmentPolicy(entries, workflow, errors) {
   }
 }
 
-function checkDockerMigrationPolicy(entries, sourceLabel, warnings, errors) {
-  if (entries.has('MIGRATE_COMMAND')) {
-    const command = String(entries.get('MIGRATE_COMMAND') ?? '').trim();
-    if (!command) {
-      errors.push(`${sourceLabel}: MIGRATE_COMMAND must not be empty when provided.`);
-    } else if (command !== CANONICAL_MIGRATE_COMMAND) {
-      errors.push(`${sourceLabel}: MIGRATE_COMMAND must be '${CANONICAL_MIGRATE_COMMAND}'.`);
-    }
-  }
-
-  if (entries.has('SEED_COMMAND')) {
-    const command = String(entries.get('SEED_COMMAND') ?? '').trim();
-    if (!command) {
-      errors.push(`${sourceLabel}: SEED_COMMAND must not be empty when provided.`);
-    } else if (command !== CANONICAL_SEED_COMMAND) {
-      errors.push(`${sourceLabel}: SEED_COMMAND must be '${CANONICAL_SEED_COMMAND}'.`);
-    }
-  }
-
-  if (!entries.has('ENABLE_SEED_DATA')) {
-    return;
-  }
-
-  const rawValue = String(entries.get('ENABLE_SEED_DATA') ?? '').trim().toLowerCase();
-  const canonicalValues = new Set(['true', 'false']);
-  const acceptedValues = new Set(['true', 'false', '1', '0', 'yes', 'no', 'y', 'n']);
-
-  if (!acceptedValues.has(rawValue)) {
-    errors.push(`${sourceLabel}: ENABLE_SEED_DATA must be a boolean-like value.`);
-    return;
-  }
-
-  if (!canonicalValues.has(rawValue)) {
-    warnings.push(
-      `${sourceLabel}: ENABLE_SEED_DATA should use canonical value 'true' or 'false'.`,
-    );
-  }
-}
-
 function checkDeprecatedKeyPolicy(keys, sourceLabel, errors) {
   const deprecatedKeys = keys.filter((key) => DEPRECATED_KEYS.has(key));
 
@@ -639,7 +595,6 @@ function main() {
   console.log(`[validate-env] files=${files.join(', ')}`);
 
   const errors = [];
-  const warnings = [];
   const combined = new Map();
 
   for (const file of files) {
@@ -679,9 +634,6 @@ function main() {
     checkCorsOriginsPolicy(entries, file, workflow, errors);
     checkGoogleCallbackPolicy(entries, file, errors, normalizedApiBaseUrl);
 
-    if (workflow === 'docker-dev') {
-      checkDockerMigrationPolicy(entries, file, warnings, errors);
-    }
   }
 
   const required = WORKFLOW_RULES[workflow].requiredKeys;
@@ -692,8 +644,6 @@ function main() {
   }
 
   checkWorkflowAlignmentPolicy(combined, workflow, errors);
-
-  warnings.forEach((warning) => console.warn(`[validate-env] WARN ${warning}`));
 
   if (errors.length > 0) {
     console.error('[validate-env] FAILED');

@@ -33,32 +33,12 @@ if exist "%CANONICAL_ENV%" (
 )
 
 echo.
-echo Step 2: Building and starting core services (db, migrate, backend, frontend)...
+echo Step 2: Building and starting core services (db, backend, frontend)...
 docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" --profile core up --build -d
 if errorlevel 1 goto :error
 
 echo.
-echo Step 3: Waiting for migration job completion...
-set MIGRATE_STATUS=
-set MIGRATE_EXIT=
-for /L %%i in (1,1,60) do (
-    for /f %%s in ('docker inspect -f "{{.State.Status}}" ticket_migrate 2^>nul') do set MIGRATE_STATUS=%%s
-    if /I "!MIGRATE_STATUS!"=="exited" (
-        for /f %%e in ('docker inspect -f "{{.State.ExitCode}}" ticket_migrate 2^>nul') do set MIGRATE_EXIT=%%e
-        goto :migration_done
-    )
-    timeout /t 2 >nul
-)
-
-:migration_done
-if not "!MIGRATE_EXIT!"=="0" (
-    echo Migration job failed or did not complete in time.
-    docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" logs migrate
-    goto :error
-)
-
-echo.
-echo Step 4: Service status
+echo Step 3: Service status
 docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" ps
 
 echo.

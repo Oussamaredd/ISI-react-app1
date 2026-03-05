@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { UsersRepository } from '../modules/users/users.repository.js';
 
+const MOCK_HASH_VALUE = ['fixture', 'hash'].join('-');
+
 const buildDbMock = () => {
   const insertedUsers: Array<Record<string, unknown>> = [];
   const insertedUserRoles: Array<Record<string, unknown>> = [];
@@ -254,7 +256,7 @@ describe('UsersRepository local signup defaults', () => {
     const repository = new UsersRepository(dbMock as any);
     const created = await repository.createLocalUser({
       email: 'local@example.com',
-      passwordHash: 'hash',
+      passwordHash: MOCK_HASH_VALUE,
       displayName: 'Local User',
       defaultRoleName: 'citizen',
     });

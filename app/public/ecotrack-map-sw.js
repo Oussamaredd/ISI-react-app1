@@ -6,6 +6,18 @@ let allowedTileOrigins = [];
 const isCacheableTileRequest = (url) =>
   allowedTileOrigins.includes(url.origin) && /\.(png|jpg|jpeg|webp)$/i.test(url.pathname);
 
+const isTrustedMessageSource = (source) => {
+  if (!source || typeof source.url !== "string") {
+    return false;
+  }
+
+  try {
+    return new URL(source.url).origin === self.location.origin;
+  } catch {
+    return false;
+  }
+};
+
 const cacheTileResponse = async (request) => {
   const cache = await caches.open(TILE_CACHE_NAME);
   const cachedResponse = await cache.match(request);
@@ -35,6 +47,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (!isTrustedMessageSource(event.source)) {
+    return;
+  }
+
   if (event.data?.type !== TILE_CACHE_EVENT || !Array.isArray(event.data.origins)) {
     return;
   }

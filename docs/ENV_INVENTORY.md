@@ -66,7 +66,6 @@ Visibility legend:
 | ENABLE_LOGSTASH | infrastructure | private | local-dev, docker-dev | canonical (optional) |
 | ENABLE_METRICS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | ENABLE_REGISTRATION | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| ENABLE_SEED_DATA | infrastructure | private | docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ENABLE_SWAGGER | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | GOOGLE_CALLBACK_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical for deploy templates (path fixed to `/api/auth/google/callback`) |
 | GOOGLE_CLIENT_ID | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -81,7 +80,6 @@ Visibility legend:
 | LOGSTASH_PORT | infrastructure | private | local-dev, docker-dev | canonical (optional) |
 | MAX_FILE_SIZE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | METRICS_PORT | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| MIGRATE_COMMAND | infrastructure | private | docker-dev | canonical |
 | NODE_ENV | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | PORT | api | private | local-dev, deploy-dev, deploy-staging, deploy-prod | removed API runtime alias (normalize to `API_PORT`) |
 | POSTGRES_DB | infrastructure | private | docker-dev | canonical compose DB container setting |
@@ -90,7 +88,6 @@ Visibility legend:
 | RATE_LIMIT_MAX_REQUESTS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | RATE_LIMIT_WINDOW_MS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | REDIS_URL | infrastructure | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| SEED_COMMAND | infrastructure | private | docker-dev | canonical |
 | SESSION_MAX_AGE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECURE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |

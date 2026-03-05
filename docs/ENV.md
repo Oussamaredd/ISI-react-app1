@@ -63,7 +63,7 @@ Agent tour mapping note:
 - `SONAR_ORGANIZATION` for SonarCloud organization key used by scanner runs
 - `SONAR_PROJECT_KEY` for SonarCloud project key used by scanner runs
 - SonarCloud host URL is fixed in CI to `https://sonarcloud.io`
-- In GitHub Actions, set `SONAR_TOKEN` as a repository secret and set `SONAR_ORGANIZATION` + `SONAR_PROJECT_KEY` as repository variables
+- In GitHub Actions, set `SONAR_TOKEN` as a repository secret; set `SONAR_ORGANIZATION` + `SONAR_PROJECT_KEY` as repository variables (recommended) or repository secrets
 - If mirrored in local/backend env files for onboarding, keep placeholder values only
 
 ## CORS Origin Policy

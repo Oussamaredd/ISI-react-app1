@@ -19,6 +19,7 @@ docker compose --env-file infrastructure/environments/.env.docker -f infrastruct
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core up -d --build
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core ps
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core down --remove-orphans
+docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d --build
 ```
 
 Workspace wrappers:
@@ -36,7 +37,6 @@ npm run smoke-test
 ## Expected Core State
 
 - `ticket_db`: healthy
-- `ticket_migrate`: exited successfully
 - `ticket_backend`: healthy
 - `ticket_frontend`: healthy
 
@@ -51,16 +51,14 @@ npm run smoke-test
 ## Migration Commands
 
 ```bash
-npm run migrate:up --workspace=ecotrack-infrastructure
-npm run migrate:up:seed --workspace=ecotrack-infrastructure
-npm run migrate:status --workspace=ecotrack-infrastructure
+npm run db:migrate --workspace=ecotrack-database
+npm run db:seed --workspace=ecotrack-database
+npm run db:migrate:seed --workspace=ecotrack-database
 ```
-
-`migrate:up` now follows `ENABLE_SEED_DATA` from `infrastructure/environments/.env.docker` (default `true` in the template).
 
 ## Policy
 
-- `migrate` and `backend` consume the same `DATABASE_URL` from `.env.docker`.
+- `backend` consumes `DATABASE_URL` from `.env.docker`.
 - Compose DB host is `ticket_db`.
 - Canonical DB name is `ticketdb`.
 - No credential values should be hardcoded in compose service definitions.

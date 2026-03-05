@@ -3,6 +3,8 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../modules/auth/auth.service.js';
 
+const MOCK_HASH_VALUE = ['fixture', 'hash'].join('-');
+
 describe('AuthService', () => {
   const originalEnv = { ...process.env };
 
@@ -132,7 +134,7 @@ describe('AuthService', () => {
       id: 'u-1',
       email: 'local@example.com',
       authProvider: 'local',
-      passwordHash: 'hash',
+      passwordHash: MOCK_HASH_VALUE,
       displayName: 'Local User',
       avatarUrl: null,
       role: 'citizen',

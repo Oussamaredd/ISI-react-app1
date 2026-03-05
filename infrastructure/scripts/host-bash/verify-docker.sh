@@ -15,14 +15,14 @@ echo "[verify-docker] validating base compose config"
 compose config >/dev/null
 
 echo "[verify-docker] validating profiles"
-for profile in core obs quality; do
+for profile in core obs; do
   compose --profile "$profile" config >/dev/null
 done
 
-full_config="$(compose --profile core --profile obs --profile quality config)"
+full_config="$(compose --profile core --profile obs config)"
 
 echo "[verify-docker] checking required services"
-for service in db migrate backend frontend elasticsearch logstash kibana prometheus grafana; do
+for service in db backend frontend elasticsearch logstash kibana prometheus grafana; do
   if grep -q "^[[:space:]]\{2,\}$service:" <<<"$full_config"; then
     echo "  - $service: ok"
   else

@@ -8,9 +8,6 @@
     "docker:down": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core down --remove-orphans",
     "health": ".\\scripts\\host-bash\\health-check.bat",
     "smoke": "node ./scripts/smoke-docker.mjs",
-    "verify:docker": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-docker.ps1",
-    "migrate:up": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm migrate",
-    "migrate:up:seed": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e \"SEED_COMMAND=npm run db:seed --workspace=ecotrack-database\" migrate",
-    "migrate:status": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --rm migrate sh -c \"./infrastructure/scripts/migrate.sh status\""
+    "verify:docker": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-docker.ps1"
   }
 }

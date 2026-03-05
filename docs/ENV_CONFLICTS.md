@@ -1,6 +1,6 @@
 # Environment Conflicts And Resolution
 
-Last updated: 2026-03-04
+Last updated: 2026-03-05
 
 This page is a historical normalization record. The active runtime policy lives in `docs/ENV.md`; use this file to understand prior conflicts, deprecated aliases, and why certain cleanup rules exist.
 
@@ -30,5 +30,4 @@ This page is a historical normalization record. The active runtime policy lives 
 - `API_PORT` vs `API_BASE_URL` is intentional after the edge-gateway cleanup: `API_PORT` is the backend listen port, while `API_BASE_URL` is the public frontend-edge origin.
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` remain compose DB-container settings and are not replacements for `DATABASE_URL`.
 - `VITE_BASE` remains frontend-only and valid for hosted path deployments.
-- `MIGRATE_COMMAND` and `SEED_COMMAND` are compose migration controls and remain infrastructure-owned.
 
