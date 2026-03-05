@@ -91,8 +91,8 @@ Visibility legend:
 | SESSION_MAX_AGE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECURE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| SONAR_ORGANIZATION | infrastructure | private | ci | canonical SonarCloud organization key for CI analysis |
-| SONAR_PROJECT_KEY | infrastructure | private | ci | canonical SonarCloud project key for CI analysis |
+| SONAR_ORGANIZATION | infrastructure | private | ci | optional SonarCloud org override for manual/legacy scanner wiring |
+| SONAR_PROJECT_KEY | infrastructure | private | ci | optional SonarCloud project-key override for manual/legacy scanner wiring |
 | SONAR_TOKEN | infrastructure | private | ci | canonical SonarCloud CI analysis token |
 | SMTP_HOST | infrastructure | private | deploy-prod | canonical |
 | SMTP_PASS | infrastructure | private | deploy-prod | canonical |
