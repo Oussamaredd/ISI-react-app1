@@ -44,6 +44,7 @@ GET /auth/google/callback
 
 OAuth provisioning notes:
 - First-time Google OAuth users are created with the `citizen` role.
+- Existing Google OAuth users are normalized to `citizen` during auth and migration backfills.
 - The API also writes the matching RBAC link in `auth.user_roles` so permission guards resolve consistently.
 
 ## Core EcoTrack Domain Endpoints

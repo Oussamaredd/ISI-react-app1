@@ -8,6 +8,7 @@ const MOCK_HASH_VALUE = ['fixture', 'hash'].join('-');
 const buildDbMock = () => {
   const insertedUsers: Array<Record<string, unknown>> = [];
   const insertedUserRoles: Array<Record<string, unknown>> = [];
+  const updatedUsers: Array<Record<string, unknown>> = [];
 
   const dbMock = {
     query: {
@@ -59,22 +60,34 @@ const buildDbMock = () => {
       }
 
       return {
-        set: vi.fn((payload: Record<string, unknown>) => ({
-          where: vi.fn(() => ({
-            returning: vi.fn().mockResolvedValue([
-              {
-                id: 'user-1',
-                email: 'citizen@example.com',
-                displayName: payload.displayName ?? 'Citizen',
-                avatarUrl: payload.avatarUrl ?? null,
-                authProvider: 'google',
-                googleId: payload.googleId ?? 'google-1',
-                role: 'citizen',
-                isActive: true,
-              },
-            ]),
-          })),
-        })),
+        set: vi.fn((payload: Record<string, unknown>) => {
+          updatedUsers.push(payload);
+          return {
+            where: vi.fn(() => ({
+              returning: vi.fn().mockResolvedValue([
+                {
+                  id: 'user-1',
+                  email: 'citizen@example.com',
+                  displayName: payload.displayName ?? 'Citizen',
+                  avatarUrl: payload.avatarUrl ?? null,
+                  authProvider: 'google',
+                  googleId: payload.googleId ?? 'google-1',
+                  role: 'citizen',
+                  isActive: true,
+                },
+              ]),
+            })),
+          };
+        }),
+      };
+    }),
+    delete: vi.fn().mockImplementation((table: unknown) => {
+      if (table !== userRoles) {
+        throw new Error('Unexpected delete target');
+      }
+
+      return {
+        where: vi.fn().mockResolvedValue(undefined),
       };
     }),
     select: vi.fn(() => ({
@@ -96,6 +109,7 @@ const buildDbMock = () => {
     dbMock,
     insertedUsers,
     insertedUserRoles,
+    updatedUsers,
   };
 };
 
@@ -193,8 +207,8 @@ describe('UsersRepository OAuth role defaults', () => {
     );
   });
 
-  it('keeps Google user profile updates while ensuring role mapping exists', async () => {
-    const { dbMock, insertedUserRoles } = buildDbMock();
+  it('normalizes existing Google users to citizen while keeping profile updates', async () => {
+    const { dbMock, insertedUserRoles, updatedUsers } = buildDbMock();
     dbMock.query.users.findFirst
       .mockResolvedValueOnce({
         id: 'user-1',
@@ -203,7 +217,7 @@ describe('UsersRepository OAuth role defaults', () => {
         avatarUrl: null,
         authProvider: 'google',
         googleId: 'google-1',
-        role: 'citizen',
+        role: 'manager',
         isActive: true,
       })
       .mockResolvedValueOnce({
@@ -213,7 +227,7 @@ describe('UsersRepository OAuth role defaults', () => {
         avatarUrl: null,
         authProvider: 'google',
         googleId: 'google-1',
-        role: 'citizen',
+        role: 'manager',
         isActive: true,
       });
 
@@ -230,6 +244,10 @@ describe('UsersRepository OAuth role defaults', () => {
       userId: 'user-1',
       roleId: 'role-citizen',
     });
+    expect(updatedUsers).toEqual(
+      expect.arrayContaining([expect.objectContaining({ role: 'citizen' })]),
+    );
+    expect(dbMock.delete).toHaveBeenCalledWith(userRoles);
     expect(updated).toEqual(
       expect.objectContaining({
         id: 'user-1',

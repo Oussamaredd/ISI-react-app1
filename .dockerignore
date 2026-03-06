@@ -153,6 +153,7 @@ Gruntfile.js
 # Temporary files
 tmp/
 temp/
+tmp-ci-logs-*/
 
 # Build artifacts that shouldn't be in final image
 build/

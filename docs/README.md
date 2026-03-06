@@ -59,6 +59,11 @@ npm run dev --workspace=ecotrack-app
 npm run dev --workspace=ecotrack-api
 ```
 
+Cleanup:
+```bash
+npm run clean:artifacts
+```
+
 Validate:
 ```bash
 npm run lint
@@ -106,3 +111,4 @@ npm run infra:down
 - Keep docs aligned with the current command surface and env policies.
 - Prefer updating existing pages over creating duplicates.
 - Keep incident-specific execution plans in `docs/runbooks/`.
+- Keep disposable local and CI artifacts under `tmp/`; avoid root-level timestamped temp folders and root `temp-*.log` files.

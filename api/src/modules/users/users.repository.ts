@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { type DatabaseClient, passwordResetTokens, roles, userRoles, users } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../database/database.constants.js';
@@ -100,15 +100,15 @@ export class UsersRepository {
           avatarUrl: authUser.avatarUrl ?? existing.avatarUrl ?? null,
           authProvider: 'google',
           googleId: authUser.id,
+          role: OAUTH_DEFAULT_ROLE,
           updatedAt: new Date(),
         })
         .where(eq(users.id, existing.id))
         .returning();
 
       const resolvedUser = updated ?? existing;
-      const roleName = resolvedUser.role?.trim() || OAUTH_DEFAULT_ROLE;
-      await this.ensureRoleAssignmentForUser(resolvedUser.id, roleName);
-      return resolvedUser;
+      await this.normalizeGoogleUserRole(resolvedUser.id);
+      return (await this.findById(resolvedUser.id)) ?? resolvedUser;
     }
 
     const displayName = authUser.name?.trim() || email.split('@')[0] || 'User';
@@ -131,6 +131,7 @@ export class UsersRepository {
           avatarUrl: authUser.avatarUrl ?? null,
           authProvider: 'google',
           googleId: authUser.id,
+          role: OAUTH_DEFAULT_ROLE,
           updatedAt: new Date(),
         },
       })
@@ -138,8 +139,8 @@ export class UsersRepository {
 
     const resolvedUser = upserted ?? (await this.findByEmail(email));
     if (resolvedUser) {
-      const roleName = resolvedUser.role?.trim() || OAUTH_DEFAULT_ROLE;
-      await this.ensureRoleAssignmentForUser(resolvedUser.id, roleName);
+      await this.normalizeGoogleUserRole(resolvedUser.id);
+      return (await this.findById(resolvedUser.id)) ?? resolvedUser;
     }
 
     return resolvedUser;
@@ -544,19 +545,26 @@ export class UsersRepository {
     return roleNames[0] ?? LOCAL_DEFAULT_ROLE;
   }
 
-  private async ensureRoleAssignmentForUser(userId: string, roleName: string) {
-    const normalizedRoleName = roleName.trim().toLowerCase();
-    if (!normalizedRoleName) {
-      return;
-    }
+  private async normalizeGoogleUserRole(userId: string) {
+    const citizenRole = await this.resolveRoleByName(OAUTH_DEFAULT_ROLE);
 
-    const roleRow = await this.resolveRoleByName(normalizedRoleName);
+    await this.db
+      .update(users)
+      .set({
+        role: OAUTH_DEFAULT_ROLE,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    await this.db
+      .delete(userRoles)
+      .where(and(eq(userRoles.userId, userId), ne(userRoles.roleId, citizenRole.id)));
 
     await this.db
       .insert(userRoles)
       .values({
         userId,
-        roleId: roleRow.id,
+        roleId: citizenRole.id,
       })
       .onConflictDoNothing();
   }

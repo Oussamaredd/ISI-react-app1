@@ -15,6 +15,7 @@ This folder stores original source documents used for planning and traceability.
   - canonical matrix file: `docs/specs/cdc-traceability-matrix.dev.json`
   - human-readable matrix: `docs/specs/cdc-traceability-matrix.dev.md`
   - CI/local validator command: `npm run validate-specs`
+  - CI evidence summary command: `npm run ci:cdc:summary`
 
 ## Active Implementation Specs
 - `docs/specs/realtime-dashboard-push-contract.md` - `UI-RT-002` SSE contract and rollout plan for manager/dashboard push updates.
@@ -23,3 +24,4 @@ This folder stores original source documents used for planning and traceability.
 - `docs/specs/mobile-platform-integration-contract.md` - integration contract for future mobile microservice consumption of platform APIs and GPS-enabled use cases.
 - `docs/specs/SOURCE_OF_TRUTH.md` - executable-spec governance, scope, and update workflow.
 - `docs/specs/cdc-traceability-matrix.dev.md` - Development-specialty CDC use-case traceability and current coverage status.
+- `docs/specs/workbook-monolith-open-tasks.md` - detailed one-task-per-section mapping of open workbook tasks adapted to EcoTrack monolith delivery.

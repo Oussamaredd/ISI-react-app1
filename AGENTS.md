@@ -69,9 +69,16 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 - Keep edits ASCII unless the target file already uses Unicode.
 - Do not modify any `*.d.ts` file unless explicitly instructed.
 - Do not change, rotate, regenerate, or "fix" secrets by default (`.env*`, secret managers, CI/CD secrets) unless explicitly instructed.
-- Do not hardcode URLs, API endpoints, keys, or environment-specific values in source code.
+- Do not hardcode URLs, API endpoints, hosts, ports, keys, tokens, bucket/queue names, file paths, or environment-specific values in source code.
+- Treat `"http://..."`, `"https://..."`, `"localhost"`, fixed non-test ports, and provider IDs as hardcoding unless values are test-only fixtures.
 - Prefer environment variables, config modules, dependency injection, or props over inline configuration.
 - Avoid deep prop drilling for config and endpoint values; prefer shared config modules or context/providers.
+
+## No Hardcoding Policy
+- Required by default: any value that can vary by environment (dev/test/stage/prod) must come from config or env, never inline literals.
+- Allowed inline constants: domain-invariant values (enum-like labels, documented thresholds, UI copy) that do not encode infrastructure or deployment details.
+- When adding new config: define canonical env keys in templates/examples, wire through typed config modules, and document usage location.
+- Before closing a task: review changed files for hardcoded patterns (`http://`, `https://`, `localhost`, `:3000`, `:4000`, provider-specific IDs) and replace with configuration paths.
 
 ## Autonomy Rules (No-permission actions)
 - Do not ask for my permission before editing any example/template environment files used for onboarding or documentation (e.g., `*.env.example`, sample env templates). If changes are needed for the task, update them directly and report what changed.
