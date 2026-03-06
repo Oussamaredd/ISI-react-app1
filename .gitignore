@@ -29,6 +29,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Codex project config
+.codex/*
+!.codex/config.toml
+
 # Environment files
 .env
 .env.local

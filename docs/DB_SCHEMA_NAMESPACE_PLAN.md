@@ -2,6 +2,10 @@
 
 Last updated: 2026-03-03
 
+Related status doc:
+
+- `docs/DB_SCHEMA_NAMESPACE_STATUS.md`
+
 ## Scope And Assumptions
 
 This plan is based on:

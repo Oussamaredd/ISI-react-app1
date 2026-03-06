@@ -182,7 +182,7 @@ See `docs/README.md` for organized documentation by domain (setup, env, operatio
 ## CI/CD
 
 - `CI.yaml`: unified CI Integration workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes
-- `CD.yml`: deployment workflow with pre-deploy validation and release checks
+- `CD.yml`: release-readiness workflow; GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 
 
