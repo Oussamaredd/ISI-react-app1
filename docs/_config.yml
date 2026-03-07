@@ -1,0 +1,11 @@
+title: EcoTrack Docs
+description: Documentation portal for EcoTrack architecture, operations, and product guides.
+theme: jekyll-theme-primer
+plugins:
+  - jekyll-relative-links
+  - jekyll-readme-index
+include:
+  - README.md
+relative_links:
+  enabled: true
+  collections: true

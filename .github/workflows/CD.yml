@@ -58,13 +58,13 @@ jobs:
       - name: Run pre-deploy validation pipeline script
         run: bash infrastructure/scripts/ci/pre-deploy-validation.sh
 
-  pages-reserved-for-docs:
-    name: GitHub Pages Reserved For Docs
+  github-pages-docs-note:
+    name: GitHub Pages Docs Separation Note
     runs-on: ubuntu-latest
     needs: [pre-deploy-validation]
     steps:
-      - name: Confirm GitHub Pages app retirement
+      - name: Confirm GitHub Pages docs-only separation
         run: |
           echo "GitHub Pages is retired as the EcoTrack app host."
-          echo "Future GitHub Pages use is reserved for docs-only follow-up work."
-          echo "Cloudflare Pages will be introduced in a later rollout phase."
+          echo "GitHub Pages docs publishing is handled separately by .github/workflows/docs-pages.yml."
+          echo "Cloudflare Pages remains the live frontend host for the app."

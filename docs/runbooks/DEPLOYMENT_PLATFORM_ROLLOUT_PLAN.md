@@ -1,6 +1,6 @@
 # Deployment Platform Rollout Plan
 
-Last updated: 2026-03-06
+Last updated: 2026-03-07
 
 ## Scope
 
@@ -153,15 +153,23 @@ Completion definition:
 - Render can build and run the EcoTrack API reliably
 - health checks use the canonical readiness path
 - the service can connect to Neon and pass startup validation
+- implemented baseline:
+  - Render web service `ecotrack-3ggh` is live at `https://ecotrack-3ggh.onrender.com`
+  - monorepo build runs from the repo root with `npm ci --include=dev && npm run build:database && npm run build:api`
+  - runtime start command is `npm run start --workspace=ecotrack-api`
+  - Render port contract is aligned with `API_PORT=10000`
+  - readiness health check uses `/api/health/ready`
+  - baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Phase 6 work
+  - because the service is on the Render free plan, migrations run manually via `npm run db:migrate --workspace=ecotrack-database` against the direct Neon connection string before deploys that include schema changes
 
 Checklist:
 
-- [ ] Create the Render web service.
-- [ ] Choose the deployment method for the monorepo build.
-- [ ] Resolve the backend port contract for Render.
-- [ ] Configure the readiness health check path.
-- [ ] Configure deployment secrets and public runtime env values.
-- [ ] Define how migrations run on each deployment.
+- [x] Create the Render web service.
+- [x] Choose the deployment method for the monorepo build.
+- [x] Resolve the backend port contract for Render.
+- [x] Configure the readiness health check path.
+- [x] Configure deployment secrets and public runtime env values.
+- [x] Define how migrations run on each deployment.
 
 ## Phase 5 - Cloudflare Pages Frontend Baseline
 
@@ -183,15 +191,21 @@ Completion definition:
 - production frontend builds come from Cloudflare Pages
 - branch previews are available where appropriate
 - the frontend build no longer assumes a GitHub Pages repository subpath
+- implemented baseline:
+  - Cloudflare Pages project `ecotrack` is live at `https://ecotrack-jmj.pages.dev`
+  - the Git-connected Pages project builds from the repo root using `npm run build:app`
+  - the deployed artifact publishes the `app/dist` output
+  - deployed route refreshes for `/`, `/login`, and `/app/dashboard` return HTML successfully
+  - preview deployment behavior is enabled through the Pages Git integration; preview smoke validation still requires a successful non-`main` branch deployment
 
 Checklist:
 
-- [ ] Create the Cloudflare Pages project.
-- [ ] Confirm the project is Pages and not Workers.
-- [ ] Configure the frontend-only build command.
-- [ ] Configure the output directory as `app/dist`.
-- [ ] Align `VITE_BASE` behavior for Cloudflare-hosted deployment.
-- [ ] Enable preview deployment behavior for branches or pull requests.
+- [x] Create the Cloudflare Pages project.
+- [x] Confirm the project is Pages and not Workers.
+- [x] Configure the frontend-only build command.
+- [x] Configure the output directory as `app/dist`.
+- [x] Align `VITE_BASE` behavior for Cloudflare-hosted deployment.
+- [x] Enable preview deployment behavior for branches or pull requests.
 
 ## Phase 6 - Public Origin, OAuth, and CORS Alignment
 
@@ -209,14 +223,24 @@ The target result is one consistent production-style public contract:
 
 This phase must be handled carefully because the repo already enforces canonical env rules and public/private separation.
 
+Current validated state (2026-03-07):
+
+- frontend public origin currently resolves at `https://ecotrack-jmj.pages.dev`
+- backend public origin currently resolves at `https://ecotrack-3ggh.onrender.com`
+- the deployed frontend bundle contains the Render origin, confirming deployed `VITE_API_BASE_URL` injection
+- `GET /api/auth/google` on Render redirects to Google with callback URI `https://ecotrack-3ggh.onrender.com/api/auth/google/callback`
+- requests sent with `Origin: https://ecotrack-jmj.pages.dev` now receive `Access-Control-Allow-Origin: https://ecotrack-jmj.pages.dev`
+- the deployed CORS preflight for `OPTIONS /api/auth/status` returns HTTP `204` with the Pages origin, allowed methods, and `Access-Control-Allow-Credentials: true`
+- the deployed Pages bundle does not contain GitHub Pages host references and currently resolves its API base to the Render origin
+
 Checklist:
 
-- [ ] Finalize the frontend public origin.
-- [ ] Finalize the backend public origin.
-- [ ] Set `VITE_API_BASE_URL` for the deployed frontend.
-- [ ] Set `API_BASE_URL`, `APP_URL` or `APP_BASE_URL`, and `CORS_ORIGINS` for the backend.
-- [ ] Update `GOOGLE_CALLBACK_URL` to match the deployed callback contract.
-- [ ] Confirm no deployment env still points to localhost or GitHub Pages.
+- [x] Finalize the frontend public origin.
+- [x] Finalize the backend public origin.
+- [x] Set `VITE_API_BASE_URL` for the deployed frontend.
+- [x] Set `API_BASE_URL`, `APP_URL` or `APP_BASE_URL`, and `CORS_ORIGINS` for the backend.
+- [x] Update `GOOGLE_CALLBACK_URL` to match the deployed callback contract.
+- [x] Confirm no deployment env still points to localhost or GitHub Pages.
 
 ## Phase 7 - Database Migration, Seed, and Release Flow
 
@@ -241,13 +265,27 @@ Completion definition:
 - seed usage is documented and controlled
 - the release order is written down and repeatable
 
+Implemented release discipline:
+
+- release order:
+  1. confirm the target Neon project, branch, database, and direct `DATABASE_URL`
+  2. run `npm run db:migrate --workspace=ecotrack-database`
+  3. optionally run `npm run db:seed --workspace=ecotrack-database`
+  4. start or update the Render service
+  5. deploy or promote the Cloudflare Pages frontend
+  6. run smoke checks on readiness, API reachability, auth, and critical routes
+- migrations remain an explicit manual release step on the current Render free plan
+- seed data is allowed only for local development and deliberate non-production demo resets; it is not part of the production release path
+- rollback after a failed deploy is not automatic: prefer a forward fix and redeploy, and use Neon restore/backup recovery before reopening traffic if schema or data reversal is required
+- first-release bootstrap path uses the tracked Drizzle migration chain against the direct Neon URL before the first hosted API deploy, with seed data remaining optional and non-production only
+
 Checklist:
 
-- [ ] Define the deployment release order across database, backend, and frontend.
-- [ ] Decide whether migrations run automatically or as an explicit release step.
-- [ ] Decide where seed data is allowed.
-- [ ] Confirm how rollback will be handled if a deploy fails after migration.
-- [ ] Document the first-release bootstrap path for the managed database.
+- [x] Define the deployment release order across database, backend, and frontend.
+- [x] Decide whether migrations run automatically or as an explicit release step.
+- [x] Decide where seed data is allowed.
+- [x] Confirm how rollback will be handled if a deploy fails after migration.
+- [x] Document the first-release bootstrap path for the managed database.
 
 ## Phase 8 - Cutover Validation and Operational Checks
 
@@ -256,6 +294,19 @@ Description:
 This phase validates that the deployed stack behaves like the local architecture contract expects. It focuses on the flows that are most likely to break during a hosting cutover: auth, health checks, API routing, realtime transport, and the main role-based journeys.
 
 The goal is not exhaustive QA. The goal is to confirm that the first deployed environment is operational and that the public-origin contract is correct.
+
+Current validation snapshot (2026-03-07):
+
+- `GET https://ecotrack-3ggh.onrender.com/api/health/ready` returned HTTP `200` with the expected schema checks in the response body
+- `GET https://ecotrack-jmj.pages.dev/`, `/login`, and `/app/dashboard` each returned HTTP `200` and HTML content
+- the deployed frontend bundle contains the Render origin, confirming that the Pages build picked up the deployed API base
+- direct API requests and CORS preflights sent with `Origin: https://ecotrack-jmj.pages.dev` now return the expected allow-origin and credential headers, so browser API communication from Pages is validated at the transport layer
+- local seeded-user authentication works on the deployed stack
+- seeded `citizen`, `agent`, and `manager` demo users can each log in against the deployed API and reach their role-scoped read endpoints (`/api/citizen/profile`, `/api/tours/agent/me`, `/api/planning/dashboard`)
+- manager realtime support endpoints respond on the deployed API: `GET /api/planning/realtime/health`, `POST /api/planning/ws-session`, and `POST /api/planning/stream/session`
+- Google OAuth browser sign-in now succeeds on the deployed stack, confirming that the Google OAuth client now authorizes the deployed callback URI `https://ecotrack-3ggh.onrender.com/api/auth/google/callback`
+- manual browser validation confirms that the critical citizen, agent, and manager flows are working on the deployed stack
+- manual browser validation confirms that realtime connectivity and fallback behavior are working on the deployed stack
 
 Minimum validation areas:
 
@@ -268,12 +319,12 @@ Minimum validation areas:
 
 Checklist:
 
-- [ ] Validate backend readiness on the deployed URL.
-- [ ] Validate frontend-to-backend API communication.
-- [ ] Validate local auth login and protected-route behavior.
-- [ ] Validate Google OAuth callback behavior on deployed origins.
-- [ ] Validate at least one critical citizen, agent, and manager flow.
-- [ ] Validate realtime behavior and fallback after deployment.
+- [x] Validate backend readiness on the deployed URL.
+- [x] Validate frontend-to-backend API communication.
+- [x] Validate local auth login and protected-route behavior.
+- [x] Validate Google OAuth callback behavior on deployed origins.
+- [x] Validate at least one critical citizen, agent, and manager flow.
+- [x] Validate realtime behavior and fallback after deployment.
 
 ## Phase 9 - GitHub Pages Docs Follow-Up
 
@@ -330,3 +381,9 @@ The deployment rollout should be considered complete only when:
 - deployed env values follow the canonical repository rules
 - auth, API, and realtime validation pass after cutover
 - future docs-only hosting and future PostGIS work remain documented as separate follow-up phases
+
+Current status:
+
+- rollout execution is complete for the active deployment scope
+- Phases 1 through 8 are complete
+- Phases 9 and 10 remain intentionally deferred follow-up work

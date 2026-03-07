@@ -16,7 +16,7 @@ Track active origins in this registry before changing env values.
 | --- | --- | --- | --- | --- | --- |
 | local-dev | http://localhost:5173 | local frontend dev | dev team | n/a | active |
 | docker-dev | http://localhost:3000 | docker frontend dev | dev team | n/a | active |
-| deploy-dev | https://dev.example.com | shared dev frontend | platform/devops | n/a | template |
+| deploy-dev | https://ecotrack-jmj.pages.dev | Cloudflare Pages deploy-dev frontend | dev team | n/a | active |
 | deploy-staging | https://staging.example.com | pre-prod validation | platform/devops | n/a | template |
 | deploy-prod | https://app.example.com | production frontend | platform/devops | n/a | template |
 
@@ -24,6 +24,7 @@ Rules:
 - Temporary origins must include owner + expiry date and be removed at expiry.
 - Only team-controlled origins are allowed.
 - `APP_URL` must match one of `CORS_ORIGINS` entries.
+- Current deploy-dev state: the live Render API now returns `Access-Control-Allow-Origin: https://ecotrack-jmj.pages.dev`, and CORS preflights for the Pages origin succeed with credentials enabled.
 
 ## Phase 2 - Env and Docs Normalization
 
