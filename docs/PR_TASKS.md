@@ -39,10 +39,10 @@ Completed in this documentation pass:
 - a non-`main` Cloudflare Pages preview deployment has been smoke-tested successfully at `https://chore-docs-pages-cleanup.ecotrack-jmj.pages.dev`
 - GitHub Pages now serves docs only at `https://oussamaredd.github.io/EcoTrack/`
 - docs-only publishing is handled by `.github/workflows/docs-pages.yml` using `docs/` as the site source
+- the stale Cloudflare Worker GitHub integration has been disconnected, and new `main` pushes no longer emit `Workers Builds: ecotrack`
 
 Still not done:
 
-- the legacy Cloudflare Worker GitHub integration still emits failing `Workers Builds: ecotrack` checks outside the repo workflow and should be disconnected or deleted separately
 - future PostGIS work remains intentionally deferred
 
 ## Task 0 - Planning Baseline And Documentation
