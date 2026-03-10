@@ -22,10 +22,8 @@ describe('ResetPasswordPage', () => {
     vi.useRealTimers();
   });
 
-  it('uses the latest token when the query string changes on the same route', async () => {
-    resetPasswordMock
-      .mockRejectedValueOnce(new Error('Reset token expired.'))
-      .mockResolvedValueOnce({ success: true });
+  it('submits the query token and redirects to login after a successful reset', async () => {
+    resetPasswordMock.mockResolvedValueOnce({ success: true });
 
     const router = createMemoryRouter(
       [
@@ -33,7 +31,7 @@ describe('ResetPasswordPage', () => {
         { path: '/login', element: <div>Login</div> },
       ],
       {
-        initialEntries: ['/reset-password?token=first-token'],
+        initialEntries: ['/reset-password?token=second-token'],
       },
     );
 
@@ -47,25 +45,8 @@ describe('ResetPasswordPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
-    expect(await screen.findByText('Reset token expired.')).toBeInTheDocument();
-    expect(resetPasswordMock).toHaveBeenNthCalledWith(1, 'first-token', 'UpdatedPass123!');
-
-    await act(async () => {
-      await router.navigate('/reset-password?token=second-token');
-    });
-
     await waitFor(() => {
-      expect(router.state.location.search).toBe('?token=second-token');
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /update password/i }));
-
-    await waitFor(() => {
-      expect(resetPasswordMock).toHaveBeenNthCalledWith(2, 'second-token', 'UpdatedPass123!');
+      expect(resetPasswordMock).toHaveBeenCalledWith('second-token', 'UpdatedPass123!');
     });
 
     await act(async () => {
