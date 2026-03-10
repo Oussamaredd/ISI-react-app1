@@ -106,6 +106,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
 - Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
 - Frontend `/login` must stay interactive while background health checks run; `/health` is advisory UI only and must not hard-disable credential inputs.
 - Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status (default wait timeout: `180000ms`)
+- When `/login` is already in a degraded API state, sign-in actions should reprobe the lightweight health endpoint before starting a new auth request so the UI can recover as soon as the API returns and fail fast when it is still offline.
 
 ## Auth Exchange Flow
 

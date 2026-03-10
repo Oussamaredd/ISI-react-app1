@@ -46,6 +46,8 @@ npm run dev
 
 `npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts. The default readiness wait timeout is `180000ms`.
 
+The API workspace dev server now runs directly from TypeScript sources in watch mode, which removes the old full-build-before-listen step during local development.
+
 Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
 ```bash

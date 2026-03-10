@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
 import LoginButton from '../../components/LoginButton';
-import { probeApiHealth, useApiReady } from '../../hooks/useApiReady';
+import { useApiReady } from '../../hooks/useApiReady';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
 import { API_BASE } from '../../services/api';
@@ -85,16 +85,27 @@ export default function LoginPage() {
     };
   }, []);
 
+  const ensureApiAvailable = async (message: string) => {
+    const isApiHealthy = await retry();
+    if (isApiHealthy) {
+      return true;
+    }
+
+    setError(message);
+    setIsSigningIn(false);
+    setSignInMethod(null);
+    return false;
+  };
+
   const handleGoogleStart = async () => {
     setError(null);
     setSignInMethod('google');
     setIsSigningIn(true);
 
-    const isApiHealthy = await probeApiHealth(API_BASE);
-    if (!isApiHealthy) {
-      setError('EcoTrack is still reconnecting to the sign-in service. Please retry in a moment.');
-      setIsSigningIn(false);
-      setSignInMethod(null);
+    const canReachApi = await ensureApiAvailable(
+      'EcoTrack is still reconnecting to the sign-in service. Please retry in a moment.',
+    );
+    if (!canReachApi) {
       return;
     }
 
@@ -113,6 +124,15 @@ export default function LoginPage() {
     setIsSigningIn(true);
 
     try {
+      if (apiReachability === 'degraded') {
+        const canReachApi = await ensureApiAvailable(
+          'EcoTrack is still reconnecting to the sign-in service. Please retry in a moment.',
+        );
+        if (!canReachApi) {
+          return;
+        }
+      }
+
       const payload = await authApi.login(email, password);
 
       if (payload.accessToken && payload.user) {

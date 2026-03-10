@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
-const API_READY_RETRY_DELAY_MS = 1200;
+const API_READY_RETRY_DELAYS_MS = [400, 900, 1600];
+const API_READY_STEADY_RETRY_DELAY_MS = 3000;
 const API_READY_TIMEOUT_MS = 1500;
 const FALLBACK_API_BASE = 'http://localhost:3001';
 
 export type ApiReachability = 'checking' | 'ready' | 'degraded';
+
+const getRetryDelayMs = (attemptCount: number) =>
+  API_READY_RETRY_DELAYS_MS[attemptCount] ?? API_READY_STEADY_RETRY_DELAY_MS;
 
 const normalizeApiBaseUrl = (apiBaseUrl: string) => {
   const trimmed = apiBaseUrl.trim().replace(/\/+$/, '');
@@ -63,6 +67,14 @@ export const useApiReady = (apiBaseUrl: string) => {
     let isActive = true;
     let bootstrapTimer: number | null = null;
     let retryTimer: number | null = null;
+    let retryAttemptCount = 0;
+
+    const clearRetryTimer = () => {
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    };
 
     const probe = async ({ scheduleRetry = true }: { scheduleRetry?: boolean } = {}) => {
       if (!isActive) {
@@ -75,13 +87,36 @@ export const useApiReady = (apiBaseUrl: string) => {
         return false;
       }
 
-      if (!isHealthy && scheduleRetry) {
+      if (isHealthy) {
+        retryAttemptCount = 0;
+        clearRetryTimer();
+      } else if (scheduleRetry) {
+        const retryDelayMs = getRetryDelayMs(retryAttemptCount);
+        retryAttemptCount += 1;
+
+        clearRetryTimer();
         retryTimer = window.setTimeout(() => {
           void probe();
-        }, API_READY_RETRY_DELAY_MS);
+        }, retryDelayMs);
       }
 
       return isHealthy;
+    };
+
+    const reprobeSoon = () => {
+      if (!isActive) {
+        return;
+      }
+
+      retryAttemptCount = 0;
+      clearRetryTimer();
+      void probe();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        reprobeSoon();
+      }
     };
 
     bootstrapTimer = window.setTimeout(() => {
@@ -89,15 +124,17 @@ export const useApiReady = (apiBaseUrl: string) => {
       setApiReachability('checking');
       void probe();
     }, 0);
+    window.addEventListener('online', reprobeSoon);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isActive = false;
+      window.removeEventListener('online', reprobeSoon);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (bootstrapTimer !== null) {
         window.clearTimeout(bootstrapTimer);
       }
-      if (retryTimer !== null) {
-        window.clearTimeout(retryTimer);
-      }
+      clearRetryTimer();
     };
   }, [healthUrl]);
 

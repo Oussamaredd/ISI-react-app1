@@ -1,5 +1,6 @@
 const DEFAULT_URL = 'http://localhost:3001/api/health/ready';
 const DEFAULT_INTERVAL_MS = 1200;
+const DEFAULT_REQUEST_TIMEOUT_MS = 2000;
 const DEFAULT_TIMEOUT_MS = 180000;
 
 const hasArg = (name) => process.argv.includes(name);
@@ -21,6 +22,7 @@ const parsePositiveIntArg = (name, fallback) => {
 
 const probeUrl = parseArg('--url', DEFAULT_URL);
 const intervalMs = parsePositiveIntArg('--interval-ms', DEFAULT_INTERVAL_MS);
+const requestTimeoutMs = parsePositiveIntArg('--request-timeout-ms', DEFAULT_REQUEST_TIMEOUT_MS);
 const timeoutMs = parsePositiveIntArg('--timeout-ms', DEFAULT_TIMEOUT_MS);
 const noFail = hasArg('--no-fail');
 const startedAt = Date.now();
@@ -48,7 +50,7 @@ const resolveProbeErrorReason = (error) => {
 
 const probe = async () => {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Math.min(2000, intervalMs));
+  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
 
   try {
     const response = await fetch(probeUrl, {

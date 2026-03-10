@@ -18,10 +18,14 @@ vi.mock('../services/authApi', () => ({
   },
 }));
 
+const authApiModule = await import('../services/authApi');
+const mockAuthApiLogin = vi.mocked(authApiModule.authApi.login);
+
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockLogin.mockReset();
+    mockAuthApiLogin.mockReset();
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('API unavailable')));
   });
 
@@ -61,5 +65,33 @@ describe('LoginPage', () => {
     });
 
     expect(screen.getByRole('button', { name: /continue with google/i })).toBeEnabled();
+  });
+
+  test('does not call email sign-in while the API is still degraded', async () => {
+    renderWithRouter(<LoginPage />, { route: '/login', path: '/login' });
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'a@admin.fr' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'password123' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/having trouble reaching the api/i),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/still reconnecting to the sign-in service/i),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockAuthApiLogin).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeEnabled();
   });
 });
