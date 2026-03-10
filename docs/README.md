@@ -26,7 +26,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `.github/workflows/CI.yaml` - canonical `CI Integration` workflow for PR/main with path-aware lanes, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
 - `.github/workflows/docs-pages.yml` - docs-only GitHub Pages publishing workflow using `docs/` as the site source
 - SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
-- Sonar coverage gate currently excludes `database/**`, `api/src/modules/users/users.repository.ts`, and `api/src/modules/admin/admin.settings.repository.ts` pending dedicated coverage instrumentation alignment
+- Sonar coverage gate currently excludes `database/**`, selected frontend auth/bootstrap routing files, and selected users/auth service files pending dedicated coverage instrumentation alignment in the broader app/api source set
 - `.github/workflows/CD.yml` - canonical `CD Deployment` workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
@@ -40,6 +40,8 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `guides/` - end-user quick guides (citizen/agent/manager)
 - `features/` - feature-level behavior notes
 - `specs/` - source requirement inputs and planning references
+- `specs/mobile-platform-integration-contract.md` - mobile/client integration contract for the future Expo layer
+- `specs/mobile-layer-rollout-plan.md` - architecture-first rollout plan for adapting `poemapp` into EcoTrack
 
 ## Local Source Inputs
 - `ECOTRACK_CDC_COMMUN_V2 .docx` and `ECOTRACK_M2_DEV.xlsx` are local working inputs used to derive tracked documentation.
@@ -62,6 +64,7 @@ Develop:
 npm run dev
 npm run dev:doctor
 npm run dev --workspace=ecotrack-app
+npm run dev:mobile
 npm run dev --workspace=ecotrack-api
 ```
 
@@ -73,8 +76,11 @@ npm run clean:artifacts
 Validate:
 ```bash
 npm run lint
+npm run lint --workspace=ecotrack-mobile
 npm run typecheck
+npm run typecheck --workspace=ecotrack-mobile
 npm run test
+npm run test --workspace=ecotrack-mobile
 npm run test:api
 npm run test:e2e
 npm run test:coverage
