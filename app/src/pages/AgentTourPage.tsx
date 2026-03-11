@@ -269,6 +269,7 @@ export default function AgentTourPage() {
     ((anomalyTypesQuery.data as {
       anomalyTypes?: Array<{ id: string; label: string }>;
     } | undefined)?.anomalyTypes ?? []);
+  const isUsingCachedTour = agentTourQuery.dataSource === "cache";
 
   const refreshTour = async () => {
     setStatusMessage("");
@@ -548,6 +549,11 @@ export default function AgentTourPage() {
           {routeSummary?.isOverdue && tourStatus !== "completed" ? (
             <span className="ops-chip ops-chip-danger">
               Schedule has passed. Confirm this is still the active run.
+            </span>
+          ) : null}
+          {isUsingCachedTour ? (
+            <span className="ops-chip ops-chip-warning">
+              Offline fallback active. Showing the last cached tour and stored map data.
             </span>
           ) : null}
         </div>

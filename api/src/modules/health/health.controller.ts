@@ -1,6 +1,7 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 
+import { buildLivenessPayload, buildReadinessPayload } from './health.payloads.js';
 import { HealthService } from './health.service.js';
 
 @Controller('health')
@@ -15,25 +16,14 @@ export class HealthController {
 
   @Get('live')
   live() {
-    return {
-      status: 'ok',
-      service: 'EcoTrack API',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-    };
+    return buildLivenessPayload();
   }
 
   @Get('ready')
   async ready() {
-    const database = await this.healthService.checkDatabase();
-    const payload = {
-      status: database.status === 'ok' ? 'ok' : 'degraded',
-      service: 'EcoTrack API',
-      timestamp: new Date().toISOString(),
-      database,
-    };
+    const payload = await buildReadinessPayload(this.healthService);
 
-    if (database.status !== 'ok') {
+    if (payload.database.status !== 'ok') {
       throw new ServiceUnavailableException(payload);
     }
 

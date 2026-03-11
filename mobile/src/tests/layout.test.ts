@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveCitizenTabLayout } from "../theme/layout";
+import {
+  MOBILE_HEADER_BAR_HEIGHT,
+  MOBILE_HEADER_TOP_PADDING,
+  resolveCitizenTabLayout,
+  resolveMobileHeaderOffset
+} from "../theme/layout";
 
 describe("citizen tab layout", () => {
   it("uses compact navigation on narrow phones", () => {
@@ -25,5 +30,13 @@ describe("citizen tab layout", () => {
 
     expect(layoutWithInset.tabBarHeight).toBeGreaterThan(layoutWithoutInset.tabBarHeight);
     expect(layoutWithInset.tabBarPaddingBottom).toBe(16);
+  });
+
+  it("uses a minimum top padding for the shared header", () => {
+    expect(resolveMobileHeaderOffset(0)).toBe(MOBILE_HEADER_TOP_PADDING + MOBILE_HEADER_BAR_HEIGHT);
+  });
+
+  it("adds the safe-area inset to the shared header offset", () => {
+    expect(resolveMobileHeaderOffset(18)).toBe(18 + MOBILE_HEADER_BAR_HEIGHT);
   });
 });

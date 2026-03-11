@@ -1,9 +1,11 @@
 import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import jwtPkg from 'jsonwebtoken';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../modules/auth/auth.service.js';
 
 const MOCK_HASH_VALUE = ['fixture', 'hash'].join('-');
+const { sign } = jwtPkg as any;
 
 describe('AuthService', () => {
   const originalEnv = { ...process.env };
@@ -54,6 +56,49 @@ describe('AuthService', () => {
       name: 'Local User',
       avatarUrl: null,
     });
+  });
+
+  it('rejects oauth session tokens on bearer-protected APIs', () => {
+    const service = new AuthService(usersServiceMock as any);
+    const oauthToken = service.createAuthToken({
+      id: 'google-user-1',
+      provider: 'google',
+      email: 'google@example.com',
+      name: 'Google User',
+      avatarUrl: null,
+    });
+
+    expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${oauthToken}`)).toBeNull();
+  });
+
+  it('rejects local bearer tokens when read from cookie-backed oauth session helpers', () => {
+    const service = new AuthService(usersServiceMock as any);
+    const localToken = service.createLocalAccessToken({
+      id: 'user-1',
+      email: 'local@example.com',
+      displayName: 'Local User',
+      avatarUrl: null,
+    });
+
+    expect(service.getAuthUserFromCookie(`auth_token=${localToken}`)).toBeNull();
+  });
+
+  it('rejects expired bearer tokens', () => {
+    const service = new AuthService(usersServiceMock as any);
+    const expiredAccessToken = sign(
+      {
+        sub: 'user-1',
+        provider: 'local',
+        email: 'local@example.com',
+        name: 'Expired Local User',
+        picture: null,
+        tokenType: 'access',
+      },
+      process.env.JWT_ACCESS_SECRET ?? 'local-secret',
+      { expiresIn: -1 },
+    );
+
+    expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${expiredAccessToken}`)).toBeNull();
   });
 
   it('does not accept access_token query fallback', () => {

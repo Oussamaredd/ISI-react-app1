@@ -30,7 +30,7 @@ The repository is moving from a browser-only client plus platform stack to a bro
 
 - `app` runtime must not render TanStack Query Devtools UI in any environment.
 - `app` runtime must not render manual in-app debug/testing panels.
-- Browser-facing app runtimes proxy `/api` and `/health` at the frontend edge, and that frontend edge is the canonical public API origin for browser traffic.
+- Browser-facing app runtimes proxy `/api`, `/health`, and the root probe aliases (`/healthz`, `/startupz`, `/readyz`) at the frontend edge, and that frontend edge is the canonical public API origin for browser traffic.
 - Local/native browser traffic enters through the Vite frontend edge on `http://localhost:5173`; the API process keeps `API_PORT=3001` for direct local diagnostics only.
 - Docker browser traffic enters through the frontend container on `http://localhost:3000`; the backend keeps `API_PORT=3001` on the internal Docker network only.
 - Public API docs and examples should prefer the browser-facing edge origin or edge-relative `/api` paths instead of hardcoding a direct backend diagnostics port.
@@ -73,7 +73,7 @@ flowchart LR
   Admin[Admin]
   Web[EcoTrack Web App\nReact + Vite]
   Mobile[EcoTrack Mobile App\nExpo + React Native]
-  Edge[Frontend Edge\n/api and /health proxy]
+  Edge[Frontend Edge\n/api and root probe proxy]
   API[EcoTrack API\nNestJS modular monolith]
   DB[(PostgreSQL\nDrizzle-managed schema)]
   Ops[Docs, monitoring, runbooks]

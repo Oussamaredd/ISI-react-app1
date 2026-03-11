@@ -76,6 +76,8 @@ npm run validate-env:all
   - request query fields: `token`, `accessToken`, `refreshToken`
   - response headers: `set-cookie`
 - Nest internal startup/module/route mapping logs are suppressed by default in `development`/`test` (restored when `LOG_LEVEL=debug|trace`).
-- Each response carries `X-Request-Id` and the same value is emitted in logs/error payloads for traceability.
-- Global rate limiting is enabled (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`) with stricter limits on auth abuse endpoints.
+- Each response carries `X-Request-Id` and `Traceparent`; `Tracestate` is echoed when the request included it.
+- Structured request completion logs emit `traceId` and `spanId` so ELK queries can pivot from headers to server-side logs.
+- Global rate limiting is enabled (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`) with a stricter default abuse budget on auth endpoints such as `POST /login`.
+- Health probes and the Prometheus scrape endpoint are excluded from auto-log noise and rate limiting so operator probes do not distort abuse signals.
 

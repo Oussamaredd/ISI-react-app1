@@ -1,6 +1,6 @@
 import { mobileApiBase } from "@/lib/env";
 
-import { clearAccessToken, getCachedAccessToken } from "./tokenStore";
+import { clearPersistedSession, getCachedAccessToken } from "./tokenStore";
 import { createRequestId } from "./requestId";
 import { emitSessionInvalidated } from "./sessionEvents";
 
@@ -88,7 +88,7 @@ export const createApiRequestError = async (response: Response) => {
   const payload = await parseJsonResponse(response);
 
   if (response.status === 401) {
-    await clearAccessToken();
+    await clearPersistedSession();
     emitSessionInvalidated();
   }
 

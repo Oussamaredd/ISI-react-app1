@@ -20,3 +20,11 @@ export const captureCurrentLocation = async (): Promise<CapturedLocation> => {
     longitude: position.coords.longitude.toFixed(6)
   };
 };
+
+export const captureCurrentLocationIfAvailable = async (): Promise<CapturedLocation | null> => {
+  try {
+    return await captureCurrentLocation();
+  } catch {
+    return null;
+  }
+};

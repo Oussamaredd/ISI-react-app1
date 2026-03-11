@@ -83,7 +83,7 @@ Agent tour mapping note:
 - In GitHub Actions, set `SONAR_TOKEN` as a repository secret
 - If mirrored in local/backend env files for onboarding, keep placeholder values only
 - `PERCY_TOKEN` as repository secret to enable visual-regression publishing in `CI.yaml` when dispatching `run_extended_quality=true`
-- `CI_PERCY_COMMAND` as repository variable for the visual snapshot command executed by Percy
+- `CI_PERCY_COMMAND` as an optional repository variable to override the default Percy snapshot command executed by the visual-regression lane
 - `CI_ENABLE_MUTATION_GATE` as repository variable (`0` or `1`) to enable mutation gate execution
 - `CI_ENABLE_VISUAL_GATE` as repository variable (`0` or `1`) to enable Percy hook execution
 - `CI_ENABLE_LIGHTHOUSE_GATE` as repository variable (`0` or `1`) to enable Lighthouse lane execution
@@ -108,14 +108,26 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
 ## API Readiness Endpoint
 
 - Fast liveness probe: `GET /health` (returns HTTP `200` when the API process is listening)
+- Kubernetes-style liveness alias: `GET /healthz`
+- Startup alias: `GET /startupz`
+- Root readiness alias: `GET /readyz`
 - API liveness alias: `GET /api/health` and `GET /api/health/live`
 - Readiness probe (load-balancer/container ready-state): `GET /api/health/ready`
   - returns HTTP `200` when critical ticketing and planning schema dependencies are ready
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
+- `GET /health`, `GET /healthz`, and `GET /startupz` stay dependency-free so process-start and edge-proxy probes do not flap on downstream outages.
+- `GET /readyz`, `GET /api/health/ready`, and `GET /api/health/database` are the dependency-aware readiness checks.
 - Frontend health probes, when used for diagnostics, should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
 - Frontend `/login` must stay interactive and send auth requests directly; `/health` is advisory only and must not gate sign-in submission.
 - Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status (default wait timeout: `180000ms`)
+
+## Request Correlation
+
+- `X-Request-Id` remains the canonical human-facing request correlation header and is reused from incoming `x-request-id` values when provided.
+- `Traceparent` is emitted on every response and reused from valid incoming W3C trace context when provided.
+- `Tracestate` is echoed on responses when the incoming request carries it.
+- Structured API logs emit `traceId` and `spanId` alongside request metadata.
 
 ## Auth Exchange Flow
 

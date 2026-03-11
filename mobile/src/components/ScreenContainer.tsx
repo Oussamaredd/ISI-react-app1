@@ -1,14 +1,19 @@
 import type { PropsWithChildren, ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { router, useSegments } from "expo-router";
-import { ScrollView, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { resolveAuthenticatedHomeRoute } from "@/lib/roleRoutes";
 import { useCitizenMenu } from "@/providers/CitizenMenuProvider";
 import { useSession } from "@/providers/SessionProvider";
-import { resolveCitizenTabLayout } from "@/theme/layout";
+import {
+  MOBILE_HEADER_BAR_HEIGHT,
+  MOBILE_HEADER_TOUCH_TARGET,
+  resolveCitizenTabLayout,
+  resolveMobileHeaderOffset
+} from "@/theme/layout";
 import type { AppTheme } from "@/theme/theme";
 import { useAppTheme, useThemedStyles } from "@/theme/useAppTheme";
 import { AppLogoMark } from "./AppLogoMark";
@@ -27,78 +32,85 @@ const createStyles = (theme: AppTheme) => ({
     flex: 1,
     backgroundColor: theme.colors.background
   },
-  topBand: {
+  headerShell: {
+    borderBottomWidth: 1,
+    backgroundColor: theme.colors.surface
+  },
+  headerSection: {
+    width: "100%",
+    alignSelf: "center"
+  },
+  headerRow: {
+    minHeight: MOBILE_HEADER_BAR_HEIGHT,
+    justifyContent: "center"
+  },
+  headerContent: {
+    minHeight: MOBILE_HEADER_BAR_HEIGHT,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  profileSlot: {
+    width: MOBILE_HEADER_TOUCH_TARGET,
+    height: MOBILE_HEADER_TOUCH_TARGET,
+    alignItems: "flex-start",
+    justifyContent: "center"
+  },
+  avatarPlaceholder: {
+    width: MOBILE_HEADER_TOUCH_TARGET,
+    height: MOBILE_HEADER_TOUCH_TARGET
+  },
+  logoOverlay: {
     position: "absolute",
     top: 0,
-    left: 0,
     right: 0,
-    height: 112,
-    backgroundColor: theme.colors.backgroundAccent
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  logoButton: {
+    width: MOBILE_HEADER_TOUCH_TARGET,
+    height: MOBILE_HEADER_TOUCH_TARGET,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  titleSlot: {
+    flex: 1,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingLeft: MOBILE_HEADER_TOUCH_TARGET + theme.spacing.sm
+  },
+  titleButton: {
+    minHeight: MOBILE_HEADER_TOUCH_TARGET,
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.xs
+  },
+  title: {
+    fontWeight: "700",
+    textAlign: "right",
+    letterSpacing: 0.2
+  },
+  titleCompact: {
+    fontSize: 18,
+    lineHeight: 22
   },
   screen: {
     flex: 1,
     backgroundColor: "transparent"
   },
   content: {
-    gap: theme.spacing.lg
-  },
-  stack: {
     width: "100%",
     alignSelf: "center",
     gap: theme.spacing.lg
   },
-  appBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.sm,
-    minHeight: 72,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.shape.lg,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSoft
-  },
-  titleSlot: {
-    flex: 1,
-    justifyContent: "center"
-  },
-  title: {
-    color: theme.colors.onSurface,
-    fontWeight: "700"
-  },
-  titleCompact: {
-    fontSize: 20
-  },
-  centerSlot: {
-    width: 56,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  rightSlot: {
-    flex: 1,
-    alignItems: "flex-end",
-    justifyContent: "center"
-  },
-  avatarPlaceholder: {
-    width: 38,
-    height: 38
-  },
   intro: {
-    gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.xs
   },
-  eyebrow: {
-    color: theme.colors.primaryStrong,
-    fontWeight: "700",
-    letterSpacing: 0.7,
-    textTransform: "uppercase"
-  },
-  description: {
-    color: theme.colors.textMuted,
-    lineHeight: 22
-  },
   actions: {
-    marginTop: theme.spacing.sm
+    marginTop: 0
   },
   body: {
     gap: theme.spacing.md
@@ -115,6 +127,7 @@ export function ScreenContainer({
 }: ScreenContainerProps) {
   const theme = useAppTheme();
   const styles = useThemedStyles(createStyles);
+  const scrollViewRef = useRef<ScrollView | null>(null);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
@@ -123,26 +136,63 @@ export function ScreenContainer({
   const tabLayout = resolveCitizenTabLayout(width, insets.bottom);
   const horizontalPadding =
     width >= 1200 ? width * 0.08 : width >= 720 ? width * 0.06 : theme.spacing.lg;
-  const stackWidth = width >= 1200 ? 980 : width >= 900 ? 860 : undefined;
+  const maxContentWidth = width >= 1200 ? 980 : width >= 900 ? 860 : undefined;
   const isCitizenTabRoute = segments[0] === "(tabs)";
-  const verticalPadding = width < 380 ? theme.spacing.md : theme.spacing.xl;
-  const bottomPadding = verticalPadding + (isCitizenTabRoute ? tabLayout.tabBarHeight : 0);
+  const baseVerticalPadding = width < 380 ? theme.spacing.md : theme.spacing.xl;
+  const bottomPadding = baseVerticalPadding + (isCitizenTabRoute ? tabLayout.tabBarHeight : 0);
+  const headerOffset = resolveMobileHeaderOffset(insets.top);
+  const headerPaddingTop = headerOffset - MOBILE_HEADER_BAR_HEIGHT;
+  const headerDividerColor = theme.dark ? theme.colors.borderStrong : theme.colors.borderSoft;
+  const headerAvatarSize = width < 390 ? 34 : 36;
+  const shouldShowProfileAvatar = authState === "authenticated";
+  const shouldAllowMenuOpen = shouldShowProfileAvatar && showMenuButton && isMenuAvailable;
+  const authenticatedHomeRoute = resolveAuthenticatedHomeRoute(user);
+  const homeSegment = authenticatedHomeRoute.slice(1);
+  const isOnAuthenticatedHome =
+    authState === "authenticated" &&
+    segments[0] === homeSegment &&
+    segments.length === 1;
+  void eyebrow;
+  void description;
+  const shouldShowIntro = Boolean(actions);
+  const headerShellStyle = useMemo(
+    () => [
+      styles.headerShell,
+      {
+        paddingTop: headerPaddingTop,
+        paddingHorizontal: horizontalPadding,
+        borderBottomColor: headerDividerColor
+      }
+    ],
+    [headerDividerColor, headerPaddingTop, horizontalPadding, styles.headerShell]
+  );
   const contentStyle = useMemo(
     () => [
       styles.content,
       {
+        maxWidth: maxContentWidth,
+        paddingTop: theme.spacing.md,
         paddingHorizontal: horizontalPadding,
-        paddingTop: verticalPadding,
         paddingBottom: bottomPadding
       }
     ],
-    [bottomPadding, horizontalPadding, styles.content, verticalPadding]
+    [bottomPadding, horizontalPadding, maxContentWidth, styles.content, theme.spacing.md]
   );
-
-  const shouldShowProfileTrigger = showMenuButton && isMenuAvailable;
+  const titleAccessibilityLabel = `Scroll ${title} to top`;
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({
+      y: 0,
+      animated: true
+    });
+  };
   const handleLogoPress = () => {
+    if (isOnAuthenticatedHome) {
+      scrollToTop();
+      return;
+    }
+
     if (authState === "authenticated") {
-      router.replace(resolveAuthenticatedHomeRoute(user));
+      router.replace(authenticatedHomeRoute);
       return;
     }
 
@@ -151,48 +201,69 @@ export function ScreenContainer({
 
   return (
     <View style={styles.root}>
-      <View pointerEvents="none" style={styles.topBand} />
-      <ScrollView style={styles.screen} contentContainerStyle={contentStyle}>
-        <View style={[styles.stack, stackWidth ? { maxWidth: stackWidth } : null]}>
-          <View style={styles.appBar}>
-            <View style={styles.titleSlot}>
-              <Text
-                variant={width < 390 ? "titleMedium" : "titleLarge"}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                adjustsFontSizeToFit
-                minimumFontScale={0.82}
-                style={[styles.title, width < 390 ? styles.titleCompact : null]}
-              >
-                {title}
-              </Text>
-            </View>
-            <View style={styles.centerSlot}>
-              <AppLogoMark onPress={handleLogoPress} accessibilityLabel="Go to home" />
-            </View>
-            <View style={styles.rightSlot}>
-              {shouldShowProfileTrigger ? (
-                <ProfileAvatar
-                  name={user?.displayName ?? user?.email}
-                  onPress={openMenu}
-                  accessibilityLabel="Open account menu"
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder} />
-              )}
+      <View style={headerShellStyle}>
+        <View style={[styles.headerSection, maxContentWidth ? { maxWidth: maxContentWidth } : null]}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerContent}>
+              <View style={styles.profileSlot}>
+                {shouldShowProfileAvatar ? (
+                  <ProfileAvatar
+                    name={user?.displayName ?? user?.email}
+                    size={headerAvatarSize}
+                    variant="header"
+                    onPress={shouldAllowMenuOpen ? openMenu : undefined}
+                    accessibilityLabel={shouldAllowMenuOpen ? "Open account menu" : "Account profile"}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder} />
+                )}
+              </View>
+              <View pointerEvents="box-none" style={styles.logoOverlay}>
+                <Pressable
+                  onPress={handleLogoPress}
+                  style={styles.logoButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go to home"
+                  hitSlop={8}
+                >
+                  <AppLogoMark size={20} variant="plain" tintColor={theme.colors.onSurface} />
+                </Pressable>
+              </View>
+              <View style={styles.titleSlot}>
+                <Pressable
+                  onPress={scrollToTop}
+                  style={styles.titleButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={titleAccessibilityLabel}
+                  hitSlop={8}
+                >
+                  <Text
+                    variant={width < 390 ? "titleMedium" : "titleLarge"}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.92}
+                    style={[
+                      styles.title,
+                      width < 390 ? styles.titleCompact : null,
+                      { color: theme.colors.onSurface }
+                    ]}
+                  >
+                    {title}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
+        </View>
+      </View>
+      <ScrollView ref={scrollViewRef} style={styles.screen} contentContainerStyle={contentStyle}>
+        {shouldShowIntro ? (
           <View style={styles.intro}>
-            <Text variant="labelLarge" style={styles.eyebrow}>
-              {eyebrow}
-            </Text>
-            <Text variant="bodyMedium" style={styles.description}>
-              {description}
-            </Text>
             {actions ? <View style={styles.actions}>{actions}</View> : null}
           </View>
-          <View style={styles.body}>{children}</View>
-        </View>
+        ) : null}
+        <View style={styles.body}>{children}</View>
       </ScrollView>
     </View>
   );

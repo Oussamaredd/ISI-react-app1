@@ -257,7 +257,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/ticketdb_ci
       API_PORT: 3001
-      API_BASE_URL: http://localhost:5173
+      API_BASE_URL: http://127.0.0.1:3001
       APP_URL: http://localhost:5173
       SESSION_SECRET: ci-session-secret
       JWT_SECRET: ci-jwt-secret
@@ -613,17 +613,16 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Run K6 smoke scenario
-        shell: bash
-        run: |
-          mkdir -p tmp/ci
-          k6 run --summary-export tmp/ci/k6-summary.json infrastructure/performance/k6/api-health-smoke.js
+        env:
+          API_BASE_URL: http://127.0.0.1:3001
+        run: node infrastructure/scripts/ci/run-k6-scenarios.mjs --profile smoke
 
       - name: Upload K6 artifacts
         uses: actions/upload-artifact@v4
         with:
           name: k6-quality-report
           path: |
-            tmp/ci/k6-summary.json
+            tmp/ci/k6
             tmp/ci/k6-api.out.log
             tmp/ci/k6-api.err.log
 
@@ -740,6 +739,14 @@ jobs:
       - name: Run mutation gate hook
         run: node infrastructure/scripts/ci/run-mutation-gate.mjs
 
+      - name: Upload mutation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-quality-report
+          path: tmp/ci/stryker
+          if-no-files-found: ignore
+
   visual-regression:
     name: Extended - Visual Regression Hook
     runs-on: ubuntu-latest
@@ -788,9 +795,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Build frontend
-        run: npm run build --workspace=ecotrack-app
 
       - name: Run Lighthouse CI gate
         run: node infrastructure/scripts/ci/run-lighthouse-gate.mjs

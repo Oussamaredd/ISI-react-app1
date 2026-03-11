@@ -44,7 +44,8 @@ Status legend:
 - Workbook expected outcome: Endpoint /healthz pour Liveness; Endpoint /readyz pour Readiness; Configuration K8s validée.
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered via root probe aliases (`/health`, `/healthz`, `/startupz`, `/readyz`), `/api/health/*` readiness coverage, direct tests, and updated probe/runbook documentation.
 
 ### M2.5 - Dév. du Microservice de Facturation (Transactionnel)
 
@@ -60,7 +61,8 @@ Status legend:
 - Workbook expected outcome: Logs structurés JSON; Présence de la Trace/Span ID dans le log; Configuration Logback/Log4j validée.
 - Monolith adaptation: Implement as internal API modules with shared resilience, health, logging, tracing, and metrics support.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through `nestjs-pino` structured request logs with `traceId`/`spanId`, redaction rules, request correlation headers, and ELK/security documentation updates.
 
 ### M2.7 - Intégration du Tracing Distribué (OpenTelemetry/Jaeger)
 
@@ -76,7 +78,8 @@ Status legend:
 - Workbook expected outcome: Implémentation du serveur d'autorisation; Vérification de la signature JWT dans les Microservices.
 - Monolith adaptation: Implement as internal API modules with shared resilience, health, logging, tracing, and metrics support.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered by tightening the local bearer JWT flow, keeping OAuth session cookies separate, rejecting expired or mismatched token types, and extending auth regression tests plus auth docs.
 
 ### M2.11 - Implémentation du Rate Limiting dans l'API Gateway
 
@@ -84,7 +87,8 @@ Status legend:
 - Workbook expected outcome: Configuration du Rate Limiting (ex: 10 requêtes/seconde/IP); Test de dépassement du seuil.
 - Monolith adaptation: Implement as internal API modules with shared resilience, health, logging, tracing, and metrics support.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with a global throttling policy, stricter auth-abuse throttles, probe exclusions, and dedicated integration tests that assert `429` behavior.
 
 ### M2.12 - Développement des Tests de Sécurité (Injection)
 
@@ -100,7 +104,8 @@ Status legend:
 - Workbook expected outcome: Endpoint /metrics pour chaque MS; 5 métriques clés (CPU, RAM, Latency) exposées; Test de lecture par Prometheus.
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through `GET /api/metrics` with normalized RED HTTP metrics, runtime process gauges, realtime counters, Prometheus scrape compatibility, and direct metric rendering tests.
 
 ### M2.14 - Code du Consumer Kafka de Données Validées
 
@@ -387,7 +392,8 @@ Status legend:
 - Workbook expected outcome: 1. Enregistrement du Service Worker. 2. Stratégie de cache pour les images/itinéraires. 3. Test de fonctionnement hors-ligne validé sur l'App Agent.
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered by extending the agent web service worker to pre-cache the shell, same-origin static assets, and map tiles, adding offline fallback behavior, and covering registration/cache behavior with tests.
 
 ### M5.13 - Design du Workflow de Notification Push Mobile
 
@@ -844,7 +850,8 @@ Status legend:
 - Workbook expected outcome: Scripts K6 scénarios charge (ramping, spike, stress, soak); Configuration thresholds performance gates; Métriques custom business logic checks; Monitoring Grafana dashboard K6 Prometheus remote-write; Rapports performance HTML/JSON exports; Optimisations documentées avant/après métriques gains; Tests database load MongoDB/PostgreSQL; CI/CD integration pipeline validation; Documentation guide écriture scénarios + analyse résultats
 - Monolith adaptation: Implement as automated verification in current workspace test suites and CI quality gates.
 - Lane: `Dev QA`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the K6 scenario pack (`smoke`, `auth`, `ramping`, `spike`, `stress`, `soak`), the shared runner script, CI smoke integration, and the K6 execution guide.
 
 ### M10.3 - Tests Sécurité OWASP ZAP Automated Scanning
 
@@ -860,7 +867,8 @@ Status legend:
 - Workbook expected outcome: Configuration Stryker stryker.conf.json mutators testRunner; Execution mutation testing génération 500+ mutants; Reports HTML dashboard heatmap mutants killed/survived; Analyse survived mutants écriture tests additionnels; CI/CD integration pipeline threshold quality gates; Documentation mutation score trends; Exemples mutations détectées edge cases boundary conditions; Guide amélioration suite tests basé résultats
 - Monolith adaptation: Implement as automated verification in current workspace test suites and CI quality gates.
 - Lane: `Dev QA`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with a focused `infrastructure/tooling/quality/stryker.config.mjs`, gate automation, report artifact upload path, and targeted mutation coverage around request correlation, health, monitoring, and auth token handling.
 
 ### M10.5 - Tests Visuels Percy.io Regression UI Screenshots
 
@@ -868,7 +876,8 @@ Status legend:
 - Workbook expected outcome: Integration Percy.io @percy/playwright; Configuration .percy.yml widths responsive ignore regions; Capture screenshots tests E2E states multiples; Percy dashboard builds comparisons diffs; CI/CD GitLab pipeline percy-test; Approval workflow review changes; Documentation guide capture snapshots + review process; Exemples régressions détectées CSS layout bugs; Responsive testing breakpoints mobile/tablet/desktop
 - Monolith adaptation: Implement as automated verification in current workspace test suites and CI quality gates.
 - Lane: `Dev QA`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through `.percy.yml`, the default Percy snapshot runner, responsive route coverage, CI gate wiring, and the extended quality runbook.
 
 ### M10.8 - Tests Performance Frontend Lighthouse CI Web Vitals
 
@@ -876,7 +885,8 @@ Status legend:
 - Workbook expected outcome: Configuration Lighthouse CI lighthouserc.json collect assert; Tests performance Core Web Vitals LCP FID CLS; Budgets performance enforcement maxSize scripts images; LHCI server deployment historical builds trends; CI/CD integration pipeline artifacts reports; Optimisations images next/image lazy loading CDN; Optimisations JavaScript code splitting minification compression; Optimisations CSS critical inline async purge; PWA criteria service worker manifest offline; Documentation guide Lighthouse audits + optimisations
 - Monolith adaptation: Implement as automated verification in current workspace test suites and CI quality gates.
 - Lane: `Dev QA`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the multi-route `app/lighthouserc.json`, the preview-based LHCI runner, artifact export to `tmp/ci/lighthouse`, and CI/manual execution guidance.
 
 ## Module M11
 

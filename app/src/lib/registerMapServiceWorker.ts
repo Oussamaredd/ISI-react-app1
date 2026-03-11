@@ -33,11 +33,12 @@ const configureRegistration = async (registration: ServiceWorkerRegistration) =>
 };
 
 /**
- * Registers the map tile service worker once for the current browser session.
+ * Registers the agent offline cache service worker once for the current browser session.
  *
  * @remarks
- * The tile cache is progressive enhancement only. Mapping remains available when service worker
- * registration fails or is unsupported.
+ * The service worker caches same-origin app shell assets plus approved tile origins as progressive
+ * enhancement only. The live API remains network-first and the agent experience still works
+ * without service worker support.
  */
 export const registerMapServiceWorker = () => {
   if (

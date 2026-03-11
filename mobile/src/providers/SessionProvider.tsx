@@ -9,11 +9,14 @@ import {
   type SessionUser
 } from "@api/modules/auth";
 import {
-  clearAccessToken,
-  hydrateAccessToken,
-  setAccessToken
+  clearPersistedSession,
+  hydrateSessionSnapshot,
+  setPersistedSessionUser,
+  setSessionSnapshot
 } from "@api/core/tokenStore";
 import { subscribeToSessionInvalidated } from "@api/core/sessionEvents";
+
+import { bootstrapSession } from "./sessionBootstrap";
 
 export type AuthState = "unknown" | "authenticated" | "anonymous";
 
@@ -70,25 +73,24 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const refreshSession = useCallback(async () => {
     setAuthState("unknown");
-    const token = await hydrateAccessToken();
+    const nextState = await bootstrapSession({
+      hydrateSessionSnapshot,
+      loadStatus: authApi.status
+    });
 
-    if (!token) {
-      applyAnonymousState();
+    if (nextState.shouldClearPersistedSession) {
+      await clearPersistedSession();
+    }
+
+    if (nextState.authState === "authenticated" && nextState.user) {
+      if (nextState.shouldPersistUser) {
+        await setPersistedSessionUser(nextState.user);
+      }
+
+      applyAuthenticatedState(nextState.user);
       return;
     }
 
-    try {
-      const status = await authApi.status();
-
-      if (status.authenticated && status.user) {
-        applyAuthenticatedState(status.user);
-        return;
-      }
-    } catch {
-      // Fall through to anonymous state and clear the invalid token.
-    }
-
-    await clearAccessToken();
     applyAnonymousState();
   }, [applyAnonymousState, applyAuthenticatedState]);
 
@@ -99,6 +101,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     return subscribeToSessionInvalidated(() => {
       queryClient.clear();
+      void clearPersistedSession();
       applyAnonymousState();
     });
   }, [applyAnonymousState, queryClient]);
@@ -107,7 +110,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
     async ({ email, password }: { email: string; password: string }) => {
       const response = await authApi.login(email, password);
       const session = await resolveAuthSession(response);
-      await setAccessToken(session.accessToken);
+      await setSessionSnapshot({
+        accessToken: session.accessToken,
+        user: session.user
+      });
       queryClient.clear();
       applyAuthenticatedState(session.user);
     },
@@ -125,7 +131,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
       displayName?: string;
     }) => {
       const session = await authApi.signup(email, password, displayName);
-      await setAccessToken(session.accessToken);
+      await setSessionSnapshot({
+        accessToken: session.accessToken,
+        user: session.user
+      });
       queryClient.clear();
       applyAuthenticatedState(session.user);
     },
@@ -139,7 +148,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       // Local logout still proceeds.
     }
 
-    await clearAccessToken();
+    await clearPersistedSession();
     queryClient.clear();
     applyAnonymousState();
   }, [applyAnonymousState, queryClient]);

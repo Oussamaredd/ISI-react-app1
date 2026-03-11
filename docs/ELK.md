@@ -50,6 +50,8 @@ Backend logs are sent as structured JSON with these fields:
   "path": "/api/tickets",
   "status": 200,
   "requestId": "uuid-v4",
+  "traceId": "35f0de5f9a8f4d8ea4d6e1c46f5b2d0a",
+  "spanId": "bf18a7b6c80932ad",
   "duration": 150,
   "userId": "user_123"
 }
@@ -78,6 +80,11 @@ level:>=50
 #### Track Specific Request
 ```
 requestId:"550e8400-e29b-41d4-a716-446655440000"
+```
+
+#### Track Specific Trace
+```
+traceId:"35f0de5f9a8f4d8ea4d6e1c46f5b2d0a"
 ```
 
 #### Monitor API Endpoints

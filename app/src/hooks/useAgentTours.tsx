@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import { apiClient } from '../services/api';
 
@@ -20,6 +21,8 @@ export type TourRouteGeometry = {
   provider: string;
   resolvedAt: string;
 };
+
+export type AgentTourDataSource = 'none' | 'network' | 'cache';
 
 const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v1';
 
@@ -97,30 +100,43 @@ const readReusableAgentTourCache = () => {
 };
 
 export const useAgentTour = () =>
-  useQuery({
-    queryKey: ['agent-tour'],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.get('/api/tours/agent/me');
-        writeCachedEnvelope(AGENT_TOUR_CACHE_KEY, response);
-        return response;
-      } catch (error) {
-        const cached = readReusableAgentTourCache();
-        if (cached) {
-          return cached.data;
-        }
+  {
+    const initialCachedTour = readReusableAgentTourCache();
+    const [dataSource, setDataSource] = useState<AgentTourDataSource>(
+      initialCachedTour ? 'cache' : 'none',
+    );
 
-        throw error;
-      }
-    },
-    staleTime: 30_000,
-    initialData: () => readReusableAgentTourCache()?.data,
-    initialDataUpdatedAt: () => {
-      const cached = readReusableAgentTourCache();
-      return cached ? Date.parse(cached.cachedAt) : undefined;
-    },
-    retry: false,
-  });
+    const query = useQuery({
+      queryKey: ['agent-tour'],
+      queryFn: async () => {
+        try {
+          const response = await apiClient.get('/api/tours/agent/me');
+          writeCachedEnvelope(AGENT_TOUR_CACHE_KEY, response);
+          setDataSource('network');
+          return response;
+        } catch (error) {
+          const cached = readReusableAgentTourCache();
+          if (cached) {
+            setDataSource('cache');
+            return cached.data;
+          }
+
+          setDataSource('none');
+          throw error;
+        }
+      },
+      staleTime: 30_000,
+      initialData: () => initialCachedTour?.data,
+      initialDataUpdatedAt: () =>
+        initialCachedTour ? Date.parse(initialCachedTour.cachedAt) : undefined,
+      retry: false,
+    });
+
+    return {
+      ...query,
+      dataSource,
+    };
+  };
 
 export const useStartAgentTour = () => {
   const queryClient = useQueryClient();

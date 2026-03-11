@@ -40,6 +40,7 @@ Scope note:
 - Mobile auth may expose self-service `citizen` signup and forgot-password request flows when the backend auth endpoints are available.
 - `agent` and `manager` accounts remain platform/admin-provisioned unless a future product decision explicitly adds mobile self-service onboarding for those roles.
 - Successful sign-in must redirect by resolved role (`citizen`, `agent`, `manager`) using the authenticated session payload, not stale pre-login state.
+- Cold starts must not destroy a previously valid local session just because the initial auth-status revalidation hits a transient transport failure; secure storage should retain the last confirmed session snapshot until the platform explicitly rejects it.
 
 ## Canonical Use Case Endpoint Mapping
 
@@ -64,10 +65,15 @@ Scope note:
 - Citizen report flow is map-first on mobile:
   - the citizen must locate a mapped container inside the app
   - GPS can center the map on the citizen position and highlight the nearest 3-5 nearby containers
-  - the mobile map may expose nearby shortcuts and edge-arrow indicators for that same nearest set
+  - the mobile map may expose nearby shortcuts and viewport-synced offscreen arrow indicators for that same nearest set while the citizen pans or zooms, collapsing overlapping indicators and resolving taps to the nearest container in that overlap
+  - selecting a container from GPS-ranked shortcuts, search results, nearby shortcuts, nearby cards, or offscreen arrows recenters the map on that container and opens its info popup immediately
+  - tapping a map marker recenters on that container, opens the same compact popup immediately, and keeps it visible until the citizen taps elsewhere on the map or another container
+  - that popup is intentionally compact and limited to the container name plus the color-coded fill-progress tag
+  - `GET /api/containers` may include `fillLevelPercent`, which mobile surfaces as container progress with green `<50%`, warning `50-75%`, and red `>75%` states
   - location remains optional; search and reporting still work when the citizen skips GPS
+  - optional photo evidence can be captured before live location is available; the composer keeps that photo state and asks the citizen to refresh location before final submit when needed
   - search can look up containers by code/label/zone through `GET /api/containers`
-  - after container selection, the issue details are completed in a mobile bottom-sheet composer instead of a separate CRUD screen
+  - after container selection, the primary report entry point lives in the map controls or selected-container card, and the issue details plus optional photo evidence are completed in a mobile bottom-sheet composer instead of a separate CRUD screen
 - Duplicate citizen reports are rejected when the same container already has a citizen report inside the last hour.
 - Mobile should surface that duplicate window before submit whenever recent citizen history already proves the conflict.
 - Invalid or deleted containers raise an exception at the API boundary and must be handled in the mobile client.

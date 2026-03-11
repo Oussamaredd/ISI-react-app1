@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { hasCitizenAccess } from "@/lib/authz";
 import { useSession } from "@/providers/SessionProvider";
-import { resolveCitizenTabLayout } from "@/theme/layout";
+import { resolveCitizenTabLayout, resolveMobileHeaderOffset } from "@/theme/layout";
 import type { AppTheme } from "@/theme/theme";
 import { useThemedStyles } from "@/theme/useAppTheme";
 
@@ -240,6 +240,7 @@ export function CitizenMenuProvider({ children }: PropsWithChildren) {
           style={[
             styles.edgeSwipeZone,
             {
+              top: resolveMobileHeaderOffset(insets.top),
               width: tabLayout.edgeSwipeWidth,
               bottom: isCitizenTabRoute ? tabLayout.tabBarHeight : 0
             }

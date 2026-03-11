@@ -13,7 +13,12 @@ import { LoggerModule } from 'nestjs-pino';
 import type { Options as PinoHttpOptions } from 'pino-http';
 
 import { getRequestIdFromRequest } from './common/request-id.js';
+import { resolveTraceContext } from './common/trace-context.js';
 import configuration from './config/configuration.js';
+import {
+  DEFAULT_RATE_LIMIT_MAX_REQUESTS,
+  DEFAULT_RATE_LIMIT_WINDOW_MS,
+} from './config/rate-limit.js';
 import { validateEnv } from './config/validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
@@ -31,8 +36,6 @@ import { PlanningModule } from './modules/routes/planning.module.js';
 import { TicketsModule } from './modules/tickets/tickets.module.js';
 import { ZonesModule } from './modules/zones/zones.module.js';
 
-const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
-const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120;
 const REDACTED_FIELDS = '[REDACTED]';
 const LOG_LEVELS = new Set(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']);
 const SENSITIVE_LOG_PATHS = [
@@ -89,13 +92,27 @@ const normalizeRequestPath = (rawUrl?: string): string => {
 const getRequestPath = (request: Request): string =>
   normalizeRequestPath((request as Request & { originalUrl?: string }).originalUrl ?? request.url);
 
+type TraceAwareRequest = Request & {
+  traceId?: string;
+  spanId?: string;
+  traceparent?: string;
+  tracestate?: string;
+};
+
 const shouldIgnoreLogPath = (rawUrl?: string): boolean => {
   if (!rawUrl) {
     return false;
   }
 
   const pathOnly = normalizeRequestPath(rawUrl);
-  return pathOnly === '/health' || pathOnly === '/api/metrics' || pathOnly.startsWith('/api/health');
+  return (
+    pathOnly === '/health' ||
+    pathOnly === '/healthz' ||
+    pathOnly === '/startupz' ||
+    pathOnly === '/readyz' ||
+    pathOnly === '/api/metrics' ||
+    pathOnly.startsWith('/api/health')
+  );
 };
 
 const getResponseStatus = (rawResponse: unknown): number => {
@@ -146,6 +163,15 @@ const extractUserId = (request: Request): string | undefined => {
   }
 
   return undefined;
+};
+
+const getTraceFields = (request: Request) => {
+  const traceContext = resolveTraceContext(request as TraceAwareRequest);
+
+  return {
+    traceId: traceContext.traceId,
+    spanId: traceContext.spanId,
+  };
 };
 
 @Module({
@@ -201,6 +227,7 @@ const extractUserId = (request: Request): string | undefined => {
               status: statusCode,
               duration: getDurationFromLogValue(value),
               userId: extractUserId(request) ?? null,
+              ...getTraceFields(request),
             };
           },
           customErrorMessage: () => 'request failed',
@@ -213,6 +240,7 @@ const extractUserId = (request: Request): string | undefined => {
               status: statusCode,
               duration: getDurationFromLogValue(value),
               userId: extractUserId(request) ?? null,
+              ...getTraceFields(request),
               ...(error ? { err: error } : {}),
             };
           },

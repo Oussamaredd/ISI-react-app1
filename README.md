@@ -96,7 +96,10 @@ If local-native frontend `/api/*` requests fail, verify the API process directly
 
 ```bash
 curl -f http://localhost:3001/health
+curl -f http://localhost:3001/healthz
+curl -f http://localhost:3001/readyz
 curl -f http://localhost:3001/api/health/ready
+curl -f http://localhost:3001/api/metrics
 ```
 
 If the readiness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the database or API issue is fixed.
@@ -199,9 +202,11 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run validate-env:all` - validate all committed env templates for local, Docker, and deploy workflows
 - `npm run validate-doc-sync` - validate that behavior, env, schema, workflow, and release changes update the required docs in the same change set
 - `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
+- `npm run ci:quality:k6` - run the default K6 smoke scenario pack against the direct API
 - `npm run ci:quality:mutation` - run mutation gate hook (enabled by CI variable)
-- `npm run ci:quality:visual` - run visual-regression hook (enabled by CI variable + Percy token/command)
-- `npm run ci:quality:lighthouse` - run Lighthouse gate hook (enabled by CI variable)
+- `npm run ci:quality:visual` - run Percy visual-regression gate (defaults to the repo snapshot flow when no custom Percy command is set)
+- `npm run ci:quality:visual:snapshots` - build the frontend, start preview, and capture the default Percy snapshot route set
+- `npm run ci:quality:lighthouse` - build the frontend, start preview, and run the Lighthouse CI gate
 - `npm run db:migrate` - run Drizzle migrations
 - `npm run db:seed` - run seeders
 - `npm run infra:up` / `npm run infra:down` / `npm run infra:health` - Docker lifecycle wrappers
@@ -228,6 +233,7 @@ Release and contributor references:
 - `CHANGELOG.md`
 - `docs/RELEASE_VERSIONING.md`
 - `docs/CODE_ANNOTATION_CONVENTIONS.md`
+- `docs/runbooks/EXTENDED_QUALITY_GATES.md`
 - `.githooks/pre-commit`
 
 ## CI/CD
@@ -235,5 +241,6 @@ Release and contributor references:
 - `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes
 - `CD.yml`: canonical `CD Deployment` workflow; GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
+- The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/runbooks/EXTENDED_QUALITY_GATES.md`.
 
 

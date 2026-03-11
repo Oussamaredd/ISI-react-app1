@@ -1,14 +1,17 @@
 import 'reflect-metadata';
 import { Logger as NestLogger, ValidationPipe, type LogLevel } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { json, type Request, Response, urlencoded } from 'express';
+import { json, urlencoded } from 'express';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
+import { traceContextMiddleware } from './common/middleware/trace-context.middleware.js';
 import { resolveCorsOrigins } from './config/cors-origins.js';
+import { HealthService } from './modules/health/health.service.js';
+import { attachRootHealthRoutes } from './modules/health/root-health-routes.js';
 
 const resolveNestLoggerOption = (
   nodeEnv: string | undefined,
@@ -37,6 +40,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   app.flushLogs();
 
+  app.use(traceContextMiddleware);
   app.use(requestIdMiddleware);
   app.use(json({ limit: '5mb' }));
   app.use(
@@ -78,13 +82,7 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   // Trust the immediate frontend edge proxy so client IP/proto metadata stays accurate.
   expressApp.set('trust proxy', 1);
-  expressApp.get('/health', (_request: Request, response: Response) => {
-    response.status(200).json({
-      status: 'ok',
-      service: 'EcoTrack API',
-      timestamp: new Date().toISOString(),
-    });
-  });
+  attachRootHealthRoutes(expressApp, app.get(HealthService));
 
   await app.listen(port, host);
   const displayHost = host === '0.0.0.0' ? 'localhost' : host;

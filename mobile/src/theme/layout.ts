@@ -1,4 +1,7 @@
 export const CITIZEN_COMPACT_TAB_BREAKPOINT = 390;
+export const MOBILE_HEADER_TOP_PADDING = 6;
+export const MOBILE_HEADER_BAR_HEIGHT = 54;
+export const MOBILE_HEADER_TOUCH_TARGET = 44;
 
 export type CitizenTabLayout = {
   hideScheduleTab: boolean;
@@ -36,3 +39,6 @@ export const resolveCitizenTabLayout = (
     edgeSwipeWidth: hideScheduleTab ? 18 : 24
   };
 };
+
+export const resolveMobileHeaderOffset = (topInset: number) =>
+  Math.max(MOBILE_HEADER_TOP_PADDING, topInset) + MOBILE_HEADER_BAR_HEIGHT;

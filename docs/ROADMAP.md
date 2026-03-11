@@ -999,16 +999,19 @@ Mapping rules used in this backlog:
 
 ### M2 - Dev Core Runtime Services
 
-Status: `TODO_MONOLITH`
+Status: `PARTIAL`
 Lane: `Dev Core`
-Open task IDs: `M2.1`, `M2.2`, `M2.4`, `M2.5`, `M2.6`, `M2.7`, `M2.10`, `M2.11`, `M2.12`, `M2.13`, `M2.14`
+Open task IDs: `M2.1`, `M2.2`, `M2.5`, `M2.7`, `M2.12`, `M2.14`
+Completed task IDs: `M2.4`, `M2.6`, `M2.10`, `M2.11`, `M2.13`
 
 Description: Deliver the remaining runtime service hardening inside the modular monolith through `api` and `infrastructure`.
+
+Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, and Prometheus RED/USE metrics for HTTP/runtime visibility.
 
 Checklist:
 - [ ] Complete the remaining modular-monolith service, controller, and repository work.
 - [ ] Add shared resilience middleware.
-- [ ] Add health and readiness endpoints, centralized logging, tracing, metrics, and gateway guards.
+- [x] Add health and readiness endpoints, centralized logging, tracing, metrics, and gateway guards.
 
 ### M3 - Event Workflow Hardening
 
@@ -1038,16 +1041,20 @@ Checklist:
 
 ### M5 - Frontend Monolith Client Completion
 
-Status: `TODO_MONOLITH`
+Status: `PARTIAL`
 Lane: `Dev App`
-Open task IDs: `M5.3`, `M5.7`, `M5.8`, `M5.10`, `M5.13`, `M5.14`, `M5.15`
+Open task IDs: `M5.3`, `M5.7`, `M5.8`, `M5.13`, `M5.14`, `M5.15`
+Completed task IDs: `M5.10`
 
 Description: Finish the remaining frontend architecture and experience work around state, mapping UX, performance, caching, push UX, telemetry, and component reuse.
+
+Progress: The agent web experience now has an explicit service-worker cache policy, cached-tour fallback handling, offline shell behavior, and same-origin static asset caching without serving stale API responses.
 
 Checklist:
 - [ ] Refine frontend state architecture where gaps remain.
 - [ ] Complete heatmap UX and Web Vitals improvements.
-- [ ] Add caching policy, push-notification UX contract, telemetry hooks, and reusable component library improvements.
+- [x] Add the agent-web caching policy and offline fallback behavior.
+- [ ] Add push-notification UX contract, telemetry hooks, and reusable component library improvements.
 
 ### M6 - Security Governance and Hardening Handoff
 
@@ -1101,16 +1108,20 @@ Checklist:
 
 ### M10 - Non-Functional Quality Expansion
 
-Status: `TODO_MONOLITH`
+Status: `PARTIAL`
 Lane: `Dev QA`
-Open task IDs: `M10.2`, `M10.3`, `M10.4`, `M10.5`, `M10.8`
+Open task IDs: `M10.3`
+Completed task IDs: `M10.2`, `M10.4`, `M10.5`, `M10.8`
 
 Description: Expand quality gates beyond the current baseline with performance, mutation, visual-regression, and frontend performance validation.
 
+Progress: Extended quality lanes now include repo-owned K6 profiles, a focused Stryker gate, Percy snapshots, and filesystem Lighthouse reports wired into the manual `run_extended_quality=true` workflow path.
+
 Checklist:
-- [ ] Add load and performance test coverage.
-- [ ] Add mutation or equivalent robustness checks where practical.
-- [ ] Add visual-regression and frontend performance checks.
+- [x] Add load and performance test coverage.
+- [x] Add mutation or equivalent robustness checks where practical.
+- [x] Add visual-regression and frontend performance checks.
+- [ ] Finish the remaining automated security scanning lane (`M10.3`).
 
 ### M11 - Performance Backlog
 

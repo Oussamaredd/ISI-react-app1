@@ -24,6 +24,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
+- `runbooks/EXTENDED_QUALITY_GATES.md` - K6, Stryker, Percy, and Lighthouse execution paths for extended CI quality lanes
 - `runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased deployment plan for Cloudflare Pages, Render, and Neon
 - `runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current Neon Phase 3 baseline, validated resources, and direct-connection workflow
 - `.github/workflows/CI.yaml` - canonical `CI Integration` workflow for PR/main with path-aware lanes, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
@@ -94,8 +95,10 @@ npm run validate-env:all
 node infrastructure/scripts/validate-sonar-coverage-alignment.mjs
 npm run validate-specs
 node infrastructure/scripts/ci/generate-cdc-summary.mjs
+npm run ci:quality:k6
 node infrastructure/scripts/ci/run-mutation-gate.mjs
 node infrastructure/scripts/ci/run-visual-gate.mjs
+node infrastructure/scripts/ci/run-visual-snapshots.mjs
 node infrastructure/scripts/ci/run-lighthouse-gate.mjs
 ```
 

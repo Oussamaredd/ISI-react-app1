@@ -2,6 +2,8 @@ import { Body, Controller, Get, Post, Put, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
+import { AUTH_ABUSE_THROTTLE } from '../../config/rate-limit.js';
+
 import { AuthService } from './auth.service.js';
 import { ChangePasswordDto } from './change-password.dto.js';
 import { ForgotPasswordDto } from './forgot-password.dto.js';
@@ -9,13 +11,6 @@ import { LoginDto } from './login.dto.js';
 import { ResetPasswordDto } from './reset-password.dto.js';
 import { SignupDto } from './signup.dto.js';
 import { UpdateProfileDto } from './update-profile.dto.js';
-
-const AUTH_ABUSE_THROTTLE = {
-  default: {
-    limit: 10,
-    ttl: 60_000,
-  },
-};
 
 @Controller()
 export class LocalAuthController {

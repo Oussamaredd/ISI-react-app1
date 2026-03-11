@@ -8,10 +8,16 @@ type AppLogoMarkProps = {
   size?: number;
   onPress?: () => void;
   accessibilityLabel?: string;
+  tintColor?: string;
+  variant?: "badge" | "plain";
 };
 
 const createStyles = (theme: AppTheme) => ({
   shell: {
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  badge: {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: theme.shape.sm,
@@ -24,16 +30,21 @@ const createStyles = (theme: AppTheme) => ({
 export function AppLogoMark({
   size = 34,
   onPress,
-  accessibilityLabel
+  accessibilityLabel,
+  tintColor,
+  variant = "badge"
 }: AppLogoMarkProps) {
   const theme = useAppTheme();
   const styles = useThemedStyles(createStyles);
+  const iconSize = variant === "plain" ? Math.round(size * 0.84) : Math.round(size * 0.5);
+  const iconColor =
+    tintColor ?? (variant === "plain" ? theme.colors.onSurface : theme.colors.onPrimary);
   const logo = (
-    <View style={[styles.shell, { width: size, height: size }]}>
+    <View style={[styles.shell, variant === "badge" ? styles.badge : null, { width: size, height: size }]}>
       <MaterialCommunityIcons
         name="recycle-variant"
-        size={Math.round(size * 0.5)}
-        color={theme.colors.onPrimary}
+        size={iconSize}
+        color={iconColor}
       />
     </View>
   );
@@ -47,6 +58,7 @@ export function AppLogoMark({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
     >
       {logo}
     </Pressable>

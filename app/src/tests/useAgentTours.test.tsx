@@ -69,6 +69,7 @@ describe("useAgentTour cache behavior", () => {
 
     // Regression lock: the page must not paint stale seed geometry while the live fetch is still pending.
     expect(result.current.data).toBeUndefined();
+    expect(result.current.dataSource).toBe("none");
     expect(apiClient.get).toHaveBeenCalledWith("/api/tours/agent/me");
 
     resolveRequest?.(liveTour);
@@ -76,6 +77,7 @@ describe("useAgentTour cache behavior", () => {
     await waitFor(() => {
       expect(result.current.data).toEqual(liveTour);
     });
+    expect(result.current.dataSource).toBe("network");
     expect(JSON.parse(window.localStorage.getItem(AGENT_TOUR_CACHE_KEY) ?? "{}")).toEqual(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -112,6 +114,7 @@ describe("useAgentTour cache behavior", () => {
       expect(result.current.error).toBeTruthy();
     });
     expect(result.current.data).toBeUndefined();
+    expect(result.current.dataSource).toBe("none");
   });
 
   test("reuses cached non-seed routes when the live fetch fails", async () => {
@@ -140,5 +143,6 @@ describe("useAgentTour cache behavior", () => {
       expect(result.current.data).toEqual(cachedTour);
     });
     expect(result.current.error).toBeNull();
+    expect(result.current.dataSource).toBe("cache");
   });
 });

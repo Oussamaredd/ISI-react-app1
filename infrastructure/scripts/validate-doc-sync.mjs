@@ -23,11 +23,20 @@ const getFlagValue = (flagName) => {
 };
 
 const git = (gitArgs, options = {}) => {
-  const result = spawnSync(gitCommand, gitArgs, {
+  let result = spawnSync(gitCommand, gitArgs, {
     cwd: repoRoot,
     encoding: 'utf8',
     ...options,
   });
+
+  if (result.error?.code === 'EPERM') {
+    result = spawnSync('git', gitArgs, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      shell: true,
+      ...options,
+    });
+  }
 
   if (result.error) {
     throw result.error;
@@ -151,15 +160,6 @@ const isDocsFile = (file) => file === 'CHANGELOG.md' || pathStartsWith(file, 'do
 const isTestFile = (file) =>
   /(^|\/)(tests?|__tests__)\//.test(file) || /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file);
 
-const changedFiles = getChangedFiles();
-
-if (changedFiles.length === 0) {
-  console.log('validate-doc-sync: no changed files detected; skipping.');
-  process.exit(0);
-}
-
-const hasDocChange = (matcher) => changedFiles.some((file) => isDocsFile(file) && matcher(file));
-
 const rules = [
   {
     id: 'frontend-routes',
@@ -249,60 +249,87 @@ const rules = [
   },
 ];
 
-const failures = [];
-const satisfiedRuleIds = [];
+const main = () => {
+  const changedFiles = getChangedFiles();
 
-for (const rule of rules) {
-  const matchedFiles = changedFiles.filter((file) => rule.matchFile(file));
-  if (matchedFiles.length === 0) {
-    continue;
+  if (changedFiles.length === 0) {
+    console.log('validate-doc-sync: no changed files detected; skipping.');
+    process.exit(0);
   }
 
-  if (!hasDocChange(rule.docMatcher)) {
+  const hasDocChange = (matcher) => changedFiles.some((file) => isDocsFile(file) && matcher(file));
+  const failures = [];
+  const satisfiedRuleIds = [];
+
+  for (const rule of rules) {
+    const matchedFiles = changedFiles.filter((file) => rule.matchFile(file));
+    if (matchedFiles.length === 0) {
+      continue;
+    }
+
+    if (!hasDocChange(rule.docMatcher)) {
+      failures.push({
+        id: rule.id,
+        description: rule.description,
+        matchedFiles,
+        acceptedDocs: rule.acceptedDocs,
+      });
+      continue;
+    }
+
+    satisfiedRuleIds.push(rule.id);
+  }
+
+  const { before: previousRootVersion, after: nextRootVersion } = getRootVersionPair();
+  const rootVersionChanged =
+    typeof nextRootVersion === 'string' &&
+    nextRootVersion.length > 0 &&
+    previousRootVersion !== nextRootVersion;
+
+  if (rootVersionChanged && !changedFiles.includes('CHANGELOG.md')) {
     failures.push({
-      id: rule.id,
-      description: rule.description,
-      matchedFiles,
-      acceptedDocs: rule.acceptedDocs,
+      id: 'release-version',
+      description: `Root package version changed from ${previousRootVersion ?? 'none'} to ${nextRootVersion}, so CHANGELOG.md must be updated in the same change.`,
+      matchedFiles: ['package.json'],
+      acceptedDocs: 'CHANGELOG.md',
     });
-    continue;
+  } else if (rootVersionChanged) {
+    satisfiedRuleIds.push('release-version');
   }
 
-  satisfiedRuleIds.push(rule.id);
-}
+  if (failures.length > 0) {
+    console.error('validate-doc-sync: documentation updates are missing for the current change set.');
 
-const { before: previousRootVersion, after: nextRootVersion } = getRootVersionPair();
-const rootVersionChanged =
-  typeof nextRootVersion === 'string' &&
-  nextRootVersion.length > 0 &&
-  previousRootVersion !== nextRootVersion;
+    for (const failure of failures) {
+      console.error('');
+      console.error(`- Rule: ${failure.id}`);
+      console.error(`  ${failure.description}`);
+      console.error(`  Triggered by: ${failure.matchedFiles.join(', ')}`);
+      console.error(`  Accepted docs: ${failure.acceptedDocs}`);
+    }
 
-if (rootVersionChanged && !changedFiles.includes('CHANGELOG.md')) {
-  failures.push({
-    id: 'release-version',
-    description: `Root package version changed from ${previousRootVersion ?? 'none'} to ${nextRootVersion}, so CHANGELOG.md must be updated in the same change.`,
-    matchedFiles: ['package.json'],
-    acceptedDocs: 'CHANGELOG.md',
-  });
-} else if (rootVersionChanged) {
-  satisfiedRuleIds.push('release-version');
-}
-
-if (failures.length > 0) {
-  console.error('validate-doc-sync: documentation updates are missing for the current change set.');
-
-  for (const failure of failures) {
-    console.error('');
-    console.error(`- Rule: ${failure.id}`);
-    console.error(`  ${failure.description}`);
-    console.error(`  Triggered by: ${failure.matchedFiles.join(', ')}`);
-    console.error(`  Accepted docs: ${failure.acceptedDocs}`);
+    process.exit(1);
   }
 
-  process.exit(1);
-}
+  console.log(
+    `validate-doc-sync: pass (${changedFiles.length} changed file${changedFiles.length === 1 ? '' : 's'}; ` +
+      `${satisfiedRuleIds.length} matching rule${satisfiedRuleIds.length === 1 ? '' : 's'} satisfied).`,
+  );
+};
 
-console.log(
-  `validate-doc-sync: pass (${changedFiles.length} changed file${changedFiles.length === 1 ? '' : 's'}; ` +
-    `${satisfiedRuleIds.length} matching rule${satisfiedRuleIds.length === 1 ? '' : 's'} satisfied).`,
-);
+try {
+  main();
+} catch (error) {
+  if (
+    !getFlagValue('--files') &&
+    error instanceof Error &&
+    (error.message.includes('spawnSync') || 'code' in error)
+  ) {
+    console.error(
+      'validate-doc-sync: unable to invoke git in the current environment. Re-run with --files/--previous-version/--next-version, or use the staged hook / CI path.',
+    );
+    process.exit(1);
+  }
+
+  throw error;
+}

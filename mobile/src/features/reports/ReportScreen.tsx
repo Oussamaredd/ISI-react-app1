@@ -16,6 +16,7 @@ import {
   Chip,
   HelperText,
   IconButton,
+  ProgressBar,
   RadioButton,
   Searchbar,
   Text,
@@ -28,14 +29,17 @@ import { AppStateScreen } from "@/components/AppStateScreen";
 import { BottomSheet } from "@/components/BottomSheet";
 import { InfoCard } from "@/components/InfoCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
-import { captureCurrentLocation, type CapturedLocation } from "@/device/location";
+import {
+  captureCurrentLocation,
+  captureCurrentLocationIfAvailable,
+  type CapturedLocation
+} from "@/device/location";
 import {
   captureCameraPhoto,
   resolvePhotoPreviewAspectRatio,
   type CapturedPhoto
 } from "@/device/media";
 import {
-  buildCapturedPhotoDataUrl,
   buildMapRegion,
   citizenReportTypes,
   DEFAULT_CITIZEN_REPORT_TYPE,
@@ -47,11 +51,26 @@ import {
   type CitizenReportType
 } from "@/lib/citizenReports";
 import { formatCoordinates, formatDistanceMeters } from "@/lib/formatters";
-import { bearingDegrees, rankContainersByDistance, toCoordinateNumber } from "@/lib/geo";
+import {
+  bearingDegrees,
+  clusterViewportTargets,
+  projectCoordinateToViewport,
+  rankContainersByDistance,
+  toCoordinateNumber
+} from "@/lib/geo";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSession } from "@/providers/SessionProvider";
 import type { AppTheme } from "@/theme/theme";
 import { useAppTheme, useThemedStyles } from "@/theme/useAppTheme";
+import {
+  buildCameraStatusMessage,
+  buildCitizenReportPayload,
+  buildGpsStatusMessage,
+  PHOTO_CAPTURE_CANCELED_STATUS,
+  PHOTO_LOCATION_UNAVAILABLE_STATUS,
+  REPORT_SENT_STATUS,
+  shouldShowStatusMessage
+} from "./reportFlow";
 
 type MapRegion = {
   latitude: number;
@@ -87,15 +106,56 @@ type SubmitSuccessState = {
 type NearbyMapIndicator = ContainerOption & {
   distanceMeters: number;
   bearing: number;
-  rank: number;
+  leftPercent: number;
+  topPercent: number;
+  travelX: number;
+  travelY: number;
+  isVisible: boolean;
+};
+
+type OffscreenIndicatorCluster = {
+  primaryIndicator: NearbyMapIndicator;
+  indicators: NearbyMapIndicator[];
   leftPercent: number;
   topPercent: number;
 };
 
-const HIGHLIGHTED_NEARBY_LIMIT = 5;
+type MapPopupState = {
+  container: ContainerOption;
+  fillLabel: string;
+  fillColor: string;
+  leftPercent: number;
+  topPercent: number;
+};
 
-const clampPercent = (value: number, min = 10, max = 90) =>
-  Math.min(Math.max(value, min), max);
+type NativeMapPressEvent = {
+  nativeEvent?: {
+    action?: string;
+  };
+};
+
+const HIGHLIGHTED_NEARBY_LIMIT = 5;
+const MAP_POPUP_WIDTH = 168;
+const MAP_POPUP_CARD_MIN_HEIGHT = 40;
+const MAP_POPUP_CARET_SIZE = 14;
+const MAP_POPUP_VERTICAL_OFFSET = MAP_POPUP_CARD_MIN_HEIGHT + MAP_POPUP_CARET_SIZE / 2;
+const MAP_VIEWPORT_PADDING = {
+  horizontal: 12,
+  vertical: 14
+};
+const USER_FOCUS_BASE_RADIUS_METERS = 100;
+const INDICATOR_TRAVEL_DISTANCE = 4;
+const INDICATOR_CLUSTER_THRESHOLD = 8;
+const MAP_REGION_EPSILON = 0.00005;
+
+const metersToLatitudeDelta = (meters: number) => meters / 111_320;
+
+const metersToLongitudeDelta = (meters: number, latitude: number) => {
+  const latitudeRadians = (latitude * Math.PI) / 180;
+  const metersPerDegree = 111_320 * Math.max(Math.cos(latitudeRadians), 0.2);
+
+  return meters / metersPerDegree;
+};
 
 // Native-only map rendering for the installed mobile app.
 const nativeMapModule: NativeMapModule | null =
@@ -110,11 +170,9 @@ const createStyles = (theme: AppTheme) =>
   ({
     stack: { gap: theme.spacing.sm },
     actionRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
-    actionButton: { minWidth: 150 },
     muted: { color: theme.colors.textMuted, lineHeight: 20 },
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs },
     chipMeta: { color: theme.colors.textMuted },
-    mapNote: { color: theme.colors.textMuted, lineHeight: 20 },
     searchList: { gap: theme.spacing.sm },
     searchCard: {
       gap: theme.spacing.xs,
@@ -165,34 +223,74 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.onSurface,
       fontWeight: "700"
     },
+    mapPopupLayer: {
+      ...StyleSheet.absoluteFillObject
+    },
+    mapPopupCard: {
+      position: "absolute",
+      width: MAP_POPUP_WIDTH,
+      minHeight: MAP_POPUP_CARD_MIN_HEIGHT,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: theme.shape.pill,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      backgroundColor: theme.colors.surfaceElevated,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 6
+      },
+      shadowOpacity: theme.dark ? 0.24 : 0.12,
+      shadowRadius: 14,
+      elevation: 4
+    },
+    mapPopupTitle: {
+      flex: 1,
+      color: theme.colors.onSurface,
+      fontWeight: "700"
+    },
+    mapPopupPill: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: theme.shape.pill
+    },
+    mapPopupPillText: {
+      color: theme.colors.onPrimary,
+      fontWeight: "700"
+    },
+    mapPopupCaret: {
+      position: "absolute",
+      bottom: -(MAP_POPUP_CARET_SIZE / 2),
+      left: "50%",
+      width: MAP_POPUP_CARET_SIZE,
+      height: MAP_POPUP_CARET_SIZE,
+      borderRadius: 3,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRightWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      transform: [{ translateX: -(MAP_POPUP_CARET_SIZE / 2) }, { rotate: "45deg" }]
+    },
     mapIndicatorLayer: {
       ...StyleSheet.absoluteFillObject
     },
     mapIndicatorCard: {
       position: "absolute",
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       borderRadius: theme.shape.pill,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      backgroundColor: theme.colors.surfaceElevated,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: theme.colors.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 4
-      },
-      shadowOpacity: theme.dark ? 0.16 : 0.08,
-      shadowRadius: 10,
-      elevation: 2
-    },
-    mapIndicatorSelected: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.primarySurface
+      backgroundColor: "transparent"
     },
     mapIndicatorPulse: {
-      ...StyleSheet.absoluteFillObject,
+      position: "absolute",
+      width: 22,
+      height: 22,
       borderRadius: theme.shape.pill,
       backgroundColor: theme.colors.success
     },
@@ -200,38 +298,13 @@ const createStyles = (theme: AppTheme) =>
       opacity: 0.92
     },
     mapIndicatorArrow: {
-      color: theme.colors.success
-    },
-    mapIndicatorBadge: {
-      position: "absolute",
-      top: -5,
-      right: -5,
-      minWidth: 16,
-      height: 16,
-      borderRadius: theme.shape.pill,
-      paddingHorizontal: 4,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.colors.primaryStrong
-    },
-    mapIndicatorBadgeText: {
-      color: theme.colors.onPrimary,
-      fontSize: 10,
-      fontWeight: "700"
-    },
-    mapIndicatorLabelWrap: {
-      position: "absolute",
-      top: 42,
-      alignSelf: "center",
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: theme.shape.pill,
-      backgroundColor: theme.colors.overlay
-    },
-    mapIndicatorLabel: {
-      color: theme.colors.onPrimary,
-      fontSize: 10,
-      fontWeight: "700"
+      color: theme.colors.success,
+      textShadowColor: theme.dark ? "rgba(9, 15, 28, 0.48)" : "rgba(9, 15, 28, 0.22)",
+      textShadowOffset: {
+        width: 0,
+        height: 4
+      },
+      textShadowRadius: 10
     },
     legendRow: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
     legendItem: { flexDirection: "row", alignItems: "center", gap: theme.spacing.xs },
@@ -245,6 +318,49 @@ const createStyles = (theme: AppTheme) =>
       backgroundColor: theme.colors.primarySurface
     },
     selectedTitle: { color: theme.colors.onSurface, fontWeight: "700" },
+    fillPanel: {
+      gap: theme.spacing.xs,
+      padding: theme.spacing.sm,
+      borderRadius: theme.shape.md,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      backgroundColor: theme.colors.surface
+    },
+    fillPanelCompact: {
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.sm
+    },
+    fillHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: theme.spacing.sm
+    },
+    fillTitle: {
+      color: theme.colors.onSurface,
+      fontWeight: "700"
+    },
+    fillPill: {
+      minWidth: 60,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: theme.shape.pill,
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    fillPillText: {
+      color: theme.colors.onPrimary,
+      fontWeight: "700"
+    },
+    fillProgress: {
+      height: 10,
+      borderRadius: theme.shape.pill,
+      backgroundColor: theme.colors.surfaceMuted
+    },
+    fillMeta: {
+      color: theme.colors.textMuted,
+      lineHeight: 18
+    },
     warningCard: {
       gap: theme.spacing.xs,
       padding: theme.spacing.md,
@@ -323,12 +439,71 @@ const createStyles = (theme: AppTheme) =>
     }
   }) satisfies Record<string, object>;
 
+const normalizeFillLevelPercent = (value?: number | null) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.min(Math.max(Math.round(value), 0), 100);
+};
+
+const resolveContainerFillPresentation = (
+  container: ContainerOption,
+  theme: AppTheme
+) => {
+  const percent = normalizeFillLevelPercent(container.fillLevelPercent);
+
+  if (percent == null) {
+    return {
+      color: theme.colors.textMuted,
+      helperText: "Fill telemetry unavailable for this container.",
+      label: "Fill unavailable",
+      progress: 0,
+      summary: "Fill unknown"
+    };
+  }
+
+  if (percent > 75) {
+    return {
+      color: theme.colors.error,
+      helperText: "High fill level. This container likely needs urgent pickup.",
+      label: `${percent}% full`,
+      progress: percent / 100,
+      summary: `${percent}% full - high fill`
+    };
+  }
+
+  if (percent >= 50) {
+    return {
+      color: theme.colors.warning,
+      helperText: "Medium fill level. Capacity is getting limited.",
+      label: `${percent}% full`,
+      progress: percent / 100,
+      summary: `${percent}% full - medium fill`
+    };
+  }
+
+  return {
+    color: theme.colors.success,
+    helperText: "Low fill level. This container still has available capacity.",
+    label: `${percent}% full`,
+    progress: percent / 100,
+    summary: `${percent}% full - low fill`
+  };
+};
+
 const resolveMarkerColor = (
   container: ContainerOption,
   selectedContainerId: string | null,
   nearbyContainerIds: Set<string>,
   theme: AppTheme
 ) => {
+  const fillPresentation = resolveContainerFillPresentation(container, theme);
+
+  if (fillPresentation.color !== theme.colors.textMuted) {
+    return fillPresentation.color;
+  }
+
   if (container.id === selectedContainerId) {
     return theme.colors.primaryStrong;
   }
@@ -345,8 +520,12 @@ export function ReportScreen() {
   const styles = useThemedStyles(createStyles);
   const queryClient = useQueryClient();
   const mapRef = useRef<NativeMapController | null>(null);
+  const mapRegionRef = useRef<MapRegion | null>(null);
+  const indicatorPulse = useRef(new Animated.Value(0)).current;
+  const indicatorAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   const { isAuthenticated, isLoading: isSessionLoading } = useSession();
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
+  const [activeMapCalloutId, setActiveMapCalloutId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [mapRegion, setMapRegion] = useState<MapRegion | null>(null);
   const [capturedLocation, setCapturedLocation] = useState<CapturedLocation | null>(null);
@@ -390,6 +569,11 @@ export function ReportScreen() {
     () => mapContainers.find((container) => container.id === selectedContainerId) ?? null,
     [mapContainers, selectedContainerId]
   );
+  const selectedContainerFill = useMemo(
+    () =>
+      selectedContainer ? resolveContainerFillPresentation(selectedContainer, theme) : null,
+    [selectedContainer, theme]
+  );
   const nearbyContainers = useMemo(() => {
     if (capturedLocation) {
       return rankContainersByDistance(capturedLocation, mapContainers, 5);
@@ -416,36 +600,124 @@ export function ReportScreen() {
       findRecentDuplicateHistoryItem(historyPreviewQuery.data?.history ?? [], selectedContainerId),
     [historyPreviewQuery.data?.history, selectedContainerId]
   );
+  const isMapCenteredOnUser = useMemo(() => {
+    const latitude = toCoordinateNumber(capturedLocation?.latitude);
+    const longitude = toCoordinateNumber(capturedLocation?.longitude);
+
+    if (latitude == null || longitude == null || !mapRegion) {
+      return false;
+    }
+
+    return (
+      Math.abs(mapRegion.latitude - latitude) <= mapRegion.latitudeDelta * 0.12 &&
+      Math.abs(mapRegion.longitude - longitude) <= mapRegion.longitudeDelta * 0.12
+    );
+  }, [capturedLocation, mapRegion]);
   const nearbyMapIndicators = useMemo<NearbyMapIndicator[]>(() => {
-    if (!capturedLocation) {
+    if (!capturedLocation || !mapRegion) {
       return [];
     }
 
+    const viewportOrigin = {
+      latitude: String(mapRegion.latitude),
+      longitude: String(mapRegion.longitude)
+    };
+
     return nearbyContainers
       .slice(0, HIGHLIGHTED_NEARBY_LIMIT)
-      .map((container, index) => {
-        const bearing = bearingDegrees(capturedLocation, container);
-        if (bearing == null) {
+      .map((container) => {
+        const bearing =
+          bearingDegrees(viewportOrigin, container) ?? bearingDegrees(capturedLocation, container);
+        const projection = projectCoordinateToViewport(mapRegion, container, MAP_VIEWPORT_PADDING);
+
+        if (bearing == null || projection == null) {
           return null;
         }
 
-        const radiusX = 40 - (index % 2) * 3;
-        const radiusY = 36 - (index % 2) * 3;
-        const radians = (bearing * Math.PI) / 180;
-        const leftPercent = clampPercent(50 + Math.sin(radians) * radiusX, 12, 88);
-        const topPercent = clampPercent(50 - Math.cos(radians) * radiusY, 14, 86);
+        const directionRadians = (bearing * Math.PI) / 180;
 
         return {
           ...container,
           bearing,
-          rank: index + 1,
-          leftPercent,
-          topPercent
+          leftPercent: projection.leftPercent,
+          topPercent: projection.topPercent,
+          travelX: Math.sin(directionRadians) * INDICATOR_TRAVEL_DISTANCE,
+          travelY: -Math.cos(directionRadians) * INDICATOR_TRAVEL_DISTANCE,
+          isVisible: projection.isVisible
         };
       })
       .filter((container): container is NearbyMapIndicator => Boolean(container));
-  }, [capturedLocation, nearbyContainers]);
+  }, [capturedLocation, mapRegion, nearbyContainers]);
+  const offscreenNearbyIndicators = useMemo(
+    () => nearbyMapIndicators.filter((container) => !container.isVisible),
+    [nearbyMapIndicators]
+  );
+  const offscreenIndicatorClusters = useMemo<OffscreenIndicatorCluster[]>(
+    () =>
+      clusterViewportTargets(offscreenNearbyIndicators, INDICATOR_CLUSTER_THRESHOLD).map(
+        (cluster) => ({
+          primaryIndicator: cluster.primaryItem,
+          indicators: cluster.items,
+          leftPercent: cluster.leftPercent,
+          topPercent: cluster.topPercent
+        })
+      ),
+    [offscreenNearbyIndicators]
+  );
+  const activeMapPopup = useMemo<MapPopupState | null>(() => {
+    if (!mapRegion || !activeMapCalloutId) {
+      return null;
+    }
+
+    const container =
+      (selectedContainer?.id === activeMapCalloutId
+        ? selectedContainer
+        : mapContainers.find((item) => item.id === activeMapCalloutId)) ?? null;
+
+    if (!container) {
+      return null;
+    }
+
+    const projection = projectCoordinateToViewport(mapRegion, container, {
+      horizontal: 22,
+      vertical: 24
+    });
+
+    if (!projection?.isVisible) {
+      return null;
+    }
+
+    const fillPresentation = resolveContainerFillPresentation(container, theme);
+
+    return {
+      container,
+      fillLabel: fillPresentation.label,
+      fillColor: fillPresentation.color,
+      leftPercent: projection.rawLeftPercent,
+      topPercent: projection.rawTopPercent
+    };
+  }, [activeMapCalloutId, mapContainers, mapRegion, selectedContainer, theme]);
   const photoPreviewAspectRatio = resolvePhotoPreviewAspectRatio(photoEvidence);
+  const pulseScale = indicatorPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.35]
+  });
+  const pulseOpacity = indicatorPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.24, 0]
+  });
+  const directionalTravel = indicatorPulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [-0.35, 1, -0.35]
+  });
+  const indicatorScale = indicatorPulse.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.06, 1]
+  });
+
+  useEffect(() => {
+    mapRegionRef.current = mapRegion;
+  }, [mapRegion]);
 
   useEffect(() => {
     if (mapRegion || mapContainers.length === 0) {
@@ -457,14 +729,79 @@ export function ReportScreen() {
     const nextRegion = buildMapRegion(initialContainer);
 
     if (nextRegion) {
-      setMapRegion(nextRegion);
+      commitMapRegion(nextRegion);
       setSelectedContainerId((currentValue) => currentValue ?? initialContainer.id);
     }
   }, [capturedLocation, mapContainers, mapRegion]);
 
+  useEffect(() => {
+    indicatorAnimationRef.current?.stop();
+    indicatorPulse.stopAnimation();
+
+    if (!capturedLocation || offscreenIndicatorClusters.length === 0) {
+      indicatorPulse.setValue(0);
+      indicatorAnimationRef.current = null;
+      return;
+    }
+
+    const nextAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(indicatorPulse, {
+          duration: 950,
+          toValue: 1,
+          useNativeDriver: true
+        }),
+        Animated.timing(indicatorPulse, {
+          duration: 950,
+          toValue: 0,
+          useNativeDriver: true
+        })
+      ])
+    );
+
+    indicatorAnimationRef.current = nextAnimation;
+    nextAnimation.start();
+
+    return () => {
+      nextAnimation.stop();
+      indicatorPulse.stopAnimation();
+      indicatorPulse.setValue(0);
+      indicatorAnimationRef.current = null;
+    };
+  }, [capturedLocation, indicatorPulse, offscreenIndicatorClusters.length]);
+
+  const commitMapRegion = (nextRegion: MapRegion) => {
+    const currentRegion = mapRegionRef.current;
+
+    if (
+      currentRegion &&
+      Math.abs(currentRegion.latitude - nextRegion.latitude) <= MAP_REGION_EPSILON &&
+      Math.abs(currentRegion.longitude - nextRegion.longitude) <= MAP_REGION_EPSILON &&
+      Math.abs(currentRegion.latitudeDelta - nextRegion.latitudeDelta) <= MAP_REGION_EPSILON &&
+      Math.abs(currentRegion.longitudeDelta - nextRegion.longitudeDelta) <= MAP_REGION_EPSILON
+    ) {
+      return;
+    }
+
+    mapRegionRef.current = nextRegion;
+    setMapRegion(nextRegion);
+  };
+
+  const handleMapRegionChangeComplete = (nextRegion: MapRegion) => {
+    commitMapRegion(nextRegion);
+  };
+
+  const handleMapPress = (event?: NativeMapPressEvent) => {
+    if (event?.nativeEvent?.action && event.nativeEvent.action !== "press") {
+      return;
+    }
+
+    setActiveMapCalloutId(null);
+  };
+
   const centerMapOnUserPosition = (
     location: CapturedLocation,
-    containersToHighlight: ContainerOption[]
+    _containersToHighlight: ContainerOption[]
   ) => {
     const latitude = toCoordinateNumber(location.latitude);
     const longitude = toCoordinateNumber(location.longitude);
@@ -473,41 +810,17 @@ export function ReportScreen() {
       return;
     }
 
-    const nearbyPoints = containersToHighlight
-      .slice(0, HIGHLIGHTED_NEARBY_LIMIT)
-      .map((container) => ({
-        latitude: toCoordinateNumber(container.latitude),
-        longitude: toCoordinateNumber(container.longitude)
-      }))
-      .filter(
-        (
-          point
-        ): point is {
-          latitude: number;
-          longitude: number;
-        } => point.latitude != null && point.longitude != null
-      );
-
-    const latitudeDelta =
-      nearbyPoints.length > 0
-        ? Math.max(0.018, ...nearbyPoints.map((point) => Math.abs(point.latitude - latitude) * 2.8))
-        : 0.018;
-    const longitudeDelta =
-      nearbyPoints.length > 0
-        ? Math.max(
-            0.018,
-            ...nearbyPoints.map((point) => Math.abs(point.longitude - longitude) * 2.8)
-          )
-        : 0.018;
+    const baseLatitudeDelta = metersToLatitudeDelta(USER_FOCUS_BASE_RADIUS_METERS * 2);
+    const baseLongitudeDelta = metersToLongitudeDelta(USER_FOCUS_BASE_RADIUS_METERS * 2, latitude);
 
     const nextRegion = {
       latitude,
       longitude,
-      latitudeDelta,
-      longitudeDelta
+      latitudeDelta: baseLatitudeDelta,
+      longitudeDelta: baseLongitudeDelta
     };
 
-    setMapRegion(nextRegion);
+    commitMapRegion(nextRegion);
     mapRef.current?.animateToRegion?.(nextRegion, 240);
   };
 
@@ -516,18 +829,21 @@ export function ReportScreen() {
     source: LocationSource,
     options?: {
       recenterMap?: boolean;
+      showMapCallout?: boolean;
     }
   ) => {
     const shouldRecenterMap = options?.recenterMap ?? true;
+    const shouldShowMapCallout = options?.showMapCallout ?? false;
 
     setSelectedContainerId(container.id);
     setLocationSource(source);
     setErrorMessage(null);
+    setActiveMapCalloutId(shouldShowMapCallout ? container.id : null);
 
     if (shouldRecenterMap) {
       const nextRegion = buildMapRegion(container);
       if (nextRegion) {
-        setMapRegion(nextRegion);
+        commitMapRegion(nextRegion);
         mapRef.current?.animateToRegion?.(nextRegion, 240);
       }
     }
@@ -538,6 +854,7 @@ export function ReportScreen() {
   const runGpsCapture = async (origin: "discover" | "composer") => {
     setIsLocating(true);
     setErrorMessage(null);
+    setStatusMessage(null);
 
     try {
       const location = await captureCurrentLocation();
@@ -555,22 +872,20 @@ export function ReportScreen() {
 
         const nearestContainer = nearestMatches[0] ?? resolveNearestContainer(mapContainers, location);
         if (nearestContainer) {
-          focusContainer(nearestContainer, "gps", { recenterMap: false });
+          focusContainer(nearestContainer, "gps", {
+            recenterMap: false,
+            showMapCallout: true
+          });
         }
 
         setStatusMessage(
-          nearestMatches.length > 0
-            ? `GPS active. Map centered on your position with ${nearestMatches.length} nearby containers highlighted.`
-            : "GPS active. Map centered on your position."
+          buildGpsStatusMessage(origin, nearestMatches.length)
         );
       } else {
-        setStatusMessage(
-          nearestMatches.length > 0
-            ? `Location refreshed. Map centered on your position with ${nearestMatches.length} nearby containers highlighted.`
-            : "Location refreshed."
-        );
+        setStatusMessage(buildGpsStatusMessage(origin, nearestMatches.length));
       }
     } catch (error) {
+      setStatusMessage(null);
       setErrorMessage(error instanceof Error ? error.message : "Unable to capture your location.");
     } finally {
       setIsLocating(false);
@@ -580,18 +895,25 @@ export function ReportScreen() {
   const runCameraCapture = async (origin: "discover" | "composer") => {
     setIsCapturingPhoto(true);
     setErrorMessage(null);
+    setStatusMessage(null);
 
     try {
-      const location = await captureCurrentLocation();
       const photo = await captureCameraPhoto();
 
       if (!photo) {
-        setStatusMessage("Photo capture canceled.");
+        setStatusMessage(PHOTO_CAPTURE_CANCELED_STATUS);
+        return;
+      }
+
+      setPhotoEvidence(photo);
+
+      const location = await captureCurrentLocationIfAvailable();
+      if (!location) {
+        setStatusMessage(PHOTO_LOCATION_UNAVAILABLE_STATUS);
         return;
       }
 
       setCapturedLocation(location);
-      setPhotoEvidence(photo);
       const nearestMatches = rankContainersByDistance(
         location,
         mapContainers,
@@ -608,15 +930,12 @@ export function ReportScreen() {
           focusContainer(nearestContainer, "camera", { recenterMap: false });
         }
 
-        setStatusMessage(
-          nearestMatches.length > 0
-            ? "Photo evidence captured. Map centered on your position with nearby containers highlighted."
-            : "Photo evidence captured with live coordinates."
-        );
+        setStatusMessage(buildCameraStatusMessage(origin, nearestMatches.length));
       } else {
-        setStatusMessage("Photo evidence captured with refreshed location.");
+        setStatusMessage(buildCameraStatusMessage(origin, nearestMatches.length));
       }
     } catch (error) {
+      setStatusMessage(null);
       setErrorMessage(error instanceof Error ? error.message : "Unable to capture photo evidence.");
     } finally {
       setIsCapturingPhoto(false);
@@ -629,6 +948,31 @@ export function ReportScreen() {
       return;
     }
 
+    if (capturedLocation) {
+      const cachedNearestMatches = rankContainersByDistance(
+        capturedLocation,
+        mapContainers,
+        HIGHLIGHTED_NEARBY_LIMIT
+      );
+      const nearestContainer =
+        cachedNearestMatches[0] ?? resolveNearestContainer(mapContainers, capturedLocation);
+
+      centerMapOnUserPosition(capturedLocation, cachedNearestMatches);
+      setLocationSource("gps");
+      setStatusMessage(
+        cachedNearestMatches.length > 0
+          ? `Map recentered on your position with ${cachedNearestMatches.length} nearby containers.`
+          : "Map recentered on your position."
+      );
+
+      if (nearestContainer) {
+        focusContainer(nearestContainer, "gps", {
+          recenterMap: false,
+          showMapCallout: true
+        });
+      }
+    }
+
     void runGpsCapture("discover");
   };
 
@@ -639,15 +983,6 @@ export function ReportScreen() {
     }
 
     void runGpsCapture("composer");
-  };
-
-  const handleCameraCapture = () => {
-    if (!hasSeenCameraPrimer) {
-      setActivePrimer({ action: "camera", origin: "discover" });
-      return;
-    }
-
-    void runCameraCapture("discover");
   };
 
   const handleComposerCameraCapture = () => {
@@ -675,12 +1010,14 @@ export function ReportScreen() {
   };
 
   const handleSearchSelection = (container: ContainerOption) => {
-    focusContainer(container, "container");
+    focusContainer(container, "container", { showMapCallout: true });
     startTransition(() => setSearchText(""));
   };
 
   const createReportMutation = useMutation({
     mutationFn: async () => {
+      setStatusMessage(null);
+
       if (!selectedContainer) {
         throw new Error("Select a mapped container before submitting.");
       }
@@ -697,14 +1034,15 @@ export function ReportScreen() {
       setCapturedLocation(resolvedLocation);
       setLocationSource("gps");
 
-      const response = await citizenApi.createReport({
-        containerId: selectedContainer.id,
-        reportType,
-        description: description.trim() || undefined,
-        latitude: resolvedLocation.latitude,
-        longitude: resolvedLocation.longitude,
-        photoUrl: buildCapturedPhotoDataUrl(photoEvidence) ?? undefined
-      });
+      const response = await citizenApi.createReport(
+        buildCitizenReportPayload({
+          containerId: selectedContainer.id,
+          description,
+          location: resolvedLocation,
+          photoEvidence,
+          reportType
+        })
+      );
 
       return {
         response,
@@ -715,7 +1053,7 @@ export function ReportScreen() {
     },
     onSuccess: (result) => {
       setLastSubmission(result);
-      setStatusMessage("Report sent. History and challenge points are refreshing.");
+      setStatusMessage(REPORT_SENT_STATUS);
       setErrorMessage(null);
       setDescription("");
       setPhotoEvidence(null);
@@ -728,6 +1066,7 @@ export function ReportScreen() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.citizenHistoryBase });
     },
     onError: (error) => {
+      setStatusMessage(null);
       setErrorMessage(error instanceof Error ? error.message : "Unable to submit the report.");
     }
   });
@@ -776,49 +1115,6 @@ export function ReportScreen() {
       title="Report"
       description="Map, select, submit."
     >
-      <InfoCard title="Actions">
-        <View style={styles.stack}>
-          <View style={styles.actionRow}>
-            <Button
-              mode="contained"
-              icon="crosshairs-gps"
-              style={styles.actionButton}
-              loading={isLocating}
-              onPress={handleGpsLocation}
-            >
-              Use GPS
-            </Button>
-            <Button
-              mode="outlined"
-              icon="camera-outline"
-              style={styles.actionButton}
-              loading={isCapturingPhoto}
-              onPress={handleCameraCapture}
-            >
-              Add photo
-            </Button>
-            <Button
-              mode="contained-tonal"
-              icon="alert-circle-outline"
-              style={styles.actionButton}
-              disabled={!selectedContainer}
-              onPress={() => setIsComposerVisible(true)}
-            >
-              Report issue
-            </Button>
-          </View>
-          <Text variant="bodySmall" style={styles.mapNote}>
-            Enable GPS to center the map on your position and highlight up to 5 nearby
-            containers. You can still search and report without location.
-          </Text>
-          {statusMessage ? (
-            <HelperText type="info" visible>
-              {statusMessage}
-            </HelperText>
-          ) : null}
-        </View>
-      </InfoCard>
-
       <InfoCard title="Find container">
         <View style={styles.stack}>
           <Searchbar
@@ -836,7 +1132,9 @@ export function ReportScreen() {
                   <Chip
                     key={container.id}
                     icon="crosshairs-gps"
-                    onPress={() => focusContainer(container, "container", { recenterMap: false })}
+                    onPress={() =>
+                      focusContainer(container, "container", { showMapCallout: true })
+                    }
                   >
                     {`${index + 1}. ${container.code}`}
                   </Chip>
@@ -872,10 +1170,6 @@ export function ReportScreen() {
               No mapped container matched that search.
             </HelperText>
           ) : null}
-          <Text variant="bodySmall" style={styles.muted}>
-            GPS keeps the map centered on you. Nearby markers and arrows track the 5 closest
-            containers.
-          </Text>
         </View>
       </InfoCard>
 
@@ -885,6 +1179,10 @@ export function ReportScreen() {
             <NativeMapView
               ref={mapRef}
               initialRegion={mapRegion}
+              onRegionChangeComplete={(nextRegion: MapRegion) =>
+                handleMapRegionChangeComplete(nextRegion)
+              }
+              onPress={handleMapPress}
               style={styles.map}
               showsUserLocation={Boolean(capturedLocation)}
             >
@@ -895,15 +1193,15 @@ export function ReportScreen() {
                     latitude: toCoordinateNumber(container.latitude) ?? 0,
                     longitude: toCoordinateNumber(container.longitude) ?? 0
                   }}
-                  title={`${container.code} - ${container.label}`}
-                  description={container.zoneName ?? undefined}
                   pinColor={resolveMarkerColor(
                     container,
                     selectedContainerId,
                     nearbyContainerIds,
                     theme
                   )}
-                  onPress={() => focusContainer(container, "container")}
+                  onPress={() =>
+                    focusContainer(container, "container", { showMapCallout: true })
+                  }
                 />
               ))}
             </NativeMapView>
@@ -912,12 +1210,14 @@ export function ReportScreen() {
                 <>
                   <View style={styles.mapStatusPill}>
                     <Text variant="labelSmall" style={styles.mapStatusText}>
-                      You are centered
+                      {isMapCenteredOnUser ? "You are centered" : "GPS ready"}
                     </Text>
                   </View>
                   <View style={styles.mapStatusPill}>
                     <Text variant="labelSmall" style={styles.mapStatusText}>
-                      {`${nearbyMapIndicators.length} nearby`}
+                      {offscreenNearbyIndicators.length > 0
+                        ? `${offscreenNearbyIndicators.length} offscreen`
+                        : `${nearbyContainers.length} nearby visible`}
                     </Text>
                   </View>
                 </>
@@ -929,43 +1229,108 @@ export function ReportScreen() {
                 </View>
               )}
             </View>
-            {capturedLocation && nearbyMapIndicators.length > 0 ? (
+            {activeMapPopup ? (
+              <View pointerEvents="none" style={styles.mapPopupLayer}>
+                <View
+                  style={[
+                    styles.mapPopupCard,
+                    {
+                      left: `${activeMapPopup.leftPercent}%`,
+                      top: `${activeMapPopup.topPercent}%`,
+                      transform: [
+                        { translateX: -(MAP_POPUP_WIDTH / 2) },
+                        { translateY: -MAP_POPUP_VERTICAL_OFFSET }
+                      ]
+                    }
+                  ]}
+                >
+                  <Text numberOfLines={1} variant="titleSmall" style={styles.mapPopupTitle}>
+                    {activeMapPopup.container.code}
+                  </Text>
+                  <View
+                    style={[
+                      styles.mapPopupPill,
+                      {
+                        backgroundColor: activeMapPopup.fillColor
+                      }
+                    ]}
+                  >
+                    <Text variant="labelLarge" style={styles.mapPopupPillText}>
+                      {activeMapPopup.fillLabel}
+                    </Text>
+                  </View>
+                  <View style={styles.mapPopupCaret} />
+                </View>
+              </View>
+            ) : null}
+            {capturedLocation && offscreenIndicatorClusters.length > 0 ? (
               <View pointerEvents="box-none" style={styles.mapIndicatorLayer}>
-                {nearbyMapIndicators.map((container) => (
+                {offscreenIndicatorClusters.map((cluster, index) => (
                   <Pressable
-                    key={`indicator-${container.id}`}
-                    onPress={() => focusContainer(container, "container", { recenterMap: false })}
+                    key={`indicator-${cluster.primaryIndicator.id}`}
+                    hitSlop={8}
+                    onPress={() =>
+                      focusContainer(cluster.primaryIndicator, "container", {
+                        showMapCallout: true
+                      })
+                    }
                     style={({ pressed }) => [
                       styles.mapIndicatorCard,
-                      container.id === selectedContainerId ? styles.mapIndicatorSelected : null,
                       {
-                        left: `${container.leftPercent}%`,
-                        top: `${container.topPercent}%`,
-                        transform: [{ translateX: -18 }, { translateY: -18 }]
+                        left: `${cluster.leftPercent}%`,
+                        top: `${cluster.topPercent}%`,
+                        zIndex: offscreenIndicatorClusters.length - index,
+                        transform: [{ translateX: -20 }, { translateY: -20 }]
                       },
                       pressed ? styles.mapIndicatorPressed : null
                     ]}
                   >
-                    <MaterialCommunityIcons
-                      name="arrow-up-bold-circle"
-                      size={20}
+                    <Animated.View
+                      pointerEvents="none"
                       style={[
-                        styles.mapIndicatorArrow,
+                        styles.mapIndicatorPulse,
                         {
-                          transform: [{ rotate: `${container.bearing}deg` }]
+                          opacity: pulseOpacity,
+                          transform: [{ scale: pulseScale }]
                         }
                       ]}
                     />
-                    <View style={styles.mapIndicatorBadge}>
-                      <Text style={styles.mapIndicatorBadgeText}>{container.rank}</Text>
-                    </View>
-                    {container.id === selectedContainerId ? (
-                      <View style={styles.mapIndicatorLabelWrap}>
-                        <Text style={styles.mapIndicatorLabel}>
-                          {`${container.code} • ${formatDistanceMeters(container.distanceMeters)}`}
-                        </Text>
-                      </View>
-                    ) : null}
+                    <Animated.View
+                      style={{
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transform: [
+                          {
+                            translateX: Animated.multiply(
+                              directionalTravel,
+                              cluster.primaryIndicator.travelX
+                            )
+                          },
+                          {
+                            translateY: Animated.multiply(
+                              directionalTravel,
+                              cluster.primaryIndicator.travelY
+                            )
+                          },
+                          { scale: indicatorScale }
+                        ]
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="arrow-up-bold-circle"
+                        size={cluster.primaryIndicator.id === selectedContainerId ? 22 : 20}
+                        style={[
+                          styles.mapIndicatorArrow,
+                          {
+                            color:
+                              cluster.primaryIndicator.id === selectedContainerId
+                                ? theme.colors.primaryStrong
+                                : theme.colors.success,
+                            transform: [{ rotate: `${cluster.primaryIndicator.bearing}deg` }]
+                          }
+                        ]}
+                      />
+                    </Animated.View>
                   </Pressable>
                 ))}
               </View>
@@ -1004,7 +1369,39 @@ export function ReportScreen() {
             </Text>
             <Text variant="bodyMedium" style={styles.muted}>
               {selectedContainer.zoneName ? `${selectedContainer.zoneName} - ` : ""}
-              {selectedContainer.status ?? "available"} -{" "}
+              {selectedContainer.status ?? "available"}
+            </Text>
+            {selectedContainerFill ? (
+              <View style={styles.fillPanel}>
+                <View style={styles.fillHeader}>
+                  <Text variant="labelLarge" style={styles.fillTitle}>
+                    Container progress
+                  </Text>
+                  <View
+                    style={[
+                      styles.fillPill,
+                      {
+                        backgroundColor: selectedContainerFill.color
+                      }
+                    ]}
+                  >
+                    <Text variant="labelLarge" style={styles.fillPillText}>
+                      {selectedContainerFill.label}
+                    </Text>
+                  </View>
+                </View>
+                <ProgressBar
+                  progress={selectedContainerFill.progress}
+                  color={selectedContainerFill.color}
+                  style={styles.fillProgress}
+                />
+                <Text variant="bodySmall" style={styles.fillMeta}>
+                  {selectedContainerFill.helperText}
+                </Text>
+              </View>
+            ) : null}
+            <Text variant="bodyMedium" style={styles.muted}>
+              Location -{" "}
               {formatCoordinates(selectedContainer.latitude, selectedContainer.longitude)}
             </Text>
             <Text variant="bodyMedium" style={styles.muted}>
@@ -1049,40 +1446,78 @@ export function ReportScreen() {
         </InfoCard>
       ) : null}
 
+      {shouldShowStatusMessage(statusMessage, errorMessage) ? (
+        <InfoCard title="Status">
+          <HelperText type="info" visible>
+            {statusMessage}
+          </HelperText>
+        </InfoCard>
+      ) : null}
+
       <InfoCard title="Nearby containers">
         <View style={styles.nearbyList}>
           {nearbyContainers.length > 0 ? (
-            nearbyContainers.map((container, index) => (
-              <Pressable
-                key={container.id}
-                onPress={() => focusContainer(container, "container", { recenterMap: false })}
-                style={({ pressed }) => [
-                  styles.nearbyCard,
-                  container.id === selectedContainerId ? styles.nearbySelected : null,
-                  pressed ? styles.nearbyPressed : null
-                ]}
-              >
-                <View style={styles.nearbyHeader}>
-                  <View style={styles.nearbyIdentity}>
-                    <View style={styles.nearbyRankBadge}>
-                      <Text variant="labelLarge" style={styles.nearbyRankText}>
-                        {index + 1}
+            nearbyContainers.map((container, index) => {
+              const fillPresentation = resolveContainerFillPresentation(container, theme);
+
+              return (
+                <Pressable
+                  key={container.id}
+                  onPress={() =>
+                    focusContainer(container, "container", { showMapCallout: true })
+                  }
+                  style={({ pressed }) => [
+                    styles.nearbyCard,
+                    container.id === selectedContainerId ? styles.nearbySelected : null,
+                    pressed ? styles.nearbyPressed : null
+                  ]}
+                >
+                  <View style={styles.nearbyHeader}>
+                    <View style={styles.nearbyIdentity}>
+                      <View style={styles.nearbyRankBadge}>
+                        <Text variant="labelLarge" style={styles.nearbyRankText}>
+                          {index + 1}
+                        </Text>
+                      </View>
+                      <Text variant="titleMedium" style={styles.nearbyTitle}>
+                        {container.code} - {container.label}
                       </Text>
                     </View>
-                    <Text variant="titleMedium" style={styles.nearbyTitle}>
-                      {container.code} - {container.label}
+                    <Text variant="labelLarge" style={styles.nearbyDistance}>
+                      {formatDistanceMeters(container.distanceMeters)}
                     </Text>
                   </View>
-                  <Text variant="labelLarge" style={styles.nearbyDistance}>
-                    {formatDistanceMeters(container.distanceMeters)}
+                  <Text variant="bodySmall" style={styles.muted}>
+                    {container.zoneName ? `${container.zoneName} - ` : ""}
+                    {container.status ?? "available"} - {fillPresentation.summary}
                   </Text>
-                </View>
-                <Text variant="bodySmall" style={styles.muted}>
-                  {container.zoneName ? `${container.zoneName} - ` : ""}
-                  {container.status ?? "available"}
-                </Text>
-              </Pressable>
-            ))
+                  <View style={[styles.fillPanel, styles.fillPanelCompact]}>
+                    <View style={styles.fillHeader}>
+                      <Text variant="labelLarge" style={styles.fillTitle}>
+                        Container progress
+                      </Text>
+                      <View
+                        style={[
+                          styles.fillPill,
+                          {
+                            backgroundColor: fillPresentation.color
+                          }
+                        ]}
+                      >
+                        <Text variant="labelLarge" style={styles.fillPillText}>
+                          {fillPresentation.label}
+                        </Text>
+                      </View>
+                    </View>
+                    <ProgressBar
+                      progress={fillPresentation.progress}
+                      color={fillPresentation.color}
+                      style={styles.fillProgress}
+                    />
+                  </View>
+                </Pressable>
+              );
+            })
           ) : (
             <Text variant="bodyMedium" style={styles.muted}>
               Use GPS to rank nearby mapped containers around your current position.
