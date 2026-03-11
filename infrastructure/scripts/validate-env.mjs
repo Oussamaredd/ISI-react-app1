@@ -39,6 +39,7 @@ const WORKFLOW_RULES = {
       'JWT_ACCESS_EXPIRES_IN',
       'CORS_ORIGINS',
       'VITE_API_BASE_URL',
+      'EXPO_PUBLIC_API_BASE_URL',
     ],
   },
   'docker-dev': {
@@ -151,6 +152,11 @@ function usageAndExit() {
 function isFrontendEnvFile(filePath) {
   const normalized = filePath.replace(/\\/g, '/');
   return normalized.startsWith('app/.env');
+}
+
+function isMobileEnvFile(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized.startsWith('mobile/.env');
 }
 
 function parseEnvFile(filePath) {
@@ -491,6 +497,19 @@ function checkFrontendApiBasePolicy(entries, sourceLabel, errors) {
   normalizeApiBaseUrl(entries.get('VITE_API_BASE_URL'), sourceLabel, 'VITE_API_BASE_URL', errors);
 }
 
+function checkMobileApiBasePolicy(entries, sourceLabel, errors) {
+  if (!entries.has('EXPO_PUBLIC_API_BASE_URL')) {
+    return;
+  }
+
+  normalizeApiBaseUrl(
+    entries.get('EXPO_PUBLIC_API_BASE_URL'),
+    sourceLabel,
+    'EXPO_PUBLIC_API_BASE_URL',
+    errors,
+  );
+}
+
 function checkWorkflowAlignmentPolicy(entries, workflow, errors) {
   const rawApiBaseUrl = String(entries.get('API_BASE_URL') ?? '').trim();
   const normalizedApiBaseUrl = rawApiBaseUrl
@@ -625,10 +644,20 @@ function main() {
       }
     }
 
+    if (isMobileEnvFile(file)) {
+      const nonExpoPublicKeys = keys.filter((key) => !key.startsWith('EXPO_PUBLIC_'));
+      if (nonExpoPublicKeys.length > 0) {
+        errors.push(
+          `${file}: non-EXPO_PUBLIC keys are forbidden in mobile env files: ${nonExpoPublicKeys.join(', ')}.`,
+        );
+      }
+    }
+
     checkDeprecatedKeyPolicy(keys, file, errors);
     checkApiPortPolicy(entries, file, errors);
     const normalizedApiBaseUrl = checkApiBasePolicy(entries, file, errors);
     checkFrontendApiBasePolicy(entries, file, errors);
+    checkMobileApiBasePolicy(entries, file, errors);
     checkDatabaseNamePolicy(entries, file, errors);
     checkFrontendRoutePolicy(entries, file, errors);
     checkCorsOriginsPolicy(entries, file, workflow, errors);

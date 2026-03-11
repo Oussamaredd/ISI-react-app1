@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -eu
+
+changed_files="$(git diff --cached --name-only --diff-filter=ACMRD | paste -sd, -)"
+
+if [ -z "$changed_files" ]; then
+  exit 0
+fi
+
+previous_version="$(
+  git show HEAD:package.json 2>/dev/null | node -e "let source=''; process.stdin.on('data', (chunk) => { source += chunk; }); process.stdin.on('end', () => { try { process.stdout.write(JSON.parse(source).version || ''); } catch { process.stdout.write(''); } });"
+)"
+
+next_version="$(
+  node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(pkg.version || '');"
+)"
+
+node ./infrastructure/scripts/validate-doc-sync.mjs --files "$changed_files" --previous-version "$previous_version" --next-version "$next_version"

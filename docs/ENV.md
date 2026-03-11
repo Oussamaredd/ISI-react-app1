@@ -2,11 +2,16 @@
 
 This repository uses one canonical env source per workflow and strict public/private separation.
 
+Mobile workspace note:
+- The `mobile` workspace is an Expo/React Native client layer inside this repo.
+- It uses `mobile/.env.local` for public runtime configuration and `EXPO_PUBLIC_*` as the only allowed public key prefix.
+
 ## Canonical Sources
 
 - Local/native dev:
   - Private source: `/.env`
   - Frontend public source: `app/.env.local` (`VITE_*` only)
+  - Mobile public source: `mobile/.env.local` (`EXPO_PUBLIC_*` only)
 - Docker dev:
   - Source: `infrastructure/environments/.env.docker`
 - Deployed dev/staging/production:
@@ -33,6 +38,7 @@ Neon managed baseline note:
 - `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
 - `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
+- `EXPO_PUBLIC_API_BASE_URL` for the native mobile API base URL (must resolve to a device/simulator reachable API origin)
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
 - `VITE_MAP_TILE_ATTRIBUTION` for the frontend map attribution label
 
@@ -54,8 +60,12 @@ Agent tour mapping note:
   - Sole browser entrypoint: `http://localhost:3000`
   - Public edge API/health: `http://localhost:3000/api` and `http://localhost:3000/health`
   - Backend keeps `API_PORT=3001` on the internal Docker network only; local machine port `3001` should stay closed
+- Native mobile dev:
+  - Expo/native clients do not use the browser edge proxy or fixed browser ports.
+  - `EXPO_PUBLIC_API_BASE_URL` must resolve to an API origin reachable from the active emulator, simulator, or physical device.
 - `API_PORT` is the backend listen port, not the browser entrypoint.
 - `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
+- `EXPO_PUBLIC_API_BASE_URL` must resolve to the public API origin used by the native client, not to database/internal service hosts.
 - When Cloudflare Pages fronts the SPA, keep `VITE_API_BASE_URL` on the frontend origin and enable the Pages edge proxy so browser traffic stays same-origin.
 
 ## Optional API Hardening Keys
@@ -142,8 +152,10 @@ Removed runtime aliases (no longer read by API runtime):
 ## Frontend/Backend Separation
 
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
-- API/database/infrastructure secrets must never appear in app env files.
+- `mobile/.env.local`, `mobile/.env.example`, and mode env files must include only `EXPO_PUBLIC_*` keys.
+- API/database/infrastructure secrets must never appear in app or mobile env files.
 - In local and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
+- In native mobile runtimes, `EXPO_PUBLIC_API_BASE_URL` should target the public API origin directly because Expo clients do not inherit the Vite edge proxy.
 - For Cloudflare Pages deploys, set `VITE_USE_EDGE_API_PROXY=true` and `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` at build time so Vite emits a `_redirects` file that proxies `/api/*` and `/health` through the frontend edge.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
 
@@ -168,6 +180,7 @@ Removed runtime aliases (no longer read by API runtime):
 ```bash
 cp .env.example .env
 cp app/.env.example app/.env.local
+cp mobile/.env.example mobile/.env.local
 cp api/.env.example api/.env
 cp infrastructure/environments/.env.docker.example infrastructure/environments/.env.docker
 ```

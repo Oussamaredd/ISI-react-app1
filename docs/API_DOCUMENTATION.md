@@ -31,6 +31,8 @@ POST /reset-password
 
 Local signup note:
 - `POST /signup` creates self-service accounts with the `citizen` role by default.
+- `GET /auth/status` returns `authenticated: false` when the request has no valid active session, including users that were deactivated after signing in.
+- `GET /auth/me` and `GET /me` require an active authenticated account.
 
 `PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP).
 `PUT /me/password` requires `currentPassword` and strong `newPassword` (12+ chars with uppercase, lowercase, number, and symbol) and is available for local accounts only.

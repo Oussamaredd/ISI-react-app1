@@ -86,6 +86,30 @@ jobs:
       - name: Validate env policies and templates
         run: npm run validate-env:all
 
+      - name: Validate doc sync rules
+        shell: bash
+        run: |
+          previous_version=""
+          next_version="$(node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(pkg.version || '');")"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            changed_files="$(git diff --name-only --diff-filter=ACMRD "${{ github.event.pull_request.base.sha }}...HEAD" | paste -sd, -)"
+            previous_version="$(git show "${{ github.event.pull_request.base.sha }}:package.json" 2>/dev/null | node -e "let source=''; process.stdin.on('data', (chunk) => { source += chunk; }); process.stdin.on('end', () => { try { process.stdout.write(JSON.parse(source).version || ''); } catch { process.stdout.write(''); } });")"
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            changed_files="$(git diff --name-only --diff-filter=ACMRD "${{ github.event.before }}...HEAD" | paste -sd, -)"
+            previous_version="$(git show "${{ github.event.before }}:package.json" 2>/dev/null | node -e "let source=''; process.stdin.on('data', (chunk) => { source += chunk; }); process.stdin.on('end', () => { try { process.stdout.write(JSON.parse(source).version || ''); } catch { process.stdout.write(''); } });")"
+          else
+            echo "Skipping doc sync validation because no base SHA is available."
+            exit 0
+          fi
+
+          if [ -z "$changed_files" ]; then
+            echo "No changed files detected for doc sync validation."
+            exit 0
+          fi
+
+          node infrastructure/scripts/validate-doc-sync.mjs --files "$changed_files" --previous-version "$previous_version" --next-version "$next_version"
+
       - name: CDC Contracts - validate traceability matrix
         run: npm run validate-specs
 

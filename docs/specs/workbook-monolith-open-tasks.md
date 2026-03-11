@@ -1,6 +1,6 @@
 ﻿# Workbook Open Tasks - Monolith Adaptation (Detailed)
 
-Last updated: 2026-03-05
+Last updated: 2026-03-11
 
 Source workbook: `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 
@@ -15,6 +15,7 @@ Status legend:
 - `DEFERRED_PLATFORM`: platform-heavy, defer until core monolith stabilization.
 - `HANDOFF_SECURITY`: Cyber-Security dependency (out of scope in current phase).
 - `HANDOFF_DATA`: Data-Science dependency (out of scope in current phase).
+- `DONE`: implemented and reflected in canonical project docs and code.
 
 ## Module M2
 
@@ -1119,7 +1120,7 @@ Status legend:
 ## Module M14
 
 - Lane default: `Dev Docs`
-- Status default: `TODO_MONOLITH`
+- Status default: `DONE`
 
 ### M14.3 - Diagrammes Architecture C4 PlantUML Draw.io Mermaid
 
@@ -1127,7 +1128,8 @@ Status legend:
 - Workbook expected outcome: C4 Model: 4 niveaux System Context Container Component Code abstraction; Niveau 1: acteurs externes utilisateurs systèmes ECOTRACK boundaries; Niveau 2: 8 microservices databases Kafka technologies communication; Niveau 3: zoom layers controllers services repositories algorithmes; Outils: PlantUML DSL textuel Draw.io visual Mermaid Markdown Structurizr; Conventions: couleurs formes lignes légendes technologies versions; Export: PNG SVG PDF PlantUML code Git versioning
 - Monolith adaptation: Document and enforce monolith architecture/process standards in versioned project docs.
 - Lane: `Dev Docs`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered in `docs/ARCHITECTURE_OVERVIEW.md` with Mermaid system, container, and backend flow views for the modular-monolith architecture.
 
 ### M14.4 - Code Comments JSDoc TSDoc Annotations Types
 
@@ -1135,7 +1137,8 @@ Status legend:
 - Workbook expected outcome: JSDoc: /** @param @returns @throws @example */ functions annotations types; TypeScript TSDoc: interfaces generics union types enums native support; Tags: @param @returns @throws @example @class @property @method @typedef @deprecated @since @see; Generation: typedoc jsdoc HTML output API references search theming CI/CD; Best practices: public APIs meaningful descriptions examples updated review; IDE: VSCode IntelliSense type checking linting ESLint refactoring
 - Monolith adaptation: Document and enforce monolith architecture/process standards in versioned project docs.
 - Lane: `Dev Docs`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered in `docs/CODE_ANNOTATION_CONVENTIONS.md` and anchored by representative TSDoc usage in shared helper files under `api`, `app`, and `mobile`.
 
 ### M14.6 - Changelog Releases Versioning Semantic Git Tags
 
@@ -1143,4 +1146,5 @@ Status legend:
 - Workbook expected outcome: Changelog: CHANGELOG.md format Keep a Changelog Unreleased Added Changed Deprecated Removed Fixed Security; Versioning: semantic MAJOR.MINOR.PATCH v1.2.3 breaking features patches; Git tags: annotated git tag -a push GitHub Releases notes assets; Structure: ## [version] - date ### sections features changes fixes security; Automation: conventional commits standard-version release-it CI/CD trigger; Integration: README GitHub Releases Slack notifications migration guides; Audience: developers users stakeholders
 - Monolith adaptation: Document and enforce monolith architecture/process standards in versioned project docs.
 - Lane: `Dev Docs`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the root `CHANGELOG.md`, `docs/RELEASE_VERSIONING.md`, and doc index updates that define the repository release bookkeeping path.

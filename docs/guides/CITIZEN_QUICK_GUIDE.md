@@ -12,7 +12,7 @@ Report overflowing containers, track personal impact, and join community challen
 
 ## Typical flow
 
-1. Open `Citizen Report` and submit container, description, and optional location/photo.
+1. Open `Citizen Report`, optionally enable GPS to center the map on your position and show nearby containers with shortcuts and arrows, then submit container, description, and optional location/photo.
 2. Confirm success message after submission.
 3. Open `Citizen Profile` to review points, badges, and history.
 4. Open `Citizen Challenges` to enroll and track progress.

@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0.0",
     "specialty": "development",
-    "updatedAt": "2026-02-27",
+    "updatedAt": "2026-03-11",
     "sourceOfTruth": "docs/specs/source-of-truth.dev.json"
   },
   "useCases": [
@@ -138,7 +138,9 @@
           "api/src/modules/collections/tours.controller.ts",
           "api/src/modules/collections/tours.service.ts",
           "api/src/modules/collections/tours.repository.ts",
-          "app/src/pages/AgentTourPage.tsx"
+          "app/src/pages/AgentTourPage.tsx",
+          "mobile/src/api/modules/tours.ts",
+          "mobile/src/features/agent/AgentHomeScreen.tsx"
         ]
       },
       "verification": {
@@ -175,7 +177,9 @@
           "api/src/modules/collections/tours.controller.ts",
           "api/src/modules/collections/tours.service.ts",
           "api/src/modules/collections/tours.repository.ts",
-          "app/src/pages/AgentTourPage.tsx"
+          "app/src/pages/AgentTourPage.tsx",
+          "mobile/src/api/modules/tours.ts",
+          "mobile/src/features/agent/AgentHomeScreen.tsx"
         ]
       },
       "verification": {
@@ -183,7 +187,8 @@
           "api/src/tests/tours-agent-operations.test.ts"
         ],
         "appTests": [
-          "app/src/tests/e2e.key-journeys.test.tsx"
+          "app/src/tests/e2e.key-journeys.test.tsx",
+          "mobile/src/tests/agentActivity.test.ts"
         ],
         "ciChecks": [
           "npm run test --workspace=ecotrack-api",
@@ -212,7 +217,9 @@
           "api/src/modules/collections/tours.controller.ts",
           "api/src/modules/collections/tours.service.ts",
           "api/src/modules/collections/tours.repository.ts",
-          "app/src/pages/AgentTourPage.tsx"
+          "app/src/pages/AgentTourPage.tsx",
+          "mobile/src/api/modules/tours.ts",
+          "mobile/src/features/agent/AgentHomeScreen.tsx"
         ]
       },
       "verification": {
@@ -220,7 +227,8 @@
           "api/src/tests/tours-agent-operations.test.ts"
         ],
         "appTests": [
-          "app/src/tests/e2e.key-journeys.test.tsx"
+          "app/src/tests/e2e.key-journeys.test.tsx",
+          "mobile/src/tests/agentActivity.test.ts"
         ],
         "ciChecks": [
           "npm run test --workspace=ecotrack-api",
@@ -344,7 +352,10 @@
           "api/src/modules/routes/planning.service.ts",
           "api/src/modules/routes/planning.repository.ts",
           "api/src/modules/routes/report-artifact.utils.ts",
-          "app/src/pages/ManagerReportsPage.tsx"
+          "app/src/pages/ManagerReportsPage.tsx",
+          "mobile/src/api/modules/planning.ts",
+          "mobile/src/device/reportExports.ts",
+          "mobile/src/features/manager/ManagerHomeScreen.tsx"
         ]
       },
       "verification": {
@@ -353,7 +364,8 @@
           "api/src/tests/report-artifact.utils.test.ts"
         ],
         "appTests": [
-          "app/src/tests/ManagerReportsPage.test.tsx"
+          "app/src/tests/ManagerReportsPage.test.tsx",
+          "mobile/src/tests/reporting.test.ts"
         ],
         "ciChecks": [
           "npm run test --workspace=ecotrack-api",

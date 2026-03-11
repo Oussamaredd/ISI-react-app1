@@ -1,8 +1,9 @@
 # EcoTrack Platform
 
-Four-layer monorepo:
+Current platform monorepo, including a native mobile layer:
 
 - `app`: React frontend (Vite)
+- `mobile`: React Native / Expo client layer
 - `api`: NestJS backend
 - `database`: Drizzle schema/migrations/seeders
 - `infrastructure`: Docker Compose and ops scripts
@@ -12,6 +13,7 @@ Four-layer monorepo:
 ```text
 EcoTrack/
 |-- app/
+|-- mobile/
 |-- api/
 |-- database/
 |-- infrastructure/
@@ -41,6 +43,7 @@ Precedence: process env > canonical workflow env file > `.example` templates.
 npm install
 cp .env.example .env
 cp app/.env.example app/.env.local
+cp mobile/.env.example mobile/.env.local
 npm run dev
 ```
 
@@ -53,6 +56,22 @@ Optional service-scoped template (reference only; root `/.env` remains the local
 ```bash
 cp api/.env.example api/.env
 ```
+
+For the Expo mobile shell:
+
+```bash
+npm run dev:mobile
+```
+
+Mobile API base helpers:
+
+- `npm run mobile:api-base` prints the recommended direct API base URLs for LAN, Android emulator, and iOS simulator.
+- `npm run mobile:env:lan` writes the detected LAN API URL into `mobile/.env.local`.
+- `npm run mobile:env:android-emulator` writes the Android emulator-safe API URL into `mobile/.env.local`.
+- `npm run mobile:env:ios-simulator` writes the iOS simulator API URL into `mobile/.env.local`.
+- `npm run mobile:start:tunnel` starts Expo with a tunnelled JS bundle while still requiring a reachable backend API origin.
+
+`npm install` now runs a `prepare` step that configures the repository-local git hooks path to `.githooks`, so doc-sync checks run automatically on `git commit`. If hooks ever need to be reinstalled manually, run `npm run hooks:install`.
 
 ## Port Contract
 
@@ -163,16 +182,22 @@ Database name policy: committed connection-string templates target `ticketdb`.
 ## Root Commands
 
 - `npm run dev` - local/native app + api dev workflow
+- `npm run dev:mobile` - Expo mobile shell
 - `npm run dev:doctor` - fast local diagnostics (env keys, db reachability/migrations, health endpoints)
 - `npm run build` - build database, app, api
-- `npm run test` - app + api tests
+- `npm run test` - app + mobile + api tests
+- `npm run test:mobile` - mobile workspace tests
 - `npm run test:api` - backend tests with required `ecotrack-database` build pre-step
 - `npm run test:e2e` - key citizen/agent/manager journey tests
 - `npm run test:coverage` - coverage-gated validation for app + api
 - `npm run test:coverage:api` - backend coverage with required `ecotrack-database` build pre-step
-- `npm run typecheck` - app + api + database type checks
+- `npm run typecheck` - app + mobile + api + database type checks
+- `npm run typecheck --workspace=ecotrack-mobile` - mobile workspace type checks
 - `npm run lint` - lint + architecture boundaries
+- `npm run lint --workspace=ecotrack-mobile` - mobile workspace lint
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
+- `npm run validate-env:all` - validate all committed env templates for local, Docker, and deploy workflows
+- `npm run validate-doc-sync` - validate that behavior, env, schema, workflow, and release changes update the required docs in the same change set
 - `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
 - `npm run ci:quality:mutation` - run mutation gate hook (enabled by CI variable)
 - `npm run ci:quality:visual` - run visual-regression hook (enabled by CI variable + Percy token/command)
@@ -187,11 +212,23 @@ Database name policy: committed connection-string templates target `ticketdb`.
 
 ## Architecture Contract
 
-See `docs/ARCHITECTURE_OVERVIEW.md`.
+See `docs/ARCHITECTURE_OVERVIEW.md` for the five-layer contract and Mermaid system/container/component views.
+
+Mobile planning references:
+
+- `docs/specs/mobile-platform-integration-contract.md`
+- `docs/specs/mobile-layer-rollout-plan.md`
 
 ## Documentation Map
 
 See `docs/README.md` for organized documentation by domain (setup, env, operations, API, and runbooks).
+
+Release and contributor references:
+
+- `CHANGELOG.md`
+- `docs/RELEASE_VERSIONING.md`
+- `docs/CODE_ANNOTATION_CONVENTIONS.md`
+- `.githooks/pre-commit`
 
 ## CI/CD
 

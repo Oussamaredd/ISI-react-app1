@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Mission & Scope
-Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. Work monorepo-first across `app`, `api`, `database`, `infrastructure`, and `docs`. Preserve the four-layer architecture contract. Use `docs/ARCHITECTURE_OVERVIEW.md` and `docs/ENV.md` for deeper detail.
+Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. Work monorepo-first across `app`, `mobile`, `api`, `database`, `infrastructure`, and `docs`. Preserve the five-layer architecture contract. Use `docs/ARCHITECTURE_OVERVIEW.md` and `docs/ENV.md` for deeper detail.
 
 ## Temporary Specialty Scope Freeze (Development Only)
 - Until explicitly lifted, project implementation scope is `Development` specialty only.
@@ -11,6 +11,7 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 
 ## Repo Map
 - `app`: frontend UI, routing, state, and API consumption only.
+- `mobile`: React Native / Expo mobile UI, native navigation, device-capability adapters, and API consumption only.
 - `api`: NestJS controllers, services, guards, repositories, and modules.
 - `database`: Drizzle schema, migrations, client factory, and seed lifecycle.
 - `infrastructure`: Docker/CI/CD scripts and environment orchestration.
@@ -24,17 +25,20 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 - Do not introduce `snake_case` naming in TypeScript/JavaScript unless matching an external payload contract.
 
 ## Hard Architecture Rules
-- Enforce dependency direction: `app` must not import runtime code from `api`, `database`, or `infrastructure`.
+- Enforce dependency direction: `app` must not import runtime code from `mobile`, `api`, `database`, or `infrastructure`.
+- Enforce dependency direction: `mobile` must not import runtime code from `app`, `api`, `database`, or `infrastructure`.
 - Allow `api` to depend on `database`; never allow `database` to depend on `api`.
 - Keep data flow explicit: `controller -> service -> repository -> database`.
+- Keep mobile/browser client flow explicit: `screen -> client/service -> API`.
 - Do not place SQL/Drizzle query execution in controllers or services.
 
 ## Environment Safety Rules
-- Treat canonical keys as standards: `DATABASE_URL`, `API_PORT`, `VITE_API_BASE_URL`.
+- Treat canonical keys as standards: `DATABASE_URL`, `API_PORT`, `VITE_API_BASE_URL`, `EXPO_PUBLIC_API_BASE_URL`.
 - Keep frontend env files (`app/.env.local`, `app/.env.example`, mode env files) `VITE_*` only.
-- Never place backend/database/infrastructure secrets in frontend env files.
+- Keep mobile env files (`mobile/.env.local`, `mobile/.env.example`, mode env files) `EXPO_PUBLIC_*` only.
+- Never place backend/database/infrastructure secrets in frontend or mobile env files.
 - Follow canonical env sources by workflow:
-  - host dev: `/.env` and `app/.env.local`
+  - host dev: `/.env`, `app/.env.local`, and `mobile/.env.local`
   - docker dev: `infrastructure/environments/.env.docker`
   - deploy: secret-manager injection with committed templates only
 
@@ -50,6 +54,7 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 | Changed paths | Required commands |
 | --- | --- |
 | `app/**` | `npm run lint --workspace=ecotrack-app`, `npm run typecheck --workspace=ecotrack-app`, `npm run test --workspace=ecotrack-app` |
+| `mobile/**` | `npm run lint --workspace=ecotrack-mobile`, `npm run typecheck --workspace=ecotrack-mobile`, `npm run test --workspace=ecotrack-mobile` |
 | `api/**` | `npm run lint --workspace=ecotrack-api`, `npm run typecheck --workspace=ecotrack-api`, `npm run test --workspace=ecotrack-api` |
 | `database/**` | `npm run build --workspace=ecotrack-database`, `npm run typecheck --workspace=ecotrack-database`, `npm run db:migrate --workspace=ecotrack-database` |
 | cross-layer/env/CI changes | `npm run validate-env:all`, `npm run lint`, `npm run typecheck`, `npm run test` |
@@ -62,6 +67,13 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 ## Docs Sync Rule
 - If runtime behavior, command surface, env policy, or architecture rules change, update `docs/` in the same task.
 - Prefer updating existing docs over adding duplicate pages.
+- The repo enforces this through `npm run validate-doc-sync`, the managed `.githooks/pre-commit` hook, and CI preflight.
+- Treat these mappings as mandatory defaults:
+  - frontend route/page behavior -> `docs/FRONTEND_ROUTES.md` and/or `docs/features/**`
+  - API controllers/DTOs/contracts -> `docs/API_DOCUMENTATION.md`, `docs/openapi/**`, and/or `docs/features/**`
+  - env/runtime/deploy command changes -> `docs/ENV.md`, `docs/ENVIRONMENT_SETUP.md`, `docs/DOCKER_SETUP.md`, `docs/runbooks/**`, and/or `README.md`
+  - database schema/migration/seed changes -> `docs/DB_SCHEMA_NAMESPACE_*.md`, `docs/API_DOCUMENTATION.md`, and/or `docs/ROADMAP.md`
+  - root version changes -> `CHANGELOG.md`
 
 ## Safety Guardrails
 - Do not run destructive commands (`git reset --hard`, bulk deletes, history rewrites) unless explicitly requested.
@@ -83,6 +95,7 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 ## Autonomy Rules (No-permission actions)
 - Do not ask for my permission before editing any example/template environment files used for onboarding or documentation (e.g., `*.env.example`, sample env templates). If changes are needed for the task, update them directly and report what changed.
 - Do not ask for my permission before running any validation commands (tests/build/lint/typecheck/migrate/validate-env). Run the required commands automatically based on the Path-to-Command Matrix and include pass/fail output in the report.
+- Do not ask for my permission before running `npm run validate-doc-sync` or `npm run hooks:install`; they are part of the repo maintenance workflow.
 - Exception: if a command is destructive or could target non-dev/prod resources, do not run it—report the blocker and what would have been run instead.
 
 ## Response Format Contract

@@ -32,6 +32,13 @@ const configureRegistration = async (registration: ServiceWorkerRegistration) =>
   }
 };
 
+/**
+ * Registers the map tile service worker once for the current browser session.
+ *
+ * @remarks
+ * The tile cache is progressive enhancement only. Mapping remains available when service worker
+ * registration fails or is unsupported.
+ */
 export const registerMapServiceWorker = () => {
   if (
     hasRegisteredMapServiceWorker ||

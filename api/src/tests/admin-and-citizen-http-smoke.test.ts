@@ -185,12 +185,17 @@ describe('Admin and citizen endpoint smoke', () => {
       .post('/api/citizen/reports')
       .send({
         containerId,
+        reportType: 'container_full',
         description: 'Overflow near school',
       })
       .expect(201);
     expect(citizenServiceMock.createReport).toHaveBeenCalledWith(
       authUserId,
-      expect.objectContaining({ containerId, description: 'Overflow near school' }),
+      expect.objectContaining({
+        containerId,
+        reportType: 'container_full',
+        description: 'Overflow near school',
+      }),
     );
 
     await request(app.getHttpServer()).get('/api/citizen/profile').expect(200);

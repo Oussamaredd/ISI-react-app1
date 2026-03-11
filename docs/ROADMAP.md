@@ -1152,20 +1152,22 @@ Checklist:
 
 ### M14 - Documentation Operations Completion
 
-Status: `TODO_MONOLITH`
+Status: `DONE`
 Lane: `Dev Docs`
-Open task IDs: `M14.3`, `M14.4`, `M14.6`
+Completed task IDs: `M14.3`, `M14.4`, `M14.6`
 
 Description: Finish the documentation operations backlog around architecture diagrams, code annotation conventions, and release changelog or versioning practice.
 
+Progress: The architecture overview now includes Mermaid diagrams, the repository has a written code annotation convention with representative TSDoc examples, and release tracking is formalized through a root changelog plus versioning guide.
+
 Checklist:
-- [ ] Add or refresh architecture diagrams.
-- [ ] Standardize code annotation conventions where required.
-- [ ] Formalize release changelog and versioning practice.
+- [x] Add or refresh architecture diagrams.
+- [x] Standardize code annotation conventions where required.
+- [x] Formalize release changelog and versioning practice.
 
 ### Recommended Execution Order for the Remaining Backlog
 
 1. Start with `M2`, `M5`, `M10`, and `M13` to strengthen the runtime, UX, quality, and observability foundations.
-2. Continue with `M3`, `M8`, `M11`, and `M14` to harden event workflows, performance, and documentation operations.
+2. Continue with `M3`, `M8`, and `M11` to harden event workflows and performance.
 3. Move to `M4` and `M9` after the core monolith is stable enough for deeper platform hardening.
 4. Keep `M6`, `M7`, and `M12` as formal handoff tracks until the Development-only scope freeze is lifted.

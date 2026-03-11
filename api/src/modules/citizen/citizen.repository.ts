@@ -1,20 +1,29 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, gte, sql } from 'drizzle-orm';
 import {
+  alertEvents,
   challengeParticipations,
   challenges,
   citizenReports,
   containers,
   gamificationProfiles,
+  notificationDeliveries,
+  notifications,
   type DatabaseClient,
   users,
 } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../database/database.constants.js';
 
+import {
+  formatCitizenReportTypeLabel,
+  formatStoredCitizenReportDescription,
+  parseStoredCitizenReportDescription,
+  type CitizenReportType,
+} from './citizen-report.contract.js';
 import type { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
 
-const DUPLICATE_REPORT_WINDOW_HOURS = 2;
+const DUPLICATE_REPORT_WINDOW_HOURS = 1;
 const REPORT_SUBMISSION_POINTS = 10;
 
 @Injectable()
@@ -27,13 +36,16 @@ export class CitizenRepository {
         id: containers.id,
         code: containers.code,
         label: containers.label,
+        latitude: containers.latitude,
+        longitude: containers.longitude,
+        zoneId: containers.zoneId,
       })
       .from(containers)
       .where(eq(containers.id, dto.containerId))
       .limit(1);
 
     if (!container) {
-      throw new NotFoundException('Container not found');
+      throw new NotFoundException('The selected container no longer exists.');
     }
 
     const windowStart = new Date(Date.now() - DUPLICATE_REPORT_WINDOW_HOURS * 60 * 60 * 1000);
@@ -45,81 +57,145 @@ export class CitizenRepository {
     });
 
     if (duplicate) {
-      throw new ConflictException('A recent report for this container already exists.');
+      throw new ConflictException(
+        'A recent report for this container already exists within the last hour.',
+      );
     }
 
     const normalizedLocation = this.normalizeReportedLocation(dto.latitude, dto.longitude);
     const normalizedPhotoUrl = this.normalizeOptionalText(dto.photoUrl);
+    const resolvedReportType = dto.reportType;
+    const resolvedDescription = this.resolveReportDescription(dto.reportType, dto.description);
+    const managerAudienceScope = container.zoneId
+      ? `zone:${container.zoneId}:role:manager`
+      : 'role:manager';
 
-    const { created, pointsAwarded, badges } = await this.db.transaction(async (tx) => {
-      const [insertedReport] = await tx
-        .insert(citizenReports)
-        .values({
-          containerId: container.id,
-          containerCodeSnapshot: container.code,
-          containerLabelSnapshot: container.label,
-          reporterUserId: userId,
-          status: 'submitted',
-          description: dto.description.trim(),
-          photoUrl: normalizedPhotoUrl,
-          latitude: normalizedLocation.latitude,
-          longitude: normalizedLocation.longitude,
-        })
-        .returning();
+    const { created, pointsAwarded, badges, managerNotificationQueued } = await this.db.transaction(
+      async (tx) => {
+        const [insertedReport] = await tx
+          .insert(citizenReports)
+          .values({
+            containerId: container.id,
+            containerCodeSnapshot: container.code,
+            containerLabelSnapshot: container.label,
+            reporterUserId: userId,
+            status: 'submitted',
+            description: formatStoredCitizenReportDescription(resolvedReportType, resolvedDescription),
+            photoUrl: normalizedPhotoUrl,
+            latitude: normalizedLocation.latitude,
+            longitude: normalizedLocation.longitude,
+          })
+          .returning();
 
-      const [reportsCountRow] = await tx
-        .select({ value: count() })
-        .from(citizenReports)
-        .where(eq(citizenReports.reporterUserId, userId));
+        const [reportsCountRow] = await tx
+          .select({ value: count() })
+          .from(citizenReports)
+          .where(eq(citizenReports.reporterUserId, userId));
 
-      const existingProfile = await tx.query.gamificationProfiles.findFirst({
-        where: eq(gamificationProfiles.userId, userId),
-      });
+        const existingProfile = await tx.query.gamificationProfiles.findFirst({
+          where: eq(gamificationProfiles.userId, userId),
+        });
 
-      const currentPoints = existingProfile?.points ?? 0;
-      const currentBadges = Array.isArray(existingProfile?.badges) ? existingProfile.badges : [];
+        const currentPoints = existingProfile?.points ?? 0;
+        const currentBadges = Array.isArray(existingProfile?.badges) ? existingProfile.badges : [];
 
-      const nextBadges = [...currentBadges];
-      if ((reportsCountRow?.value ?? 0) >= 1 && !nextBadges.includes('first_report')) {
-        nextBadges.push('first_report');
-      }
-      if ((reportsCountRow?.value ?? 0) >= 10 && !nextBadges.includes('community_guardian')) {
-        nextBadges.push('community_guardian');
-      }
+        const nextBadges = [...currentBadges];
+        if ((reportsCountRow?.value ?? 0) >= 1 && !nextBadges.includes('first_report')) {
+          nextBadges.push('first_report');
+        }
+        if ((reportsCountRow?.value ?? 0) >= 10 && !nextBadges.includes('community_guardian')) {
+          nextBadges.push('community_guardian');
+        }
 
-      const nextPoints = currentPoints + REPORT_SUBMISSION_POINTS;
-      const nextLevel = Math.max(1, Math.floor(nextPoints / 100) + 1);
+        const nextPoints = currentPoints + REPORT_SUBMISSION_POINTS;
+        const nextLevel = Math.max(1, Math.floor(nextPoints / 100) + 1);
 
-      await tx
-        .insert(gamificationProfiles)
-        .values({
-          userId,
-          points: nextPoints,
-          level: nextLevel,
-          badges: nextBadges,
-          challengeProgress: existingProfile?.challengeProgress ?? {},
-        })
-        .onConflictDoUpdate({
-          target: gamificationProfiles.userId,
-          set: {
+        await tx
+          .insert(gamificationProfiles)
+          .values({
+            userId,
             points: nextPoints,
             level: nextLevel,
             badges: nextBadges,
-            updatedAt: new Date(),
-          },
-        });
+            challengeProgress: existingProfile?.challengeProgress ?? {},
+          })
+          .onConflictDoUpdate({
+            target: gamificationProfiles.userId,
+            set: {
+              points: nextPoints,
+              level: nextLevel,
+              badges: nextBadges,
+              updatedAt: new Date(),
+            },
+          });
 
-      return {
-        created: insertedReport,
-        pointsAwarded: REPORT_SUBMISSION_POINTS,
-        badges: nextBadges,
-      };
-    });
+        const [createdAlert] = await tx
+          .insert(alertEvents)
+          .values({
+            ruleId: null,
+            containerId: container.id,
+            zoneId: container.zoneId ?? null,
+            eventType: 'citizen_container_reported',
+            severity: resolvedReportType === 'container_full' ? 'warning' : 'info',
+            triggeredAt: insertedReport.reportedAt,
+            currentStatus: 'open',
+            acknowledgedByUserId: null,
+            payloadSnapshot: {
+              citizenReportId: insertedReport.id,
+              reportType: resolvedReportType,
+              containerCode: container.code,
+              reporterUserId: userId,
+              latitude: normalizedLocation.latitude ?? container.latitude ?? null,
+              longitude: normalizedLocation.longitude ?? container.longitude ?? null,
+            },
+          })
+          .returning();
+
+        const [createdNotification] = await tx
+          .insert(notifications)
+          .values({
+            eventType: 'citizen_container_reported',
+            entityType: 'alert_event',
+            entityId: createdAlert?.id ?? insertedReport.id,
+            audienceScope: managerAudienceScope,
+            title: `Citizen report for ${container.code}`,
+            body: `${formatCitizenReportTypeLabel(resolvedReportType)} signaled by a citizen.`,
+            preferredChannels: ['email'],
+            scheduledAt: new Date(),
+            status: 'queued',
+            createdAt: new Date(),
+          })
+          .returning();
+
+        if (createdNotification) {
+          await tx.insert(notificationDeliveries).values({
+            notificationId: createdNotification.id,
+            channel: 'email',
+            recipientAddress: managerAudienceScope,
+            deliveryStatus: 'pending',
+            attemptCount: 0,
+            createdAt: new Date(),
+          });
+        }
+
+        return {
+          created: insertedReport,
+          pointsAwarded: REPORT_SUBMISSION_POINTS,
+          badges: nextBadges,
+          managerNotificationQueued: Boolean(createdNotification),
+        };
+      },
+    );
+
+    const parsedCreatedReport = parseStoredCitizenReportDescription(created.description);
 
     return {
       ...created,
+      description: parsedCreatedReport.description,
+      reportType: parsedCreatedReport.reportType,
       confirmationState: 'submitted',
       confirmationMessage: `Your report has been submitted successfully. +${pointsAwarded} points awarded.`,
+      managerNotificationQueued,
       gamification: {
         pointsAwarded,
         badges,
@@ -128,7 +204,7 @@ export class CitizenRepository {
   }
 
   async getHistory(userId: string, limit: number, offset: number) {
-    const [items, totalRows] = await Promise.all([
+    const [rows, totalRows] = await Promise.all([
       this.db
         .select({
           id: citizenReports.id,
@@ -154,6 +230,16 @@ export class CitizenRepository {
         .where(eq(citizenReports.reporterUserId, userId)),
     ]);
 
+    const items = rows.map((item) => {
+      const parsedDescription = parseStoredCitizenReportDescription(item.description);
+
+      return {
+        ...item,
+        description: parsedDescription.description,
+        reportType: parsedDescription.reportType,
+      };
+    });
+
     return {
       items,
       total: totalRows[0]?.value ?? items.length,
@@ -174,6 +260,15 @@ export class CitizenRepository {
       latitude: this.normalizeOptionalText(latitude),
       longitude: this.normalizeOptionalText(longitude),
     };
+  }
+
+  private resolveReportDescription(reportType: CitizenReportType, description?: string | null) {
+    const normalized = this.normalizeOptionalText(description);
+    if (normalized) {
+      return normalized;
+    }
+
+    return `${formatCitizenReportTypeLabel(reportType)} reported by a citizen.`;
   }
 
   async getProfile(userId: string) {

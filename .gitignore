@@ -15,6 +15,7 @@ tmp-ci-logs-*/
 node_modules
 dist
 dist-ssr
+.expo/
 *.local
 .npm-cache/
 

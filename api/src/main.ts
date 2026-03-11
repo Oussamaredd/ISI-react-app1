@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { Logger as NestLogger, ValidationPipe, type LogLevel } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { Request, Response } from 'express';
+import { json, type Request, Response, urlencoded } from 'express';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 
@@ -38,6 +38,13 @@ async function bootstrap() {
   app.flushLogs();
 
   app.use(requestIdMiddleware);
+  app.use(json({ limit: '5mb' }));
+  app.use(
+    urlencoded({
+      extended: true,
+      limit: '5mb',
+    }),
+  );
   app.use(
     helmet({
       // CSP is disabled because this process serves API responses, not browser-rendered HTML.

@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,8 +23,7 @@ describe('AuthController', () => {
   };
 
   const authServiceMock = {
-    getAuthUserFromRequest: vi.fn(),
-    enrichAuthUser: vi.fn(),
+    getCurrentUser: vi.fn(),
     getAuthCookieName: vi.fn(() => 'auth_token'),
     getAuthCookieOptions: vi.fn(() => ({
       httpOnly: true,
@@ -48,17 +47,15 @@ describe('AuthController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     controller = new AuthController(authServiceMock as any);
-    authServiceMock.getAuthUserFromRequest.mockReturnValue(null);
-    authServiceMock.enrichAuthUser.mockResolvedValue(authUser);
+    authServiceMock.getCurrentUser.mockRejectedValue(new UnauthorizedException());
   });
 
   it('getStatus returns unauthenticated when no cookie user exists', async () => {
     await expect(controller.getStatus(makeRequest())).resolves.toEqual({ authenticated: false });
   });
 
-  it('getStatus returns enriched authenticated user', async () => {
-    authServiceMock.getAuthUserFromRequest.mockReturnValue(authUser);
-    authServiceMock.enrichAuthUser.mockResolvedValue({
+  it('getStatus returns authenticated current user', async () => {
+    authServiceMock.getCurrentUser.mockResolvedValue({
       ...authUser,
       provider: dbUser.authProvider,
       role: 'manager',
@@ -77,13 +74,13 @@ describe('AuthController', () => {
     });
   });
 
-  it('getStatus falls back to auth user when enrichment fails', async () => {
-    authServiceMock.getAuthUserFromRequest.mockReturnValue(authUser);
-    authServiceMock.enrichAuthUser.mockResolvedValueOnce(authUser);
+  it('getStatus returns unauthenticated when the current user is inactive', async () => {
+    authServiceMock.getCurrentUser.mockRejectedValueOnce(
+      new ForbiddenException('User account is inactive'),
+    );
 
     await expect(controller.getStatus(makeRequest('auth_token=valid'))).resolves.toEqual({
-      authenticated: true,
-      user: authUser,
+      authenticated: false,
     });
   });
 
@@ -94,8 +91,7 @@ describe('AuthController', () => {
   });
 
   it('getCurrentUser returns enriched user when present', async () => {
-    authServiceMock.getAuthUserFromRequest.mockReturnValue(authUser);
-    authServiceMock.enrichAuthUser.mockResolvedValue({
+    authServiceMock.getCurrentUser.mockResolvedValue({
       ...authUser,
       provider: dbUser.authProvider,
       role: 'manager',
@@ -141,6 +137,21 @@ describe('AuthController', () => {
     expect(authServiceMock.issueExchangeCode).not.toHaveBeenCalled();
   });
 
+  it('googleAuthCallback redirects with an error when Passport does not attach a user', async () => {
+    authServiceMock.getAuthCallbackUrl.mockReturnValueOnce('http://localhost:5173/auth/callback?error=failed');
+
+    const redirect = vi.fn();
+    const response = { redirect } as unknown as Response;
+
+    await controller.googleAuthCallback({} as Request, response);
+
+    expect(authServiceMock.getAuthCallbackUrl).toHaveBeenCalledWith({
+      errorMessage: 'Unable to complete Google sign-in.',
+    });
+    expect(redirect).toHaveBeenCalledWith('http://localhost:5173/auth/callback?error=failed');
+    expect(authServiceMock.ensureGoogleSignInAllowed).not.toHaveBeenCalled();
+  });
+
   it('googleAuthCallback redirects to frontend callback with exchange code when successful', async () => {
     authServiceMock.ensureGoogleSignInAllowed.mockResolvedValueOnce(undefined);
     authServiceMock.issueExchangeCode.mockReturnValueOnce('exchange-code-1');
@@ -158,6 +169,19 @@ describe('AuthController', () => {
     expect(redirect).toHaveBeenCalledWith(
       'http://localhost:5173/auth/callback?code=exchange-code-1',
     );
+  });
+
+  it('googleAuthCallback rethrows unexpected sign-in errors', async () => {
+    authServiceMock.ensureGoogleSignInAllowed.mockRejectedValueOnce(new Error('oauth misconfiguration'));
+
+    const redirect = vi.fn();
+    const response = { redirect } as unknown as Response;
+    const request = { user: authUser } as unknown as Request;
+
+    await expect(controller.googleAuthCallback(request, response)).rejects.toThrow(
+      'oauth misconfiguration',
+    );
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   it('exchangeCode forwards code exchange to auth service', async () => {

@@ -4,10 +4,13 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 
 ## Start Here
 - `../README.md` - repository quick start and canonical command surface
+- `../CHANGELOG.md` - canonical release history from the documented baseline forward
 - `ROADMAP.md` - development roadmap, sprint status, and canonical progress tracking
 - `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps
-- `ARCHITECTURE_OVERVIEW.md` - layer boundaries and architecture contract
+- `ARCHITECTURE_OVERVIEW.md` - layer boundaries, architecture contract, and Mermaid system views
 - `ENVIRONMENT_SETUP.md` - local/Docker/deploy environment setup
+- `RELEASE_VERSIONING.md` - semantic versioning and release bookkeeping process
+- `CODE_ANNOTATION_CONVENTIONS.md` - TSDoc/JSDoc expectations for shared and exported code
 
 ## Environment and Configuration
 - `ENV.md` - current source of truth for env rules, browser origins, and the port contract
@@ -82,6 +85,7 @@ npm run typecheck
 npm run typecheck --workspace=ecotrack-mobile
 npm run test
 npm run test --workspace=ecotrack-mobile
+npm run validate-doc-sync
 npm run test:api
 npm run test:e2e
 npm run test:coverage
@@ -104,6 +108,7 @@ npm run build --workspace=ecotrack-app
 Frontend bundle budgets are enforced during `ecotrack-app` builds via `app/scripts/check-bundle-size.mjs`.
 Use `ECOTRACK_ENTRY_CHUNK_BUDGET_KB` and `ECOTRACK_LOGO_BUDGET_KB` to override default limits in CI or local runs.
 UI theme contract checks are enforced during `ecotrack-app` lint via `app/scripts/validate-theme-contract.mjs`.
+Doc-sync checks are enforced via `npm run validate-doc-sync` and the managed `.githooks/pre-commit` hook that `npm install` configures automatically through the root `prepare` script.
 
 Database:
 ```bash
@@ -115,6 +120,7 @@ npm run db:migrate:seed
 
 Infrastructure:
 ```bash
+npm run hooks:install
 npm run infra:up
 npm run infra:health
 npm run smoke-test

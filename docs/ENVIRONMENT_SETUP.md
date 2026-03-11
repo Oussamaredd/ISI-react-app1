@@ -7,7 +7,7 @@ For the current runtime port and origin contract, use `docs/ENV.md` as the activ
 
 | Workflow | Canonical source | Notes |
 | --- | --- | --- |
-| local-dev | `/.env` + `app/.env.local` | `app/.env.local` must contain only `VITE_*` keys |
+| local-dev | `/.env` + `app/.env.local` + `mobile/.env.local` | `app/.env.local` is `VITE_*` only and `mobile/.env.local` is `EXPO_PUBLIC_*` only |
 | docker-dev | `infrastructure/environments/.env.docker` | Used by compose core profile with `--env-file` |
 | deploy-dev | secret-manager injection | Use committed template `.env.development.example` |
 | deploy-staging | secret-manager injection | Use committed template `.env.staging.example` |
@@ -24,6 +24,7 @@ For the current runtime port and origin contract, use `docs/ENV.md` as the activ
 ```bash
 cp .env.example .env
 cp app/.env.example app/.env.local
+cp mobile/.env.example mobile/.env.local
 ```
 
 Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
@@ -36,6 +37,7 @@ Managed Neon local-testing note:
 
 - When you intentionally want local native `api`/`database` commands to target the managed Neon baseline, update root `/.env` `DATABASE_URL` to the direct Neon connection string.
 - Keep `app/.env.local` frontend-only (`VITE_*` keys only).
+- Keep `mobile/.env.local` mobile-only (`EXPO_PUBLIC_*` keys only).
 - Keep `infrastructure/environments/.env.docker` pointed at the local Docker Postgres sandbox unless you are deliberately changing the Docker workflow.
 
 ## Docker Setup
@@ -49,9 +51,21 @@ npm run smoke-test
 ## Port Contract
 
 - Local/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for local-native diagnostics only.
+- Local/native mobile traffic enters through Expo and should use `EXPO_PUBLIC_API_BASE_URL` with a simulator/device reachable API origin.
 - Docker dev browser traffic enters through `http://localhost:3000`; the backend still listens on `API_PORT=3001`, but that port stays internal-only on the Docker network.
-- `API_PORT` is the backend listen port, while `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
+- `API_PORT` is the backend listen port, while `API_BASE_URL`, `VITE_API_BASE_URL`, and `EXPO_PUBLIC_API_BASE_URL` must resolve to public client-facing origins.
 - Public routes such as `/` and `/login` should render immediately; only protected `/app/**` routes may wait on session resolution.
+
+### Mobile API Base Helpers
+
+- `npm run mobile:api-base` prints candidate `EXPO_PUBLIC_API_BASE_URL` values for:
+  - physical phone on the same LAN
+  - Android emulator (`10.0.2.2`)
+  - iOS simulator (`localhost`)
+- `npm run mobile:env:lan` writes the detected LAN value into `mobile/.env.local`.
+- `npm run mobile:env:android-emulator` writes the Android emulator value into `mobile/.env.local`.
+- `npm run mobile:env:ios-simulator` writes the iOS simulator value into `mobile/.env.local`.
+- `npm run mobile:start:tunnel` starts Expo in tunnel mode for Metro/JS delivery only; it does not tunnel the API. The backend still needs a device-reachable origin.
 
 ## Deployed Environments
 
@@ -82,6 +96,7 @@ Cloudflare Pages build note:
 - `API_PORT`
 - `API_BASE_URL`
 - `VITE_API_BASE_URL`
+- `EXPO_PUBLIC_API_BASE_URL`
 
 ## OAuth Callback Requirements
 
@@ -107,6 +122,7 @@ Deprecated aliases:
 ```bash
 npm run validate-env:all
 npm run dev:doctor
+npm run dev:mobile
 npm run infra:health
 npm run smoke-test
 npm run db:migrate --workspace=ecotrack-database

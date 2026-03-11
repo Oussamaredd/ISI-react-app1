@@ -45,16 +45,37 @@ const isNetworkExchangeError = (error: unknown) => {
 };
 
 export default function AuthCallbackPage() {
-  const [attemptVersion, setAttemptVersion] = useState(0);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { login } = useAuth();
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const exchangeCode = (searchParams.get('code') ?? '').trim();
   const callbackError = searchParams.get('error');
   const nextPath = useMemo(() => resolveAuthRedirectTarget(location.search), [location.search]);
   const initialError = callbackError ?? (exchangeCode ? null : 'Missing sign-in code. Please start again from the login page.');
+  const flowKey = `${exchangeCode}:${initialError ?? ''}:${nextPath}`;
+
+  return (
+    <AuthCallbackFlow
+      key={flowKey}
+      exchangeCode={exchangeCode}
+      initialError={initialError}
+      nextPath={nextPath}
+    />
+  );
+}
+
+function AuthCallbackFlow({
+  exchangeCode,
+  initialError,
+  nextPath,
+}: {
+  exchangeCode: string;
+  initialError: string | null;
+  nextPath: string;
+}) {
+  const [attemptVersion, setAttemptVersion] = useState(0);
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [phase, setPhase] = useState<'loading' | 'success' | 'error'>(() => (
     initialError ? 'error' : 'loading'
   ));
@@ -163,19 +184,18 @@ export default function AuthCallbackPage() {
             <h1>Sign-in failed.</h1>
             <p>{errorMessage ?? 'Unable to complete sign in. Please try again.'}</p>
             <div className="auth-callback-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  if (initialError) {
-                    return;
-                  }
-                  setPhase('loading');
-                  setErrorMessage(null);
-                  setAttemptVersion((value) => value + 1);
-                }}
-              >
-                Retry sign in
-              </button>
+              {!initialError ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhase('loading');
+                    setErrorMessage(null);
+                    setAttemptVersion((value) => value + 1);
+                  }}
+                >
+                  Retry sign in
+                </button>
+              ) : null}
               <Link to="/login">Back to login</Link>
             </div>
           </div>

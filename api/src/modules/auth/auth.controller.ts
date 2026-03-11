@@ -1,4 +1,15 @@
-import { Body, ConflictException, Controller, Get, Post, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
 
@@ -13,25 +24,22 @@ export class AuthController {
 
   @Get('status')
   async getStatus(@Req() req: Request) {
-    const user = this.authService.getAuthUserFromRequest(req);
+    try {
+      const user = await this.authService.getCurrentUser(req);
+      return { authenticated: true, user };
+    } catch (error) {
+      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
+        return { authenticated: false };
+      }
 
-    if (!user) {
-      return { authenticated: false };
+      throw error;
     }
-
-    const enriched = await this.authService.enrichAuthUser(user);
-    return { authenticated: true, user: enriched };
   }
 
   @Get('me')
   async getCurrentUser(@Req() req: Request) {
-    const user = this.authService.getAuthUserFromRequest(req);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-
-    const enriched = await this.authService.enrichAuthUser(user);
-    return { user: enriched };
+    const user = await this.authService.getCurrentUser(req);
+    return { user };
   }
 
   @Get('google')
