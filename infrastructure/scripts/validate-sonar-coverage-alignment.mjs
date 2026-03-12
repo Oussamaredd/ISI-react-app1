@@ -19,7 +19,20 @@ function runGitCommand(args) {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'EPERM') {
+      try {
+        return execFileSync('git', args, {
+          cwd: ROOT_DIR,
+          encoding: 'utf8',
+          shell: true,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim();
+      } catch {
+        return '';
+      }
+    }
+
     return '';
   }
 }
@@ -40,7 +53,20 @@ function gitRefExists(ref) {
       stdio: 'ignore',
     });
     return true;
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'EPERM') {
+      try {
+        execFileSync('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
+          cwd: ROOT_DIR,
+          shell: true,
+          stdio: 'ignore',
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     return false;
   }
 }

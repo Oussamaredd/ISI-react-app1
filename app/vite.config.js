@@ -128,6 +128,8 @@ export default defineConfig(({ mode }) => {
           "src/pages/ManagerPlanningPage.tsx",
           "src/pages/auth/AuthCallbackPage.tsx",
           "src/pages/auth/ResetPasswordPage.tsx",
+          "src/hooks/useAgentTours.tsx",
+          "src/lib/registerMapServiceWorker.ts",
           "src/utils/authz.ts",
           "src/lib/scrollPageToTop.ts",
         ],
