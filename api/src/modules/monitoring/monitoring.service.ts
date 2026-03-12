@@ -289,7 +289,7 @@ export class MonitoringService {
       histogramRoutes.add(buildMethodPathKey(method, path));
     }
 
-    for (const routeKey of [...histogramRoutes].sort()) {
+    for (const routeKey of [...histogramRoutes].sort((left, right) => left.localeCompare(right))) {
       const [method, path] = routeKey.split(' ');
       for (const bucket of HTTP_REQUEST_DURATION_BUCKETS_MS) {
         const bucketCount = this.httpRequestDurationBuckets.get(
