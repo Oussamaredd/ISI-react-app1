@@ -16,6 +16,7 @@ Historical work completed before 2026-03-11 was not backfilled release-by-releas
 - A code annotation convention guide in `docs/CODE_ANNOTATION_CONVENTIONS.md`.
 - A release and versioning guide in `docs/RELEASE_VERSIONING.md`.
 - Additional API and app regression coverage around citizen reporting, manager planning, permissions, tickets, and agent tour behavior.
+- A root `LICENSE` file with the MIT License naming Oussama Radouane as the EcoTrack copyright holder.
 
 ### Changed
 - Root documentation now reflects the five-layer monorepo contract, mobile developer workflow, env handling, and validation commands.
@@ -23,6 +24,7 @@ Historical work completed before 2026-03-11 was not backfilled release-by-releas
 - CI and infrastructure scripts now cover repo-local hook bootstrap, doc-sync validation, mobile API base resolution, and expanded env validation behavior.
 - Auth callback and reset-password client flows, request correlation handling, and citizen report validation/storage contracts were tightened across the web and API layers.
 - Release tracking now uses the root `CHANGELOG.md` plus annotated Git tags for future deliveries.
+- Public repository metadata now exposes the EcoTrack author/license in the root `package.json`, and the root `README.md` now states the project ownership and licensing terms for GitHub distribution.
 
 ## [1.0.0] - 2026-03-11
 

@@ -24,15 +24,25 @@ If a change is not meant to become a tagged release yet, keep it in `CHANGELOG.m
 - Write entries in user-impact terms, not commit-message shorthand.
 - Link follow-up runbooks or docs when release operators need more context.
 
+## Public Repo Legal Baseline
+
+Before a public GitHub release or main-branch push, keep these root artifacts aligned:
+
+- `LICENSE` must exist at the repository root and match the intended public-use terms.
+- `README.md` should name the current repository owner and link to `LICENSE`.
+- Root `package.json` should expose the same `author` and `license` metadata used by the repository.
+- `CHANGELOG.md` should capture legal/governance changes when they affect public distribution, attribution, or release bookkeeping.
+
 ## Release Procedure
 
 1. Run the required validations for the changed paths from `AGENTS.md`.
-2. Move the relevant `Unreleased` notes in `CHANGELOG.md` into a new dated version section.
-3. Bump the root version in `package.json`.
-4. Commit the release change set.
-5. Create an annotated tag such as `git tag -a v1.0.1 -m "Release v1.0.1"`.
-6. Push the commit and tag.
-7. Publish GitHub release notes using the matching changelog section.
+2. Confirm the public repo legal baseline (`LICENSE`, `README.md`, root `package.json`, `CHANGELOG.md`) is current.
+3. Move the relevant `Unreleased` notes in `CHANGELOG.md` into a new dated version section.
+4. Bump the root version in `package.json`.
+5. Commit the release change set.
+6. Create an annotated tag such as `git tag -a v1.0.1 -m "Release v1.0.1"`.
+7. Push the commit and tag.
+8. Publish GitHub release notes using the matching changelog section.
 
 ## Workspace Policy
 

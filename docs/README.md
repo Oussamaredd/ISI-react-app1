@@ -4,6 +4,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 
 ## Start Here
 - `../README.md` - repository quick start and canonical command surface
+- `../LICENSE` - canonical public-use terms and attribution notice for the repository
 - `../CHANGELOG.md` - canonical release history from the documented baseline forward
 - `ROADMAP.md` - development roadmap, sprint status, and canonical progress tracking
 - `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps

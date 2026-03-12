@@ -2,6 +2,8 @@
   "name": "ecotrack",
   "version": "1.0.0",
   "description": "Multi-client ticket management monorepo",
+  "author": "Oussama Radouane",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "engines": {

@@ -243,4 +243,12 @@ Release and contributor references:
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 - The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/runbooks/EXTENDED_QUALITY_GATES.md`.
 
+## Ownership and License
+
+EcoTrack is authored and maintained by Oussama Radouane.
+
+Copyright (c) 2026 Oussama Radouane. Released under the MIT License.
+
+See [`LICENSE`](./LICENSE) for the full terms.
+
 
