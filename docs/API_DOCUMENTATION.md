@@ -289,3 +289,4 @@ Errors follow a normalized structure:
 - The platform is currently in the Development specialty scope only.
 - Security/Data specialty features are tracked as future dependencies and are not implemented in this phase.
 
+

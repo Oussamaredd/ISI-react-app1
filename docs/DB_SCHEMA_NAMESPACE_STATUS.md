@@ -229,3 +229,4 @@ Checklist:
 - capture an external-consumer confirmation for legacy `public.<table>` naming if that evidence is still required
 - introduce PostGIS-backed geometry columns later if and when the approved data scope requires them
 - create a proper backup or restore-point procedure for future database rollout work where tooling is available
+

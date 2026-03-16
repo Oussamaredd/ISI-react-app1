@@ -315,3 +315,4 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 - Add one manual migration in `database/migrations/` for schema creation plus `ALTER TABLE ... SET SCHEMA ...` moves.
 - Add one follow-up migration in `database/migrations/` for the new tables, additive columns, indexes, and optional PostGIS enablement.
 - Refresh `database/migrations/meta/_journal.json` and the latest snapshot only after the hand-authored migration SQL and updated Drizzle schema are aligned.
+
