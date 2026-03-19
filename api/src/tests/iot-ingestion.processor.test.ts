@@ -71,6 +71,75 @@ describe('IngestionProcessorService', () => {
     expect(repository.markRejected).not.toHaveBeenCalled();
   });
 
+  it('skips missing staged events that were already claimed by another worker', async () => {
+    vi.mocked(repository.claimEventForProcessing).mockResolvedValueOnce(null);
+
+    const result = await service.processStagedEvent(EVENT_ID);
+
+    expect(result).toEqual({ status: 'skipped' });
+    expect(repository.persistValidatedEvent).not.toHaveBeenCalled();
+    expect(repository.markRejected).not.toHaveBeenCalled();
+    expect(repository.markRetryOrFailed).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid staged payloads before persistence', async () => {
+    vi.mocked(repository.claimEventForProcessing).mockResolvedValueOnce(
+      {
+        ...createClaimedEvent({}),
+        fillLevelPercent: 101,
+      } as any,
+    );
+
+    const result = await service.processStagedEvent(EVENT_ID);
+
+    expect(result).toEqual({ status: 'rejected' });
+    expect(repository.markRejected).toHaveBeenCalledWith(
+      EVENT_ID,
+      expect.stringMatching(/less than or equal to 100/i),
+      expect.objectContaining({
+        sourceEventId: EVENT_ID,
+      }),
+    );
+  });
+
+  it('rejects measurements that arrive too far in the future', async () => {
+    vi.mocked(repository.claimEventForProcessing).mockResolvedValueOnce(
+      createClaimedEvent({
+        measuredAt: new Date(Date.now() + 10 * 60 * 1000),
+      }) as any,
+    );
+
+    const result = await service.processStagedEvent(EVENT_ID);
+
+    expect(result).toEqual({ status: 'rejected' });
+    expect(repository.markRejected).toHaveBeenCalledWith(
+      EVENT_ID,
+      'Measurement timestamp is too far in the future.',
+      expect.objectContaining({
+        sourceEventId: EVENT_ID,
+      }),
+    );
+  });
+
+  it('rejects measurements that are older than the processing retention window', async () => {
+    vi.mocked(repository.claimEventForProcessing).mockResolvedValueOnce(
+      createClaimedEvent({
+        measuredAt: new Date(Date.now() - 181 * 24 * 60 * 60 * 1000),
+      }) as any,
+    );
+
+    const result = await service.processStagedEvent(EVENT_ID);
+
+    expect(result).toEqual({ status: 'rejected' });
+    expect(repository.markRejected).toHaveBeenCalledWith(
+      EVENT_ID,
+      'Measurement timestamp is too old to process.',
+      expect.objectContaining({
+        sourceEventId: EVENT_ID,
+      }),
+    );
+  });
+
   it('rejects client-supplied rejected measurements without retrying them', async () => {
     vi.mocked(repository.claimEventForProcessing).mockResolvedValueOnce(
       createClaimedEvent({ measurementQuality: 'rejected' }) as any,

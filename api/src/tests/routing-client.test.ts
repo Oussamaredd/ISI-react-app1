@@ -10,10 +10,10 @@ describe('RoutingClient circuit breaker', () => {
 
   const fetchMock = vi.fn();
 
-  const createRoutingClientMock = (resetWindowMs = 5000) => {
+  const createRoutingClientMock = (resetWindowMs = 5000, baseUrl = 'https://router.example.test') => {
     configServiceMock.get.mockImplementation((key: string) => {
       if (key === 'routing.baseUrl') {
-        return 'https://router.example.test';
+        return baseUrl;
       }
       if (key === 'routing.circuitBreaker.timeoutMs') {
         return 1000;
@@ -274,6 +274,27 @@ describe('RoutingClient circuit breaker', () => {
       expect(fetchMock).toHaveBeenCalled();
     });
 
+    it('skips concurrent half-open probes while another probe is already in flight', async () => {
+      const client = createRoutingClientMock();
+
+      client['metrics'] = {
+        state: 'half-open',
+        failures: 3,
+        lastFailureTime: Date.now() - 10000,
+        lastSuccessTime: null,
+        consecutiveSuccesses: 0,
+      };
+      client['probeInFlight'] = true;
+
+      const result = await client.fetchRoute([
+        { longitude: 2.3522, latitude: 48.8566 },
+        { longitude: 2.354, latitude: 48.8589 },
+      ]);
+
+      expect(result).toBeNull();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('closes circuit after successive successes in half-open state', async () => {
       fetchMock.mockResolvedValue({
         ok: true,
@@ -378,5 +399,39 @@ describe('RoutingClient circuit breaker', () => {
 
     expect(client.getMetrics().failures).toBe(0);
     expect(client.getCircuitState()).toBe('closed');
+  });
+
+  it('returns null when the routing provider response lacks a usable geometry', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        routes: [
+          {
+            distance: 1000,
+            duration: 300,
+            geometry: {
+              type: 'LineString',
+              coordinates: [[2.3522, 48.8566]],
+            },
+          },
+        ],
+      }),
+    });
+
+    const client = createRoutingClientMock();
+    const result = await client.fetchRoute([
+      { longitude: 2.3522, latitude: 48.8566 },
+      { longitude: 2.354, latitude: 48.8589 },
+    ]);
+
+    expect(result).toBeNull();
+    expect(client.getMetrics().failures).toBe(1);
+  });
+
+  it('falls back to the generic provider name when the configured base URL is invalid', () => {
+    const client = createRoutingClientMock() as any;
+    client.baseUrl = 'not-a-valid-url';
+
+    expect(client.getProviderName()).toBe('osrm');
   });
 });

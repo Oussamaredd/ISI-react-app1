@@ -22,6 +22,7 @@ describe('IngestionService', () => {
   let queue: InMemoryIngestionQueue;
   let repository: IngestionRepository;
   let processorService: IngestionProcessorService;
+  let currentConfig: typeof iotConfig;
 
   const iotConfig = {
     IOT_INGESTION_ENABLED: true,
@@ -34,6 +35,7 @@ describe('IngestionService', () => {
   };
 
   beforeEach(() => {
+    currentConfig = { ...iotConfig };
     queue = new InMemoryIngestionQueue();
     repository = {
       stageMeasurements: vi.fn().mockResolvedValue([
@@ -65,7 +67,7 @@ describe('IngestionService', () => {
       {
         get: vi.fn().mockImplementation((key: string) => {
           if (key === 'iotIngestion') {
-            return iotConfig;
+            return currentConfig;
           }
 
           return undefined;
@@ -85,13 +87,29 @@ describe('IngestionService', () => {
     service.onModuleInit();
 
     const result = await service.ingestSingle({
-      deviceUid: 'sensor-001',
+      deviceUid: ' sensor-001 ',
       measuredAt: new Date().toISOString(),
       fillLevelPercent: 50,
-      measurementQuality: 'valid',
+      measurementQuality: ' VALID ',
+      idempotencyKey: ' key-1 ',
     });
 
     expect(repository.stageMeasurements).toHaveBeenCalledTimes(1);
+    expect(repository.stageMeasurements).toHaveBeenCalledWith([
+      expect.objectContaining({
+        batchId: null,
+        deviceUid: 'sensor-001',
+        measurementQuality: 'valid',
+        idempotencyKey: 'key-1',
+        rawPayload: expect.objectContaining({
+          measurement: expect.objectContaining({
+            deviceUid: 'sensor-001',
+            measurementQuality: 'valid',
+            idempotencyKey: 'key-1',
+          }),
+        }),
+      }),
+    ]);
     expect(result).toEqual({
       accepted: 1,
       processing: true,
@@ -172,5 +190,164 @@ describe('IngestionService', () => {
         oldestPendingAgeMs: 1200,
       },
     });
+  });
+
+  it('reports unhealthy health and skips processor startup when ingestion is disabled', async () => {
+    currentConfig = {
+      ...currentConfig,
+      IOT_INGESTION_ENABLED: false,
+    };
+    service = new IngestionService(
+      {
+        get: vi.fn().mockImplementation((key: string) => {
+          if (key === 'iotIngestion') {
+            return currentConfig;
+          }
+
+          return undefined;
+        }),
+      } as any,
+      repository,
+      queue,
+      processorService,
+    );
+
+    const startProcessorSpy = vi.spyOn(queue, 'startProcessor');
+
+    service.onModuleInit();
+    const health = await service.getHealth();
+
+    expect(startProcessorSpy).not.toHaveBeenCalled();
+    expect(health).toEqual({
+      status: 'unhealthy',
+      queueEnabled: false,
+      backpressureActive: false,
+      pendingCount: 0,
+      processedLastHour: 0,
+      processing: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        rejectedCount: 0,
+        oldestPendingAgeMs: null,
+      },
+    });
+  });
+
+  it('rejects ingestion requests before module initialization', async () => {
+    await expect(
+      service.ingestSingle({
+        deviceUid: 'sensor-001',
+        measuredAt: new Date().toISOString(),
+        fillLevelPercent: 50,
+      }),
+    ).rejects.toThrow('IoT ingestion is not available');
+  });
+
+  it('rejects empty batches before staging events', async () => {
+    service.onModuleInit();
+
+    await expect(service.ingestBatch([])).rejects.toThrow('At least one measurement is required.');
+    expect(repository.stageMeasurements).not.toHaveBeenCalled();
+  });
+
+  it('pauses on backpressure and resumes once load recovers', async () => {
+    vi.mocked(repository.getHealthStats)
+      .mockResolvedValueOnce({
+        pendingCount: 3,
+        retryCount: 1,
+        processingCount: 0,
+        failedCount: 0,
+        rejectedCount: 0,
+        validatedLastHour: 0,
+        oldestPendingAgeMs: null,
+      })
+      .mockResolvedValueOnce({
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        rejectedCount: 0,
+        validatedLastHour: 4,
+        oldestPendingAgeMs: null,
+      });
+    currentConfig.IOT_BACKPRESSURE_THRESHOLD = 3;
+
+    service.onModuleInit();
+
+    await expect(
+      service.ingestSingle({
+        deviceUid: 'sensor-001',
+        measuredAt: new Date().toISOString(),
+        fillLevelPercent: 50,
+      }),
+    ).rejects.toThrow('Service temporarily unavailable due to high load');
+
+    expect(queue.isPaused()).toBe(true);
+
+    const health = await service.getHealth();
+
+    expect(queue.isPaused()).toBe(false);
+    expect(health).toEqual(
+      expect.objectContaining({
+        status: 'healthy',
+        backpressureActive: false,
+        processedLastHour: 4,
+      }),
+    );
+  });
+
+  it('deduplicates already tracked staged event ids and clears them after enqueue failures', async () => {
+    service.onModuleInit();
+
+    await (service as any).enqueueStagedEvents([
+      { id: 'event-1', newlyStaged: true },
+      { id: 'event-2', newlyStaged: false },
+    ]);
+
+    const enqueueSpy = vi.spyOn(queue, 'enqueue');
+    await (service as any).enqueueStagedEvents([{ id: 'event-1', newlyStaged: true }]);
+
+    expect(enqueueSpy).not.toHaveBeenCalled();
+
+    enqueueSpy.mockRejectedValueOnce(new Error('queue unavailable'));
+
+    await expect(
+      (service as any).enqueueStagedEvents([{ id: 'event-3', newlyStaged: true }]),
+    ).rejects.toThrow('queue unavailable');
+    expect((service as any).enqueuedEventIds.has('event-3')).toBe(false);
+  });
+
+  it('recovers runnable events and tolerates enqueue or recovery failures', async () => {
+    service.onModuleInit();
+
+    const enqueueSpy = vi.spyOn(queue, 'enqueue').mockRejectedValueOnce(new Error('queue down'));
+    vi.mocked(repository.listRunnableEventIds).mockResolvedValueOnce(['event-7']);
+
+    await expect((service as any).schedulePendingEventRecovery()).resolves.toBeUndefined();
+    expect((service as any).enqueuedEventIds.has('event-7')).toBe(false);
+
+    vi.mocked(repository.recoverStuckProcessing).mockRejectedValueOnce(new Error('db down'));
+
+    await expect((service as any).schedulePendingEventRecovery()).resolves.toBeUndefined();
+    expect(enqueueSpy).toHaveBeenCalledWith(['event-7']);
+  });
+
+  it('clears tracked ids even when processor execution fails', async () => {
+    service.onModuleInit();
+    vi.mocked(processorService.processStagedEvent).mockRejectedValueOnce(new Error('worker failed'));
+    (service as any).enqueuedEventIds.add('event-9');
+
+    await expect(
+      (service as any).processor([
+        {
+          id: 'job-1',
+          eventIds: ['event-9'],
+          createdAt: new Date(),
+        },
+      ]),
+    ).rejects.toThrow('worker failed');
+
+    expect((service as any).enqueuedEventIds.has('event-9')).toBe(false);
   });
 });

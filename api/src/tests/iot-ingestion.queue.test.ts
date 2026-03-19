@@ -115,4 +115,17 @@ describe('InMemoryIngestionQueue', () => {
     expect(await queue.getPendingCount()).toBe(0);
     expect(queue.getProcessedLastHour()).toBe(2);
   });
+
+  it('prunes stale processed-event counters and ignores zero-count records', () => {
+    queue = new InMemoryIngestionQueue();
+
+    queue['processedEvents'].push(
+      { processedAt: Date.now() - 61 * 60 * 1000, count: 5 },
+      { processedAt: Date.now(), count: 2 },
+    );
+
+    queue['recordProcessed'](0);
+
+    expect(queue.getProcessedLastHour()).toBe(2);
+  });
 });
