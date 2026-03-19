@@ -1,6 +1,6 @@
 # DB Schema Namespace Rollout Status
 
-Last updated: 2026-03-06
+Last updated: 2026-03-19
 
 ## Purpose
 
@@ -14,6 +14,12 @@ Use this file together with:
 ## Current Readiness Status
 
 Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PASSED WITH KNOWN EXCEPTIONS`
+
+2026-03-19 extension note:
+
+- `iot.ingestion_events` and `iot.validated_measurement_events` were added in `database/migrations/0017_optimal_shard.sql` for workbook task `M3.3`.
+- These tables are Development-owned monolith event-workflow artifacts used for staged ingestion, validation, enrichment, retry state, and validated-event storage.
+- This extension does not add Kafka infrastructure, DW/ETL storage, or Security/Data specialty artifacts.
 
 Known readiness exceptions from the original rollout pass:
 
@@ -51,7 +57,7 @@ Status summary:
 Checklist:
 
 - [x] Treat `docs/DB_SCHEMA_NAMESPACE_PLAN.md` as the approved namespace design baseline.
-- [x] Confirm the current 22-table inventory from the latest accepted database snapshot.
+- [x] Confirm the original 22-table inventory from the accepted pre-namespace snapshot.
 - [ ] Confirm no external consumers depend on hardcoded `public.<table>` names, or explicitly list the ones that do.
 - [ ] Capture a dev database backup or restore point before any schema move migration is applied.
 - [x] Confirm whether PostGIS is already enabled in the dev database.
@@ -122,7 +128,21 @@ Checklist:
 - [x] Add `incident.alert_events`.
 - [x] Add `notify.notifications`.
 - [x] Add `notify.notification_deliveries`.
-- [x] Add only OLTP storage/query structures; do not add DW, ETL, ML, or ingestion pipeline artifacts.
+- [x] Add only OLTP storage/query structures; do not add DW, ETL, ML, or external broker-platform artifacts.
+
+### Task 4A - Add Monolith IoT Event Workflow Storage
+
+Status summary:
+
+- `DONE`
+
+Checklist:
+
+- [x] Add `iot.ingestion_events` for durable raw-event staging.
+- [x] Add `iot.validated_measurement_events` for worker-produced validated results.
+- [x] Keep the workflow monolith-compatible and Development-owned.
+- [x] Preserve current downstream writes to `iot.measurements` and container status while later consumers remain open.
+- [x] Avoid external Kafka, warehouse, or specialty-track schema additions.
 
 ### Task 5 - Additive Changes To Existing Tables
 

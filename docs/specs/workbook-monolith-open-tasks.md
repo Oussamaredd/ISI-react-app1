@@ -1,6 +1,6 @@
 ﻿# Workbook Open Tasks - Monolith Adaptation (Detailed)
 
-Last updated: 2026-03-11
+Last updated: 2026-03-19
 
 Source workbook: `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 
@@ -98,7 +98,8 @@ Status legend:
 - Workbook expected outcome: 3 tests de sécurité (ex: injection de charge utile) développés et passés; Utilisation d'un outil de scan statique (SAST).
 - Monolith adaptation: Implement as automated verification in current workspace test suites and CI quality gates.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through three automated negative security tests on `GET /api/admin/users`, `GET /api/admin/audit-logs`, and `PUT /api/admin/settings`, plus a blocking Semgrep SAST gate in `.github/workflows/CI.yaml`. The delivered scope stays Development-owned only and does not expand into pentest or broader security-specialty work.
 
 ### M2.13 - Implémentation des Metrics Prometheus (RED/USE)
 
@@ -144,7 +145,8 @@ Status legend:
 - Workbook expected outcome: 1. Code du Stream Processor (Kafka Streams/KSQL/Spark). 2. Logique de validation et d'enrichissement. 3. Test de latence du traitement < 100ms.
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a monolith-compatible staged-event worker: raw IoT payloads are stored in `iot.ingestion_events`, processed by an internal worker with schema validation, business-rule validation, cleaning and normalization, enrichment against sensor and container data, retry and failure handling, idempotency, validated-event storage in `iot.validated_measurement_events`, and compatibility writes to `iot.measurements` plus container status. API compatibility remains `202 Accepted` on both ingestion endpoints and latency-sensitive worker tests are included.
 
 ### M3.4 - Configuration des Alerts Critiques (Alertmanager)
 
@@ -861,7 +863,8 @@ Status legend:
 - Workbook expected outcome: OWASP ZAP Docker container déploiement; Configuration contexts authentication sessions; Scan policies customization (active, passive); Scripts automation spider + ascan API REST; CI/CD integration GitLab pipeline ZAP scanning; Reports HTML/XML generation parsing alerts; Filtering false positives tuning; Documentation vulnerabilities remediation guidance; Compliance OWASP Top 10 coverage report; Dashboard security metrics trends
 - Monolith adaptation: Implement as automated verification in current workspace test suites and CI quality gates.
 - Lane: `Dev QA`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through a required Semgrep SAST gate in the main CI workflow plus the existing extended-quality ZAP baseline hook and updated security documentation. The acceptance path remains repo-owned automation inside the Development phase.
 
 ### M10.4 - Tests Mutation Testing avec Stryker validité suite tests
 

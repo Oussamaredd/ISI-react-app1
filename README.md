@@ -238,7 +238,7 @@ Release and contributor references:
 
 ## CI/CD
 
-- `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes
+- `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes, and now includes a required `Semgrep SAST` job for `api/src` and `database/schema`
 - `CD.yml`: canonical `CD Deployment` workflow; GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 - The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/runbooks/EXTENDED_QUALITY_GATES.md`.

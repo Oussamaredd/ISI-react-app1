@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { InMemoryIngestionQueue } from '../modules/iot/ingestion/ingestion.queue.js';
-import type { ProcessedMeasurement } from '../modules/iot/ingestion/ingestion.repository.js';
 
 const createDeferred = () => {
   let resolve!: () => void;
@@ -24,22 +23,6 @@ const waitFor = async (predicate: () => boolean, timeoutMs = 1000) => {
   }
 };
 
-const createProcessedMeasurement = (id: number): ProcessedMeasurement => ({
-  deviceUid: `sensor-${id}`,
-  measurement: {
-    sensorDeviceId: null,
-    containerId: null,
-    measuredAt: new Date(),
-    fillLevelPercent: 50,
-    temperatureC: null,
-    batteryPercent: null,
-    signalStrength: null,
-    measurementQuality: 'valid',
-    sourcePayload: { source: 'iot-ingestion-api', deviceUid: `sensor-${id}` },
-    receivedAt: new Date(),
-  },
-});
-
 describe('InMemoryIngestionQueue', () => {
   let queue: InMemoryIngestionQueue;
 
@@ -50,9 +33,9 @@ describe('InMemoryIngestionQueue', () => {
   it('tracks pending measurements and drains them with the configured concurrency', async () => {
     queue = new InMemoryIngestionQueue();
 
-    await queue.enqueue([createProcessedMeasurement(1)]);
-    await queue.enqueue([createProcessedMeasurement(2)]);
-    await queue.enqueue([createProcessedMeasurement(3)]);
+    await queue.enqueue(['event-1']);
+    await queue.enqueue(['event-2']);
+    await queue.enqueue(['event-3']);
 
     const deferredBatches = [createDeferred(), createDeferred(), createDeferred()];
     let observedActiveWorkers = 0;

@@ -16,4 +16,11 @@ export class IngestionHealthDto {
   backpressureActive!: boolean;
   pendingCount!: number;
   processedLastHour!: number;
+  processing!: {
+    retryCount: number;
+    processingCount: number;
+    failedCount: number;
+    rejectedCount: number;
+    oldestPendingAgeMs: number | null;
+  };
 }

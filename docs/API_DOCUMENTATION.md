@@ -76,10 +76,12 @@ PUT /zones/:id
 ```
 
 `GET /api/containers` returns mapped container summaries used by mobile reporting, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
-`POST /api/iot/v1/measurements` accepts one validated sensor measurement and returns `202 Accepted` after the payload is queued for async persistence.
-`POST /api/iot/v1/measurements/batch` accepts a validated non-empty measurement array up to `IOT_MAX_BATCH_SIZE` and returns `202 Accepted` with a queue batch identifier.
-`GET /api/iot/v1/health` returns queue health, backpressure state, pending buffered measurements, and the rolling processed-measurement count for the last hour.
-When queued measurements reach `IOT_BACKPRESSURE_THRESHOLD`, the ingestion endpoints respond with `503` until the backlog falls below the configured ceiling.
+`POST /api/iot/v1/measurements` accepts one validated sensor measurement and returns `202 Accepted` after the raw payload is staged in `iot.ingestion_events` for async worker processing.
+`POST /api/iot/v1/measurements/batch` accepts a validated non-empty measurement array up to `IOT_MAX_BATCH_SIZE` and returns `202 Accepted` with a batch identifier after staging each raw event.
+The monolith processing worker then performs schema validation, business-rule validation, normalization, enrichment with sensor and container context, validated-event storage, and the current downstream `iot.measurements` / container-status writes.
+`deviceUid` plus `idempotencyKey` is treated as the staging deduplication key when `idempotencyKey` is provided.
+`GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, and worker processing counters.
+When staged-event backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the ingestion endpoints respond with `503` until the backlog falls below the configured ceiling.
 
 ### Citizen Reporting and Engagement
 
@@ -272,6 +274,10 @@ Metrics notes:
 - RED families include `ecotrack_http_requests_total`, `ecotrack_http_request_errors_total`, and `ecotrack_http_request_duration_ms`.
 - Runtime / USE-style gauges include `ecotrack_http_requests_in_flight`, `ecotrack_process_uptime_seconds`, `ecotrack_process_resident_memory_bytes`, `ecotrack_process_heap_*`, and `ecotrack_process_cpu_*`.
 - Route labels are normalized (for example `/api/tickets/:id`) to avoid high-cardinality metrics from raw UUIDs or numeric IDs.
+
+IoT ingestion health notes:
+- `GET /api/iot/v1/health` includes `processing.retryCount`, `processing.processingCount`, `processing.failedCount`, `processing.rejectedCount`, and `processing.oldestPendingAgeMs`.
+- Health returns `healthy`, `degraded`, or `unhealthy` based on queue enablement, backlog pressure, and worker retry or failure state.
 
 ## OpenAPI References
 

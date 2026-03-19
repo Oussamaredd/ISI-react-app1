@@ -2,16 +2,14 @@ import { randomUUID } from 'node:crypto';
 
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import type { ProcessedMeasurement } from './ingestion.repository.js';
-
 export interface MeasurementJob {
   id: string;
-  measurements: ProcessedMeasurement[];
+  eventIds: string[];
   createdAt: Date;
 }
 
 export interface IngestionQueue {
-  enqueue(measurements: ProcessedMeasurement[]): Promise<string>;
+  enqueue(eventIds: string[]): Promise<string>;
   getPendingCount(): Promise<number>;
   getProcessedLastHour(): number;
   pause(): void;
@@ -33,7 +31,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
   private readonly queue: MeasurementJob[] = [];
   private readonly processedEvents: Array<{ processedAt: number; count: number }> = [];
 
-  private pendingMeasurements = 0;
+  private pendingEvents = 0;
   private activeWorkers = 0;
   private paused = false;
   private stopped = true;
@@ -51,26 +49,26 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
     this.logger.log('In-memory ingestion queue stopped');
   }
 
-  async enqueue(measurements: ProcessedMeasurement[]): Promise<string> {
+  async enqueue(eventIds: string[]): Promise<string> {
     if (this.paused) {
       throw new Error('Queue is paused due to backpressure');
     }
 
     const job: MeasurementJob = {
       id: randomUUID(),
-      measurements,
+      eventIds,
       createdAt: new Date(),
     };
 
     this.queue.push(job);
-    this.pendingMeasurements += measurements.length;
+    this.pendingEvents += eventIds.length;
     this.scheduleDrain();
 
     return job.id;
   }
 
   async getPendingCount(): Promise<number> {
-    return this.pendingMeasurements;
+    return this.pendingEvents;
   }
 
   getProcessedLastHour(): number {
@@ -144,25 +142,25 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
 
   private dequeueBatch(): { jobs: MeasurementJob[]; measurementCount: number } {
     const jobs: MeasurementJob[] = [];
-    let measurementCount = 0;
+    let eventCount = 0;
 
     while (this.queue.length > 0) {
       const nextJob = this.queue[0];
-      const nextMeasurementCount = nextJob.measurements.length;
+      const nextEventCount = nextJob.eventIds.length;
 
-      if (jobs.length > 0 && measurementCount + nextMeasurementCount > this.maxBatchMeasurements) {
+      if (jobs.length > 0 && eventCount + nextEventCount > this.maxBatchMeasurements) {
         break;
       }
 
       jobs.push(this.queue.shift()!);
-      measurementCount += nextMeasurementCount;
+      eventCount += nextEventCount;
     }
 
-    this.pendingMeasurements = Math.max(0, this.pendingMeasurements - measurementCount);
+    this.pendingEvents = Math.max(0, this.pendingEvents - eventCount);
 
     return {
       jobs,
-      measurementCount,
+      measurementCount: eventCount,
     };
   }
 
@@ -171,7 +169,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
       await this.processorHandler?.(jobs);
       this.recordProcessed(measurementCount);
     } catch (error) {
-      this.pendingMeasurements += measurementCount;
+      this.pendingEvents += measurementCount;
       this.queue.unshift(...jobs);
       this.logger.error(
         `Failed to process batch: ${error instanceof Error ? error.message : 'Unknown error'}`,

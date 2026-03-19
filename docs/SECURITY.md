@@ -81,3 +81,27 @@ npm run validate-env:all
 - Global rate limiting is enabled (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`) with a stricter default abuse budget on auth endpoints such as `POST /login`.
 - Health probes and the Prometheus scrape endpoint are excluded from auto-log noise and rate limiting so operator probes do not distort abuse signals.
 
+## Automated Injection Safety Checks
+
+This repository stays inside the current Development-only specialty scope. The delivered security work for this phase is automated verification owned by the app and API teams; it does not expand into pentesting, WAF, IDS, SIEM, or other broader security-specialty tracks.
+
+Repo-owned negative security tests now live in `api/src/tests/security-negative-input.test.ts` and cover three existing high-risk admin endpoints:
+
+- `GET /api/admin/users` with a SQL-style `search` payload to verify inert handling and no widened result set
+- `GET /api/admin/audit-logs` with a SQL-style `search` payload to verify inert handling and bounded results
+- `PUT /api/admin/settings` with a prototype-pollution payload to verify rejection, no side effects, and a stable `400` error body
+
+These tests assert the expected status codes and bodies, reject or inertly handle malicious payloads, prevent widened query results and unsafe side effects, and confirm that responses do not leak stack traces or SQL details.
+
+## SAST Gate
+
+The required CI workflow now includes a blocking `Semgrep SAST` job in `.github/workflows/CI.yaml`.
+
+- Scanner: Semgrep OSS
+- Scan scope: `api/src` and `database/schema`
+- Rulesets: `p/typescript`, `p/nodejs`, and `p/owasp-top-ten`
+- Exclusions: `api/src/tests/**`, `database/dist/**`, and `**/node_modules/**`
+- Behavior: the CI run fails on Semgrep findings and uploads `tmp/ci/semgrep-report.json` as an artifact
+
+The existing extended-quality ZAP baseline remains available as a supplemental, non-blocking DAST hook. It is not the primary acceptance mechanism for this Development-owned task.
+

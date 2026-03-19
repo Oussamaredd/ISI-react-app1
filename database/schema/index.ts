@@ -1,9 +1,57 @@
-import { relations } from 'drizzle-orm';
-import { bigserial, boolean, index, integer, jsonb, pgSchema, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { relations, sql } from 'drizzle-orm';
+import {
+  bigserial,
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 type RouteGeometryLineString = {
   type: 'LineString';
   coordinates: Array<[number, number]>;
+};
+
+type IotRawMeasurementPayload = {
+  source: 'iot-ingestion-api';
+  schemaVersion: 'v1';
+  batchId: string | null;
+  measurement: {
+    sensorDeviceId: string | null;
+    containerId: string | null;
+    deviceUid: string;
+    measuredAt: string;
+    fillLevelPercent: number;
+    temperatureC: number | null;
+    batteryPercent: number | null;
+    signalStrength: number | null;
+    measurementQuality: string;
+    idempotencyKey: string | null;
+  };
+};
+
+type IotValidatedMeasurementPayload = {
+  sourceEventId: string;
+  schemaVersion: 'v1';
+  deviceUid: string;
+  sensorDeviceId: string | null;
+  containerId: string | null;
+  measuredAt: string;
+  fillLevelPercent: number;
+  temperatureC: number | null;
+  batteryPercent: number | null;
+  signalStrength: number | null;
+  measurementQuality: string;
+  warningThreshold: number | null;
+  criticalThreshold: number | null;
+  receivedAt: string;
+  processedAt: string;
 };
 
 export const authSchema = pgSchema('auth');
@@ -173,6 +221,88 @@ export const measurements = iotSchema.table(
     pk: primaryKey({ columns: [table.id, table.measuredAt] }),
     containerMeasuredAtIdx: index('measurements_container_measured_at_idx').on(table.containerId, table.measuredAt),
     sensorMeasuredAtIdx: index('measurements_sensor_measured_at_idx').on(table.sensorDeviceId, table.measuredAt),
+  }),
+);
+
+export const ingestionEvents = iotSchema.table(
+  'ingestion_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    batchId: uuid('batch_id'),
+    deviceUid: text('device_uid').notNull(),
+    sensorDeviceId: uuid('sensor_device_id').references(() => sensorDevices.id, { onDelete: 'set null' }),
+    containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+    idempotencyKey: text('idempotency_key'),
+    measuredAt: timestamp('measured_at', { withTimezone: true }).notNull(),
+    fillLevelPercent: integer('fill_level_percent').notNull(),
+    temperatureC: integer('temperature_c'),
+    batteryPercent: integer('battery_percent'),
+    signalStrength: integer('signal_strength'),
+    measurementQuality: text('measurement_quality').default('valid').notNull(),
+    processingStatus: text('processing_status').default('pending').notNull(),
+    attemptCount: integer('attempt_count').default(0).notNull(),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+    processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    rejectionReason: text('rejection_reason'),
+    lastError: text('last_error'),
+    processingLatencyMs: integer('processing_latency_ms'),
+    rawPayload: jsonb('raw_payload').$type<IotRawMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
+    normalizedPayload: jsonb('normalized_payload').$type<Record<string, unknown>>(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    statusNextAttemptIdx: index('ingestion_events_status_next_attempt_idx').on(
+      table.processingStatus,
+      table.nextAttemptAt,
+    ),
+    deviceMeasuredAtIdx: index('ingestion_events_device_measured_at_idx').on(
+      table.deviceUid,
+      table.measuredAt,
+    ),
+    batchIdx: index('ingestion_events_batch_idx').on(table.batchId),
+    deviceIdempotencyIdx: uniqueIndex('ingestion_events_device_idempotency_idx').on(
+      table.deviceUid,
+      table.idempotencyKey,
+    ),
+  }),
+);
+
+export const validatedMeasurementEvents = iotSchema.table(
+  'validated_measurement_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sourceEventId: uuid('source_event_id')
+      .notNull()
+      .references(() => ingestionEvents.id, { onDelete: 'cascade' }),
+    deviceUid: text('device_uid').notNull(),
+    sensorDeviceId: uuid('sensor_device_id').references(() => sensorDevices.id, { onDelete: 'set null' }),
+    containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+    measuredAt: timestamp('measured_at', { withTimezone: true }).notNull(),
+    fillLevelPercent: integer('fill_level_percent').notNull(),
+    temperatureC: integer('temperature_c'),
+    batteryPercent: integer('battery_percent'),
+    signalStrength: integer('signal_strength'),
+    measurementQuality: text('measurement_quality').default('valid').notNull(),
+    warningThreshold: integer('warning_threshold'),
+    criticalThreshold: integer('critical_threshold'),
+    validationSummary: jsonb('validation_summary').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    normalizedPayload: jsonb('normalized_payload').$type<IotValidatedMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    sourceEventIdx: uniqueIndex('validated_measurement_events_source_event_idx').on(table.sourceEventId),
+    containerMeasuredAtIdx: index('validated_measurement_events_container_measured_at_idx').on(
+      table.containerId,
+      table.measuredAt,
+    ),
+    sensorMeasuredAtIdx: index('validated_measurement_events_sensor_measured_at_idx').on(
+      table.sensorDeviceId,
+      table.measuredAt,
+    ),
   }),
 );
 
@@ -597,6 +727,8 @@ export const containersRelations = relations(containers, ({ many, one }) => ({
   collectionEvents: many(collectionEvents),
   sensorDevices: many(sensorDevices),
   measurements: many(measurements),
+  ingestionEvents: many(ingestionEvents),
+  validatedMeasurementEvents: many(validatedMeasurementEvents),
   alertEvents: many(alertEvents),
 }));
 
@@ -606,6 +738,8 @@ export const sensorDevicesRelations = relations(sensorDevices, ({ many, one }) =
     references: [containers.id],
   }),
   measurements: many(measurements),
+  ingestionEvents: many(ingestionEvents),
+  validatedMeasurementEvents: many(validatedMeasurementEvents),
 }));
 
 export const measurementsRelations = relations(measurements, ({ one }) => ({
@@ -615,6 +749,33 @@ export const measurementsRelations = relations(measurements, ({ one }) => ({
   }),
   container: one(containers, {
     fields: [measurements.containerId],
+    references: [containers.id],
+  }),
+}));
+
+export const ingestionEventsRelations = relations(ingestionEvents, ({ many, one }) => ({
+  sensorDevice: one(sensorDevices, {
+    fields: [ingestionEvents.sensorDeviceId],
+    references: [sensorDevices.id],
+  }),
+  container: one(containers, {
+    fields: [ingestionEvents.containerId],
+    references: [containers.id],
+  }),
+  validatedEvents: many(validatedMeasurementEvents),
+}));
+
+export const validatedMeasurementEventsRelations = relations(validatedMeasurementEvents, ({ one }) => ({
+  sourceEvent: one(ingestionEvents, {
+    fields: [validatedMeasurementEvents.sourceEventId],
+    references: [ingestionEvents.id],
+  }),
+  sensorDevice: one(sensorDevices, {
+    fields: [validatedMeasurementEvents.sensorDeviceId],
+    references: [sensorDevices.id],
+  }),
+  container: one(containers, {
+    fields: [validatedMeasurementEvents.containerId],
     references: [containers.id],
   }),
 }));
@@ -813,6 +974,8 @@ export type ContainerType = typeof containerTypes.$inferSelect;
 export type Container = typeof containers.$inferSelect;
 export type SensorDevice = typeof sensorDevices.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
+export type IngestionEvent = typeof ingestionEvents.$inferSelect;
+export type ValidatedMeasurementEvent = typeof validatedMeasurementEvents.$inferSelect;
 export type Tour = typeof tours.$inferSelect;
 export type TourStop = typeof tourStops.$inferSelect;
 export type TourRoute = typeof tourRoutes.$inferSelect;

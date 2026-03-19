@@ -300,6 +300,54 @@ jobs:
           name: backend-coverage
           path: api/coverage
 
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    needs: [changes, preflight]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.full_run == 'true') ||
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.database == 'true' ||
+      needs.changes.outputs.ci == 'true' ||
+      needs.changes.outputs.root == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Semgrep
+        run: python -m pip install --disable-pip-version-check semgrep
+
+      - name: Run Semgrep scan
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          semgrep scan \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/owasp-top-ten \
+            --error \
+            --exclude "api/src/tests/**" \
+            --exclude "database/dist/**" \
+            --exclude "**/node_modules/**" \
+            --json \
+            --output tmp/ci/semgrep-report.json \
+            api/src \
+            database/schema
+
+      - name: Upload Semgrep artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-quality-report
+          path: tmp/ci/semgrep-report.json
+          if-no-files-found: ignore
+
   docker-build:
     name: Docker Build Check
     runs-on: ubuntu-latest
@@ -432,7 +480,7 @@ jobs:
   ci-required:
     name: CI Required
     runs-on: ubuntu-latest
-    needs: [changes, preflight, database, frontend, backend, docker-build, sonar]
+    needs: [changes, preflight, database, frontend, backend, semgrep, docker-build, sonar]
     if: always()
     env:
       EVENT_NAME: ${{ github.event_name }}
@@ -447,6 +495,7 @@ jobs:
       DATABASE_RESULT: ${{ needs.database.result }}
       FRONTEND_RESULT: ${{ needs.frontend.result }}
       BACKEND_RESULT: ${{ needs.backend.result }}
+      SEMGREP_RESULT: ${{ needs.semgrep.result }}
       DOCKER_BUILD_RESULT: ${{ needs.docker-build.result }}
       SONAR_RESULT: ${{ needs.sonar.result }}
     steps:
@@ -465,6 +514,7 @@ jobs:
           should_run_database="${should_run_all}"
           should_run_frontend="${should_run_all}"
           should_run_backend="${should_run_all}"
+          should_run_semgrep="${should_run_all}"
           should_run_docker_build="${should_run_all}"
           should_run_sonar="${should_run_all}"
 
@@ -483,6 +533,12 @@ jobs:
           if [[ "${should_run_backend}" != "true" ]]; then
             if [[ "${CHANGED_APP}" == "true" || "${CHANGED_API}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_INFRASTRUCTURE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
               should_run_backend=true
+            fi
+          fi
+
+          if [[ "${should_run_semgrep}" != "true" ]]; then
+            if [[ "${CHANGED_API}" == "true" || "${CHANGED_DATABASE}" == "true" || "${CHANGED_CI}" == "true" || "${CHANGED_ROOT}" == "true" ]]; then
+              should_run_semgrep=true
             fi
           fi
 
@@ -519,6 +575,7 @@ jobs:
           require_job "Database CI" "${should_run_database}" "${DATABASE_RESULT}"
           require_job "Frontend CI" "${should_run_frontend}" "${FRONTEND_RESULT}"
           require_job "Backend CI" "${should_run_backend}" "${BACKEND_RESULT}"
+          require_job "Semgrep SAST" "${should_run_semgrep}" "${SEMGREP_RESULT}"
           require_job "Docker Build Check" "${should_run_docker_build}" "${DOCKER_BUILD_RESULT}"
           require_job "SonarCloud Analysis and Quality Gate" "${should_run_sonar}" "${SONAR_RESULT}"
 

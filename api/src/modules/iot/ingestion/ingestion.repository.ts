@@ -1,343 +1,535 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { and, asc, eq, lte, or, sql } from 'drizzle-orm';
 import {
   containerTypes,
   containers,
+  ingestionEvents,
   measurements,
   sensorDevices,
   type DatabaseClient,
+  validatedMeasurementEvents,
 } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../../database/database.constants.js';
 
-import type { IngestMeasurementDto } from './dto/ingest-measurement.dto.js';
+import {
+  type ClaimedIngestionEvent,
+  type IngestionHealthStats,
+  IngestionBusinessRuleError,
+  type NormalizedMeasurementEvent,
+  type StagedMeasurementEventRef,
+  type StagedMeasurementInput,
+} from './ingestion.contracts.js';
 
-export interface QueuedMeasurement {
-  sensorDeviceId: string | null;
-  containerId: string | null;
-  measuredAt: Date;
-  fillLevelPercent: number;
-  temperatureC: number | null;
-  batteryPercent: number | null;
-  signalStrength: number | null;
-  measurementQuality: string;
-  sourcePayload: Record<string, unknown>;
-  receivedAt: Date;
-}
+type TransactionClient = Parameters<DatabaseClient['transaction']>[0] extends (
+  arg: infer T,
+) => unknown
+  ? T
+  : never;
 
-export interface ProcessedMeasurement {
-  measurement: QueuedMeasurement;
-  deviceUid?: string;
-  warningThreshold?: number;
-  criticalThreshold?: number;
-}
-
-interface SensorDeviceRow {
+type SensorContext = {
   id: string;
   deviceUid: string;
   containerId: string | null;
-}
+};
 
 @Injectable()
 export class IngestionRepository {
-  private readonly logger = new Logger(IngestionRepository.name);
-
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
 
-  async batchInsertMeasurements(
-    measurementsToInsert: ProcessedMeasurement[],
-    batchSize: number = 500,
-  ): Promise<{ inserted: number; failed: number }> {
-    if (measurementsToInsert.length === 0) {
-      return { inserted: 0, failed: 0 };
-    }
+  async stageMeasurements(
+    measurementsToStage: StagedMeasurementInput[],
+  ): Promise<StagedMeasurementEventRef[]> {
+    const stagedRefs: StagedMeasurementEventRef[] = [];
 
-    let inserted = 0;
-    let failed = 0;
-
-    for (let index = 0; index < measurementsToInsert.length; index += batchSize) {
-      const batch = measurementsToInsert.slice(index, index + batchSize);
-
-      try {
-        const result = await this.db.transaction(async (tx) => {
-          const resolvedBatch: ProcessedMeasurement[] = [];
-
-          const deviceUids = [
-            ...new Set(
-              batch
-                .map((measurement) => measurement.deviceUid)
-                .filter((deviceUid): deviceUid is string => Boolean(deviceUid)),
-            ),
-          ];
-
-          const existingSensors: SensorDeviceRow[] =
-            deviceUids.length > 0
-              ? await tx
-                  .select({
-                    id: sensorDevices.id,
-                    deviceUid: sensorDevices.deviceUid,
-                    containerId: sensorDevices.containerId,
-                  })
-                  .from(sensorDevices)
-                  .where(inArray(sensorDevices.deviceUid, deviceUids))
-              : [];
-
-          const sensorMap = new Map(existingSensors.map((sensor) => [sensor.deviceUid, sensor]));
-
-          const thresholdMap = await this.loadThresholds(
-            tx,
-            [
-              ...batch.map((measurement) => measurement.measurement.containerId),
-              ...existingSensors.map((sensor) => sensor.containerId),
-            ].filter((containerId): containerId is string => containerId != null),
-          );
-
-          for (const item of batch) {
-            const resolvedItem: ProcessedMeasurement = {
-              ...item,
-              measurement: { ...item.measurement },
-            };
-            let resolvedSensor = item.deviceUid ? sensorMap.get(item.deviceUid) : undefined;
-            let resolvedContainerId =
-              resolvedItem.measurement.containerId ?? resolvedSensor?.containerId ?? null;
-
-            if (item.deviceUid && !resolvedItem.measurement.sensorDeviceId) {
-              if (resolvedSensor) {
-                resolvedItem.measurement.sensorDeviceId = resolvedSensor.id;
-              } else {
-                try {
-                  const [newSensor] = await tx
-                    .insert(sensorDevices)
-                    .values({
-                      containerId: resolvedContainerId,
-                      deviceUid: item.deviceUid,
-                      installStatus: 'active',
-                      lastSeenAt: resolvedItem.measurement.measuredAt,
-                      installedAt: resolvedItem.measurement.measuredAt,
-                    })
-                    .returning({
-                      id: sensorDevices.id,
-                      containerId: sensorDevices.containerId,
-                    });
-
-                  if (newSensor) {
-                    resolvedContainerId = resolvedContainerId ?? newSensor.containerId;
-                    resolvedSensor = {
-                      id: newSensor.id,
-                      deviceUid: item.deviceUid,
-                      containerId: resolvedContainerId,
-                    };
-                    resolvedItem.measurement.sensorDeviceId = newSensor.id;
-                    sensorMap.set(item.deviceUid, resolvedSensor);
-                  }
-                } catch (error) {
-                  this.logger.warn(
-                    `Failed to create sensor for deviceUid ${item.deviceUid}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                  );
-                }
-              }
-            }
-
-            if (resolvedSensor) {
-              resolvedContainerId = resolvedContainerId ?? resolvedSensor.containerId;
-              resolvedItem.measurement.sensorDeviceId =
-                resolvedItem.measurement.sensorDeviceId ?? resolvedSensor.id;
-            }
-
-            resolvedItem.measurement.containerId = resolvedContainerId;
-
-            const thresholds = resolvedContainerId ? thresholdMap.get(resolvedContainerId) : undefined;
-            resolvedItem.warningThreshold = thresholds?.warningThreshold;
-            resolvedItem.criticalThreshold = thresholds?.criticalThreshold;
-
-            if (resolvedItem.measurement.sensorDeviceId) {
-              await tx
-                .update(sensorDevices)
-                .set({
-                  containerId: resolvedContainerId,
-                  batteryPercent: resolvedItem.measurement.batteryPercent,
-                  lastSeenAt: resolvedItem.measurement.measuredAt,
-                  updatedAt: new Date(),
-                })
-                .where(eq(sensorDevices.id, resolvedItem.measurement.sensorDeviceId));
-            }
-
-            resolvedBatch.push(resolvedItem);
-          }
-
-          const measurementValues = resolvedBatch.map((item) => ({
-            sensorDeviceId: item.measurement.sensorDeviceId,
-            containerId: item.measurement.containerId,
-            measuredAt: item.measurement.measuredAt,
-            fillLevelPercent: item.measurement.fillLevelPercent,
-            temperatureC: item.measurement.temperatureC,
-            batteryPercent: item.measurement.batteryPercent,
-            signalStrength: item.measurement.signalStrength,
-            measurementQuality: item.measurement.measurementQuality,
-            sourcePayload: item.measurement.sourcePayload,
-            receivedAt: item.measurement.receivedAt,
-          }));
-
-          const insertedMeasurements = await tx
-            .insert(measurements)
-            .values(measurementValues)
-            .returning({
-              id: measurements.id,
-            });
-
-          const containerUpdates = new Map<
-            string,
-            {
-              fillLevelPercent: number;
-              warningThreshold: number;
-              criticalThreshold: number;
-              measuredAt: Date;
-            }
-          >();
-
-          for (const measurement of resolvedBatch) {
-            if (
-              measurement.measurement.containerId &&
-              measurement.warningThreshold !== undefined &&
-              measurement.criticalThreshold !== undefined
-            ) {
-              const existing = containerUpdates.get(measurement.measurement.containerId);
-              if (!existing || measurement.measurement.measuredAt > existing.measuredAt) {
-                containerUpdates.set(measurement.measurement.containerId, {
-                  fillLevelPercent: measurement.measurement.fillLevelPercent,
-                  warningThreshold: measurement.warningThreshold,
-                  criticalThreshold: measurement.criticalThreshold,
-                  measuredAt: measurement.measurement.measuredAt,
-                });
-              }
-            }
-          }
-
-          for (const [containerId, update] of containerUpdates) {
-            await tx
-              .update(containers)
-              .set({
-                fillLevelPercent: update.fillLevelPercent,
-                status: this.resolveOperationalStatus(
-                  update.fillLevelPercent,
-                  update.warningThreshold,
-                  update.criticalThreshold,
-                ),
-                updatedAt: new Date(),
-              })
-              .where(eq(containers.id, containerId));
-          }
-
-          return insertedMeasurements.length;
+    for (const measurement of measurementsToStage) {
+      const [created] = await this.db
+        .insert(ingestionEvents)
+        .values({
+          batchId: measurement.batchId,
+          deviceUid: measurement.deviceUid,
+          sensorDeviceId: measurement.sensorDeviceId,
+          containerId: measurement.containerId,
+          idempotencyKey: measurement.idempotencyKey,
+          measuredAt: measurement.measuredAt,
+          fillLevelPercent: measurement.fillLevelPercent,
+          temperatureC: measurement.temperatureC,
+          batteryPercent: measurement.batteryPercent,
+          signalStrength: measurement.signalStrength,
+          measurementQuality: measurement.measurementQuality,
+          rawPayload: measurement.rawPayload as any,
+          receivedAt: measurement.receivedAt,
+        })
+        .onConflictDoNothing()
+        .returning({
+          id: ingestionEvents.id,
+          deviceUid: ingestionEvents.deviceUid,
+          idempotencyKey: ingestionEvents.idempotencyKey,
         });
 
-        inserted += result;
-      } catch (error) {
-        failed += batch.length;
-        this.logger.error(
-          `Failed to insert batch of ${batch.length} measurements: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
+      if (created) {
+        stagedRefs.push({
+          ...created,
+          newlyStaged: true,
+        });
+        continue;
       }
+
+      if (measurement.idempotencyKey) {
+        const [existing] = await this.db
+          .select({
+            id: ingestionEvents.id,
+            deviceUid: ingestionEvents.deviceUid,
+            idempotencyKey: ingestionEvents.idempotencyKey,
+          })
+          .from(ingestionEvents)
+          .where(
+            and(
+              eq(ingestionEvents.deviceUid, measurement.deviceUid),
+              eq(ingestionEvents.idempotencyKey, measurement.idempotencyKey),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          stagedRefs.push({
+            ...existing,
+            newlyStaged: false,
+          });
+          continue;
+        }
+      }
+
+      throw new BadRequestException('Unable to stage measurement event.');
     }
 
-    return { inserted, failed };
+    return stagedRefs;
   }
 
-  async getPendingCount(): Promise<number> {
-    const result = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(measurements)
-      .where(sql`${measurements.receivedAt} > NOW() - INTERVAL '1 hour'`);
+  async listRunnableEventIds(limit: number): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: ingestionEvents.id })
+      .from(ingestionEvents)
+      .where(
+        and(
+          or(
+            eq(ingestionEvents.processingStatus, 'pending'),
+            eq(ingestionEvents.processingStatus, 'retry'),
+          ),
+          lte(ingestionEvents.nextAttemptAt, new Date()),
+        ),
+      )
+      .orderBy(asc(ingestionEvents.receivedAt))
+      .limit(limit);
 
-    return result[0]?.value ?? 0;
+    return rows.map((row) => row.id);
   }
 
-  async getProcessedLastHour(): Promise<number> {
-    const result = await this.db
-      .select({ value: sql<number>`count(*)` })
-      .from(measurements)
-      .where(sql`${measurements.receivedAt} > NOW() - INTERVAL '1 hour'`);
-
-    return result[0]?.value ?? 0;
+  async recoverStuckProcessing(staleThreshold: Date) {
+    await this.db
+      .update(ingestionEvents)
+      .set({
+        processingStatus: 'retry',
+        nextAttemptAt: new Date(),
+        lastError: 'Recovered stale processing lease.',
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(ingestionEvents.processingStatus, 'processing'),
+          lte(ingestionEvents.processingStartedAt, staleThreshold),
+        ),
+      );
   }
 
-  transformDtoToMeasurement(dto: IngestMeasurementDto): QueuedMeasurement {
-    const sourcePayload: Record<string, unknown> = {
-      source: 'iot-ingestion-api',
-      deviceUid: dto.deviceUid,
-    };
+  async claimEventForProcessing(eventId: string): Promise<ClaimedIngestionEvent | null> {
+    const [claimed] = await this.db
+      .update(ingestionEvents)
+      .set({
+        processingStatus: 'processing',
+        attemptCount: sql`${ingestionEvents.attemptCount} + 1`,
+        processingStartedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(ingestionEvents.id, eventId),
+          or(
+            eq(ingestionEvents.processingStatus, 'pending'),
+            eq(ingestionEvents.processingStatus, 'retry'),
+          ),
+        ),
+      )
+      .returning({
+        id: ingestionEvents.id,
+        batchId: ingestionEvents.batchId,
+        deviceUid: ingestionEvents.deviceUid,
+        sensorDeviceId: ingestionEvents.sensorDeviceId,
+        containerId: ingestionEvents.containerId,
+        idempotencyKey: ingestionEvents.idempotencyKey,
+        measuredAt: ingestionEvents.measuredAt,
+        fillLevelPercent: ingestionEvents.fillLevelPercent,
+        temperatureC: ingestionEvents.temperatureC,
+        batteryPercent: ingestionEvents.batteryPercent,
+        signalStrength: ingestionEvents.signalStrength,
+        measurementQuality: ingestionEvents.measurementQuality,
+        processingStatus: ingestionEvents.processingStatus,
+        attemptCount: ingestionEvents.attemptCount,
+        rawPayload: ingestionEvents.rawPayload,
+        receivedAt: ingestionEvents.receivedAt,
+      });
 
-    if (dto.sensorDeviceId) {
-      sourcePayload.sensorDeviceId = dto.sensorDeviceId;
-    }
-
-    if (dto.containerId) {
-      sourcePayload.containerId = dto.containerId;
-    }
-
-    if (dto.idempotencyKey) {
-      sourcePayload.idempotencyKey = dto.idempotencyKey;
+    if (!claimed) {
+      return null;
     }
 
     return {
-      sensorDeviceId: dto.sensorDeviceId ?? null,
-      containerId: dto.containerId ?? null,
-      measuredAt: new Date(dto.measuredAt),
-      fillLevelPercent: dto.fillLevelPercent,
-      temperatureC: dto.temperatureC ?? null,
-      batteryPercent: dto.batteryPercent ?? null,
-      signalStrength: dto.signalStrength ?? null,
-      measurementQuality: dto.measurementQuality?.trim() ?? 'valid',
-      sourcePayload,
-      receivedAt: new Date(),
+      ...claimed,
+      processingStatus: claimed.processingStatus as ClaimedIngestionEvent['processingStatus'],
+      rawPayload: claimed.rawPayload as Record<string, unknown>,
+    };
+  }
+
+  async markRejected(eventId: string, reason: string, normalizedPayload: Record<string, unknown>) {
+    const now = new Date();
+    await this.db
+      .update(ingestionEvents)
+      .set({
+        processingStatus: 'rejected',
+        rejectionReason: reason,
+        normalizedPayload,
+        processedAt: now,
+        failedAt: now,
+        processingLatencyMs: sql`extract(epoch from (${now} - ${ingestionEvents.receivedAt})) * 1000`,
+        updatedAt: now,
+      })
+      .where(eq(ingestionEvents.id, eventId));
+  }
+
+  async markRetryOrFailed(eventId: string, attemptCount: number, errorMessage: string, nextAttemptAt: Date) {
+    const now = new Date();
+    const failed = attemptCount >= 3;
+
+    await this.db
+      .update(ingestionEvents)
+      .set({
+        processingStatus: failed ? 'failed' : 'retry',
+        nextAttemptAt,
+        lastError: errorMessage,
+        failedAt: failed ? now : null,
+        processingLatencyMs: sql`extract(epoch from (${now} - ${ingestionEvents.receivedAt})) * 1000`,
+        updatedAt: now,
+      })
+      .where(eq(ingestionEvents.id, eventId));
+  }
+
+  async persistValidatedEvent(event: NormalizedMeasurementEvent) {
+    return this.db.transaction(async (tx) => {
+      const resolvedSensor = await this.resolveSensorContext(tx, event);
+      const resolvedContainerId = resolvedSensor.containerId ?? event.containerId ?? null;
+      const thresholds = resolvedContainerId
+        ? await this.loadThresholds(tx, resolvedContainerId)
+        : { warningThreshold: null, criticalThreshold: null };
+
+      if (resolvedSensor.id) {
+        await tx
+          .update(sensorDevices)
+          .set({
+            containerId: resolvedContainerId,
+            batteryPercent: event.batteryPercent,
+            lastSeenAt: event.measuredAt,
+            updatedAt: new Date(),
+          })
+          .where(eq(sensorDevices.id, resolvedSensor.id));
+      }
+
+      const processedAt = new Date();
+      const normalizedPayload = {
+        sourceEventId: event.sourceEventId,
+        schemaVersion: 'v1',
+        deviceUid: event.deviceUid,
+        sensorDeviceId: resolvedSensor.id,
+        containerId: resolvedContainerId,
+        measuredAt: event.measuredAt.toISOString(),
+        fillLevelPercent: event.fillLevelPercent,
+        temperatureC: event.temperatureC,
+        batteryPercent: event.batteryPercent,
+        signalStrength: event.signalStrength,
+        measurementQuality: event.measurementQuality,
+        warningThreshold: thresholds.warningThreshold,
+        criticalThreshold: thresholds.criticalThreshold,
+        receivedAt: event.receivedAt.toISOString(),
+        processedAt: processedAt.toISOString(),
+      } as const;
+
+      const [validatedEvent] = await tx
+        .insert(validatedMeasurementEvents)
+        .values({
+          sourceEventId: event.sourceEventId,
+          deviceUid: event.deviceUid,
+          sensorDeviceId: resolvedSensor.id,
+          containerId: resolvedContainerId,
+          measuredAt: event.measuredAt,
+          fillLevelPercent: event.fillLevelPercent,
+          temperatureC: event.temperatureC,
+          batteryPercent: event.batteryPercent,
+          signalStrength: event.signalStrength,
+          measurementQuality: event.measurementQuality,
+          warningThreshold: thresholds.warningThreshold,
+          criticalThreshold: thresholds.criticalThreshold,
+          validationSummary: event.validationSummary,
+          normalizedPayload,
+        })
+        .returning({
+          id: validatedMeasurementEvents.id,
+        });
+
+      const [measurementRecord] = await tx
+        .insert(measurements)
+        .values({
+          sensorDeviceId: resolvedSensor.id,
+          containerId: resolvedContainerId,
+          measuredAt: event.measuredAt,
+          fillLevelPercent: event.fillLevelPercent,
+          temperatureC: event.temperatureC,
+          batteryPercent: event.batteryPercent,
+          signalStrength: event.signalStrength,
+          measurementQuality: event.measurementQuality,
+          sourcePayload: {
+            source: 'iot-processing-worker',
+            sourceEventId: event.sourceEventId,
+            validatedEventId: validatedEvent?.id ?? null,
+            batchId: event.batchId,
+            deviceUid: event.deviceUid,
+            idempotencyKey: event.idempotencyKey,
+          },
+          receivedAt: event.receivedAt,
+        })
+        .returning({
+          id: measurements.id,
+        });
+
+      if (
+        resolvedContainerId &&
+        thresholds.warningThreshold !== null &&
+        thresholds.criticalThreshold !== null
+      ) {
+        await tx
+          .update(containers)
+          .set({
+            fillLevelPercent: event.fillLevelPercent,
+            status: this.resolveOperationalStatus(
+              event.fillLevelPercent,
+              thresholds.warningThreshold,
+              thresholds.criticalThreshold,
+            ),
+            updatedAt: new Date(),
+          })
+          .where(eq(containers.id, resolvedContainerId));
+      }
+
+      await tx
+        .update(ingestionEvents)
+        .set({
+          processingStatus: 'validated',
+          sensorDeviceId: resolvedSensor.id,
+          containerId: resolvedContainerId,
+          normalizedPayload,
+          rejectionReason: null,
+          lastError: null,
+          processedAt,
+          processingLatencyMs: sql`extract(epoch from (${processedAt} - ${ingestionEvents.receivedAt})) * 1000`,
+          updatedAt: processedAt,
+        })
+        .where(eq(ingestionEvents.id, event.sourceEventId));
+
+      return {
+        measurementId: measurementRecord?.id ?? null,
+        validatedEventId: validatedEvent?.id ?? null,
+      };
+    });
+  }
+
+  async getHealthStats(): Promise<IngestionHealthStats> {
+    const [
+      pendingCount,
+      retryCount,
+      processingCount,
+      failedCount,
+      rejectedCount,
+      validatedLastHour,
+      oldestPending,
+    ] = await Promise.all([
+      this.countByStatus('pending'),
+      this.countByStatus('retry'),
+      this.countByStatus('processing'),
+      this.countByStatus('failed'),
+      this.countByStatus('rejected'),
+      this.countValidatedLastHour(),
+      this.getOldestPendingReceivedAt(),
+    ]);
+
+    return {
+      pendingCount,
+      retryCount,
+      processingCount,
+      failedCount,
+      rejectedCount,
+      validatedLastHour,
+      oldestPendingAgeMs: oldestPending ? Math.max(0, Date.now() - oldestPending.getTime()) : null,
+    };
+  }
+
+  private async countByStatus(status: string): Promise<number> {
+    const [result] = await this.db
+      .select({ value: sql<number>`count(*)`.mapWith(Number) })
+      .from(ingestionEvents)
+      .where(eq(ingestionEvents.processingStatus, status));
+
+    return result?.value ?? 0;
+  }
+
+  private async countValidatedLastHour(): Promise<number> {
+    const [result] = await this.db
+      .select({ value: sql<number>`count(*)`.mapWith(Number) })
+      .from(validatedMeasurementEvents)
+      .where(sql`${validatedMeasurementEvents.emittedAt} > NOW() - INTERVAL '1 hour'`);
+
+    return result?.value ?? 0;
+  }
+
+  private async getOldestPendingReceivedAt(): Promise<Date | null> {
+    const [result] = await this.db
+      .select({ value: sql<Date | null>`min(${ingestionEvents.receivedAt})` })
+      .from(ingestionEvents)
+      .where(
+        or(
+          eq(ingestionEvents.processingStatus, 'pending'),
+          eq(ingestionEvents.processingStatus, 'retry'),
+          eq(ingestionEvents.processingStatus, 'processing'),
+        ),
+      );
+
+    return result?.value ?? null;
+  }
+
+  private async resolveSensorContext(
+    tx: TransactionClient,
+    event: NormalizedMeasurementEvent,
+  ): Promise<SensorContext> {
+    let sensorById: SensorContext | null = null;
+    if (event.sensorDeviceId) {
+      const [row] = await tx
+        .select({
+          id: sensorDevices.id,
+          deviceUid: sensorDevices.deviceUid,
+          containerId: sensorDevices.containerId,
+        })
+        .from(sensorDevices)
+        .where(eq(sensorDevices.id, event.sensorDeviceId))
+        .limit(1);
+
+      if (!row) {
+        throw new IngestionBusinessRuleError('Unknown sensorDeviceId provided.');
+      }
+
+      sensorById = row;
+      if (row.deviceUid !== event.deviceUid) {
+        throw new IngestionBusinessRuleError('sensorDeviceId does not match deviceUid.');
+      }
+    }
+
+    let sensorByUid: SensorContext | null = null;
+    const [existingByUid] = await tx
+      .select({
+        id: sensorDevices.id,
+        deviceUid: sensorDevices.deviceUid,
+        containerId: sensorDevices.containerId,
+      })
+      .from(sensorDevices)
+      .where(eq(sensorDevices.deviceUid, event.deviceUid))
+      .limit(1);
+    sensorByUid = existingByUid ?? null;
+
+    if (sensorById && sensorByUid && sensorById.id !== sensorByUid.id) {
+      throw new IngestionBusinessRuleError('deviceUid resolves to a different sensorDeviceId.');
+    }
+
+    const resolvedSensor = sensorById ?? sensorByUid;
+    const resolvedContainerId = resolvedSensor?.containerId ?? event.containerId ?? null;
+
+    if (event.containerId && resolvedSensor?.containerId && event.containerId !== resolvedSensor.containerId) {
+      throw new IngestionBusinessRuleError('containerId does not match the registered sensor container.');
+    }
+
+    if (resolvedSensor) {
+      return {
+        id: resolvedSensor.id,
+        deviceUid: resolvedSensor.deviceUid,
+        containerId: resolvedContainerId,
+      };
+    }
+
+    const [createdSensor] = await tx
+      .insert(sensorDevices)
+      .values({
+        containerId: resolvedContainerId,
+        deviceUid: event.deviceUid,
+        installStatus: 'active',
+        batteryPercent: event.batteryPercent,
+        lastSeenAt: event.measuredAt,
+        installedAt: event.measuredAt,
+      })
+      .returning({
+        id: sensorDevices.id,
+        deviceUid: sensorDevices.deviceUid,
+        containerId: sensorDevices.containerId,
+      });
+
+    if (!createdSensor) {
+      throw new Error('Failed to create sensor device during ingestion processing.');
+    }
+
+    return {
+      id: createdSensor.id,
+      deviceUid: createdSensor.deviceUid,
+      containerId: createdSensor.containerId ?? resolvedContainerId,
     };
   }
 
   private async loadThresholds(
-    tx: Parameters<DatabaseClient['transaction']>[0] extends (arg: infer T) => unknown ? T : never,
-    containerIds: string[],
-  ): Promise<Map<string, { warningThreshold: number; criticalThreshold: number }>> {
-    const uniqueContainerIds = [...new Set(containerIds)];
-    if (uniqueContainerIds.length === 0) {
-      return new Map();
-    }
-
-    const rows = await tx
+    tx: TransactionClient,
+    containerId: string,
+  ): Promise<{ warningThreshold: number | null; criticalThreshold: number | null }> {
+    const [row] = await tx
       .select({
-        id: containers.id,
         warningThreshold: containerTypes.defaultFillAlertPercent,
         criticalThreshold: containerTypes.defaultCriticalAlertPercent,
       })
       .from(containers)
       .leftJoin(containerTypes, eq(containers.containerTypeId, containerTypes.id))
-      .where(inArray(containers.id, uniqueContainerIds));
+      .where(eq(containers.id, containerId))
+      .limit(1);
 
-    return new Map(
-      rows.map((row) => [
-        row.id,
-        {
-          warningThreshold: this.normalizeThreshold(row.warningThreshold, 80),
-          criticalThreshold: this.normalizeThreshold(row.criticalThreshold, 95),
-        },
-      ]),
-    );
+    return {
+      warningThreshold: row?.warningThreshold ?? 80,
+      criticalThreshold: row?.criticalThreshold ?? 95,
+    };
   }
 
   private resolveOperationalStatus(
     fillLevelPercent: number,
     warningThreshold: number,
     criticalThreshold: number,
-  ): string {
+  ) {
     if (fillLevelPercent >= criticalThreshold) {
       return 'critical';
     }
+
     if (fillLevelPercent >= warningThreshold) {
       return 'attention_required';
     }
-    return 'available';
-  }
 
-  private normalizeThreshold(value: number | null | undefined, fallback: number): number {
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    return 'available';
   }
 }

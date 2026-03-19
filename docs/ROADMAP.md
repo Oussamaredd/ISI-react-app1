@@ -1,6 +1,6 @@
 # EcoTrack Development Roadmap (Dev Scope Only)
 
-Last update: 2026-03-06
+Last update: 2026-03-19
 Planning horizon: 8 completed delivery sprints, 3 follow-on completion sprints, and the remaining monolith backlog
 
 ## 1. Scope and Planning Basis
@@ -1001,12 +1001,12 @@ Mapping rules used in this backlog:
 
 Status: `PARTIAL`
 Lane: `Dev Core`
-Open task IDs: `M2.5`, `M2.7`, `M2.12`, `M2.14`
-Completed task IDs: `M2.1`, `M2.2`, `M2.4`, `M2.6`, `M2.10`, `M2.11`, `M2.13`
+Open task IDs: `M2.5`, `M2.7`, `M2.14`
+Completed task IDs: `M2.1`, `M2.2`, `M2.4`, `M2.6`, `M2.10`, `M2.11`, `M2.12`, `M2.13`
 
 Description: Deliver the remaining runtime service hardening inside the modular monolith through `api` and `infrastructure`.
 
-Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, Prometheus RED/USE metrics for HTTP/runtime visibility, a concurrent IoT ingestion worker with benchmark coverage, and a routing circuit breaker with fallback tests.
+Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, Prometheus RED/USE metrics for HTTP/runtime visibility, a concurrent IoT ingestion worker with benchmark coverage, three automated negative injection-safety tests on real admin endpoints, a blocking Semgrep SAST CI gate, and a routing circuit breaker with fallback tests.
 
 Checklist:
 - [x] Complete the IoT ingestion controller, service, repository, health, and benchmark work.
@@ -1015,16 +1015,19 @@ Checklist:
 
 ### M3 - Event Workflow Hardening
 
-Status: `TODO_MONOLITH`
+Status: `IN_PROGRESS`
 Lane: `Dev Core`
-Open task IDs: `M3.1` to `M3.4`, `M3.6` to `M3.15`
+Open task IDs: `M3.1`, `M3.2`, `M3.4`, `M3.6` to `M3.15`
+Completed task IDs: `M3.3`
 
 Description: Replace broker-cluster assumptions with a monolith event pipeline based on outbox and inbox patterns, workers, and replay-safe controls.
 
+Progress: IoT ingestion now stages raw events in PostgreSQL, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events, and preserves the current measurement and container-status write path while later consumers remain open.
+
 Checklist:
-- [ ] Implement DB outbox and inbox workflows where required.
-- [ ] Add background workers with retry and replay controls.
-- [ ] Add event schema versioning and backlog observability.
+- [x] Implement DB inbox-style staging and validated-event storage where required for the IoT flow.
+- [x] Add background worker behavior with retry controls for the IoT processing path.
+- [x] Add event schema versioning and backlog observability for the IoT processing path.
 
 ### M4 - Platform and Deployment Baseline
 
@@ -1108,20 +1111,19 @@ Checklist:
 
 ### M10 - Non-Functional Quality Expansion
 
-Status: `PARTIAL`
+Status: `DONE`
 Lane: `Dev QA`
-Open task IDs: `M10.3`
-Completed task IDs: `M10.2`, `M10.4`, `M10.5`, `M10.8`
+Completed task IDs: `M10.2`, `M10.3`, `M10.4`, `M10.5`, `M10.8`
 
 Description: Expand quality gates beyond the current baseline with performance, mutation, visual-regression, and frontend performance validation.
 
-Progress: Extended quality lanes now include repo-owned K6 profiles, a focused Stryker gate, Percy snapshots, and filesystem Lighthouse reports wired into the manual `run_extended_quality=true` workflow path.
+Progress: Quality lanes now include repo-owned K6 profiles, a focused Stryker gate, Percy snapshots, filesystem Lighthouse reports, a required Semgrep SAST gate in core CI, and targeted negative injection-safety tests on real API endpoints.
 
 Checklist:
 - [x] Add load and performance test coverage.
 - [x] Add mutation or equivalent robustness checks where practical.
 - [x] Add visual-regression and frontend performance checks.
-- [ ] Finish the remaining automated security scanning lane (`M10.3`).
+- [x] Finish the remaining automated security scanning lane (`M10.3`).
 
 ### M11 - Performance Backlog
 

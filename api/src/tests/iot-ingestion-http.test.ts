@@ -1,11 +1,12 @@
 import 'reflect-metadata';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IngestionController } from '../modules/iot/ingestion/ingestion.controller.js';
+import { IngestionProcessorService } from '../modules/iot/ingestion/ingestion.processor.js';
 import { InMemoryIngestionQueue } from '../modules/iot/ingestion/ingestion.queue.js';
 import { IngestionRepository } from '../modules/iot/ingestion/ingestion.repository.js';
 import { IngestionService } from '../modules/iot/ingestion/ingestion.service.js';
@@ -15,8 +16,8 @@ vi.mock('../config/iot-ingestion.js', () => ({
     IOT_INGESTION_ENABLED: true,
     IOT_MQTT_ENABLED: false,
     IOT_MQTT_TOPIC: 'ecotrack/measurements',
-    IOT_QUEUE_CONCURRENCY: 50,
-    IOT_QUEUE_BATCH_SIZE: 500,
+    IOT_QUEUE_CONCURRENCY: 4,
+    IOT_QUEUE_BATCH_SIZE: 25,
     IOT_BACKPRESSURE_THRESHOLD: 100000,
     IOT_MAX_BATCH_SIZE: 1000,
   },
@@ -24,37 +25,47 @@ vi.mock('../config/iot-ingestion.js', () => ({
 
 describe('IngestionController (HTTP)', () => {
   let app: INestApplication;
-  let mockQueue: InMemoryIngestionQueue;
+  let service: IngestionService;
+
   const iotConfig = {
     IOT_INGESTION_ENABLED: true,
     IOT_MQTT_ENABLED: false,
     IOT_MQTT_TOPIC: 'ecotrack/measurements',
-    IOT_QUEUE_CONCURRENCY: 50,
-    IOT_QUEUE_BATCH_SIZE: 500,
+    IOT_QUEUE_CONCURRENCY: 4,
+    IOT_QUEUE_BATCH_SIZE: 25,
     IOT_BACKPRESSURE_THRESHOLD: 100000,
     IOT_MAX_BATCH_SIZE: 1000,
   };
 
   beforeEach(async () => {
-    const mockRepository = {
-      transformDtoToMeasurement: vi.fn().mockReturnValue({
-        sensorDeviceId: null,
-        containerId: null,
-        measuredAt: new Date(),
-        fillLevelPercent: 50,
-        temperatureC: null,
-        batteryPercent: null,
-        signalStrength: null,
-        measurementQuality: 'valid',
-        sourcePayload: { source: 'iot-ingestion-api' },
-        receivedAt: new Date(),
+    const repository = {
+      stageMeasurements: vi.fn().mockResolvedValue([
+        {
+          id: 'event-1',
+          deviceUid: 'sensor-001',
+          idempotencyKey: null,
+          newlyStaged: true,
+        },
+      ]),
+      getHealthStats: vi.fn().mockResolvedValue({
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        rejectedCount: 0,
+        validatedLastHour: 1,
+        oldestPendingAgeMs: null,
       }),
-      batchInsertMeasurements: vi.fn().mockResolvedValue({ inserted: 10, failed: 0 }),
+      recoverStuckProcessing: vi.fn().mockResolvedValue(undefined),
+      listRunnableEventIds: vi.fn().mockResolvedValue([]),
     } as unknown as IngestionRepository;
 
-    mockQueue = new InMemoryIngestionQueue();
+    const queue = new InMemoryIngestionQueue();
+    const processorService = {
+      processStagedEvent: vi.fn().mockResolvedValue({ status: 'validated' }),
+    } as unknown as IngestionProcessorService;
 
-    const mockIngestionService = new IngestionService(
+    service = new IngestionService(
       {
         get: vi.fn().mockImplementation((key: string) => {
           if (key === 'iotIngestion') {
@@ -64,20 +75,19 @@ describe('IngestionController (HTTP)', () => {
           return undefined;
         }),
       } as any,
-      mockRepository,
-      mockQueue,
+      repository,
+      queue,
+      processorService,
     );
 
-    await mockIngestionService.onModuleInit();
+    service.onModuleInit();
 
-    const module: TestingModule = await Test.createTestingModule({
+    const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [IngestionController],
-      providers: [
-        { provide: IngestionService, useValue: mockIngestionService },
-      ],
+      providers: [{ provide: IngestionService, useValue: service }],
     }).compile();
 
-    app = module.createNestApplication();
+    app = moduleRef.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -89,63 +99,59 @@ describe('IngestionController (HTTP)', () => {
   });
 
   afterEach(async () => {
-    mockQueue.stopProcessor();
+    service.onModuleDestroy();
     await app.close();
   });
 
-  describe('POST /iot/v1/measurements', () => {
-    it('should accept single measurement and return 202', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/iot/v1/measurements')
-        .send({
-          deviceUid: 'sensor-001',
-          measuredAt: new Date().toISOString(),
-          fillLevelPercent: 50,
-        })
-        .expect(202);
+  it('POST /iot/v1/measurements returns 202 with a staged event id', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/iot/v1/measurements')
+      .send({
+        deviceUid: 'sensor-001',
+        measuredAt: new Date().toISOString(),
+        fillLevelPercent: 50,
+      })
+      .expect(202);
 
-      expect(response.body.accepted).toBe(1);
-      expect(response.body.processing).toBe(true);
-      expect(response.body.messageId).toBeDefined();
-    });
-
-  });
-
-  describe('POST /iot/v1/measurements/batch', () => {
-    it('should accept batch and return 202', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/iot/v1/measurements/batch')
-        .send({
-          measurements: [
-            { deviceUid: 'sensor-001', measuredAt: new Date().toISOString(), fillLevelPercent: 50 },
-            { deviceUid: 'sensor-002', measuredAt: new Date().toISOString(), fillLevelPercent: 60 },
-          ],
-        })
-        .expect(202);
-
-      expect(response.body.accepted).toBe(2);
-      expect(response.body.processing).toBe(true);
-      expect(response.body.batchId).toBeDefined();
-    });
-
-    it('rejects empty batches', async () => {
-      await request(app.getHttpServer())
-        .post('/iot/v1/measurements/batch')
-        .send({
-          measurements: [],
-        })
-        .expect(400);
+    expect(response.body).toEqual({
+      accepted: 1,
+      processing: true,
+      messageId: 'event-1',
     });
   });
 
-  describe('GET /iot/v1/health', () => {
-    it('should return health status', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/iot/v1/health')
-        .expect(200);
+  it('POST /iot/v1/measurements/batch keeps 202 semantics for batched ingestion', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/iot/v1/measurements/batch')
+      .send({
+        measurements: [
+          { deviceUid: 'sensor-001', measuredAt: new Date().toISOString(), fillLevelPercent: 50 },
+          { deviceUid: 'sensor-002', measuredAt: new Date().toISOString(), fillLevelPercent: 60 },
+        ],
+      })
+      .expect(202);
 
-      expect(response.body.status).toBeDefined();
-      expect(response.body.queueEnabled).toBe(true);
+    expect(response.body.accepted).toBe(2);
+    expect(response.body.processing).toBe(true);
+    expect(response.body.batchId).toBeTruthy();
+  });
+
+  it('GET /iot/v1/health exposes processing counters', async () => {
+    const response = await request(app.getHttpServer()).get('/iot/v1/health').expect(200);
+
+    expect(response.body).toEqual({
+      status: 'healthy',
+      queueEnabled: true,
+      backpressureActive: false,
+      pendingCount: 0,
+      processedLastHour: 1,
+      processing: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        rejectedCount: 0,
+        oldestPendingAgeMs: null,
+      },
     });
   });
 });

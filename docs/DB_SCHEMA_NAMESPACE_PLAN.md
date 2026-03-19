@@ -1,6 +1,6 @@
 # DB Schema Namespace Plan
 
-Last updated: 2026-03-03
+Last updated: 2026-03-19
 
 Related status doc:
 
@@ -12,20 +12,20 @@ This plan is based on:
 
 - `docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx`, especially CDC sections 4.x (use cases), 5.2 (Development modules), 7.1 to 7.2 (business concepts and OLTP constraints), and 10.1 (expected API surface).
 - `AGENTS.md`, especially the Temporary Specialty Scope Freeze limiting active implementation to Development plus partial Dev/Data for storage/query only.
-- The current database model in `database/schema/index.ts`, `database/migrations/meta/0011_snapshot.json`, and the latest migration `database/migrations/0011_legal_captain_universe.sql`.
+- The current database model in `database/schema/index.ts`, `database/migrations/meta/0017_snapshot.json`, and the latest migration `database/migrations/0017_optimal_shard.sql`.
 
 Current database facts:
 
-- 22 live tables in the latest snapshot.
-- All tables are in the default `public` schema.
-- No custom `pgSchema()` usage in Drizzle today.
+- 31 live tables are defined in the latest Drizzle snapshot.
+- The business model is already namespaced with `pgSchema()` usage across the monolith domains.
+- The `iot` schema now includes raw-event staging and validated-event storage in addition to sensor registry and measurement projection tables.
 - No PostgreSQL enums defined in Drizzle today.
 - No database views in the current schema plan.
 
 Explicitly out of scope for this document:
 
 - Data Warehouse star schema design.
-- ETL/ELT, dbt, Airflow, Kafka, MQTT broker, or ingestion pipeline design.
+- ETL/ELT, dbt, Airflow, Kafka, external MQTT broker infrastructure, or warehouse-style ingestion design.
 - ML prediction tables or feature stores.
 - Cyber-security controls, network zones, or infrastructure hardening design.
 
@@ -39,7 +39,7 @@ Target rule: keep `public` empty for business tables after migration; reserve it
 | --- | --- | --- | --- |
 | `auth` | Authentication, identity, and RBAC | CDC 4.4, 5.2, 10.1 auth | `users`, `password_reset_tokens`, `roles`, `user_roles` |
 | `core` | Core operational master data and geospatial assets | CDC 7.1 containers/zones, 10.1 containers/zones, PostGIS note | `zones`, `containers`, new `container_types` |
-| `iot` | OLTP storage for sensor registry and measurements only | CDC UC-T02, 7.1 IoT measurements, 10.1 measurement history | new `sensor_devices`, new `measurements` |
+| `iot` | OLTP storage for sensor registry, staged raw events, validated events, and operational measurements | CDC UC-T02, 7.1 IoT measurements, 10.1 measurement history | `sensor_devices`, `ingestion_events`, `validated_measurement_events`, `measurements` |
 | `ops` | Tour planning, execution, route output, and collection events | CDC UC-A01, UC-A02, UC-G01, 10.1 tours | `tours`, `tour_stops`, `tour_routes`, `collection_events` |
 | `incident` | Citizen reports, anomaly catalog, anomaly handling, alert events | CDC UC-C01, UC-A03, UC-G02 | `citizen_reports`, `anomaly_types`, `anomaly_reports`, new `alert_events` |
 | `notify` | Notification intent and per-channel delivery tracking | CDC notifications, UC-C01, UC-G01, UC-AD02 | new `notifications`, new `notification_deliveries` |
@@ -88,7 +88,7 @@ These are additive column-level changes that should happen alongside Phase 2, bu
 
 ## New In-Scope Entities To Add
 
-The following additions stay inside OLTP storage/query scope and directly support the CDC needs that are not covered by the current 22-table model.
+The following additions stay inside OLTP storage/query scope and directly support the CDC needs that were not covered by the original 22-table baseline.
 
 ### `core.container_types`
 
@@ -107,7 +107,7 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 
 ### `iot.sensor_devices`
 
-1. Purpose: register the physical sensor assigned to a container without designing the ingestion pipeline itself.
+1. Purpose: register the physical sensor assigned to a container and support the Development-owned monolith ingestion workflow.
 2. `id`: UUID primary key.
 3. `container_id`: current attached container reference.
 4. `device_uid`: vendor or hardware unique identifier.
@@ -134,6 +134,36 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 10. `measurement_quality`: app-computed quality flag such as valid, suspect, or rejected.
 11. `source_payload`: compact raw payload snapshot for troubleshooting and replay-safe audits.
 12. `received_at`: ingestion timestamp at the database boundary.
+
+### `iot.ingestion_events`
+
+1. Purpose: durably stage raw IoT payloads before internal worker processing in the modular monolith.
+2. `id`: UUID primary key for the staged raw event.
+3. `batch_id`: optional batch correlation identifier for multi-measurement requests.
+4. `device_uid`: source hardware identifier used for routing and idempotency.
+5. `sensor_device_id`: optional explicit sensor reference from the request.
+6. `container_id`: optional explicit container reference from the request.
+7. `idempotency_key`: optional deduplication key scoped by `device_uid`.
+8. `measured_at`: device-provided measurement timestamp.
+9. `processing_status`: pending, processing, retry, failed, rejected, or validated state.
+10. `attempt_count`: worker retry counter.
+11. `next_attempt_at`: next eligible retry time.
+12. `raw_payload`: stored request envelope for replay-safe processing and auditability.
+
+### `iot.validated_measurement_events`
+
+1. Purpose: store the worker-produced validated event/result before or alongside downstream consumers.
+2. `id`: UUID primary key for the validated event.
+3. `source_event_id`: one-to-one reference back to `iot.ingestion_events`.
+4. `device_uid`: source hardware identifier.
+5. `sensor_device_id`: resolved sensor context after enrichment.
+6. `container_id`: resolved container context after enrichment.
+7. `measured_at`: normalized business timestamp.
+8. `measurement_quality`: worker-approved quality flag.
+9. `warning_threshold`: resolved warning threshold captured at validation time.
+10. `critical_threshold`: resolved critical threshold captured at validation time.
+11. `validation_summary`: schema and business-rule validation outcome summary.
+12. `normalized_payload`: normalized event envelope ready for later consumers.
 
 ### `admin.alert_rules`
 
@@ -225,14 +255,16 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 ### Phase 2: Add Minimal CDC-Required Structures Missing Today
 
 1. Add `core.container_types` and backfill a default type before enforcing `core.containers.container_type_id` on all live rows.
-2. Add `iot.sensor_devices` as the registry for fielded sensors, but keep ingestion transport out of scope.
-3. Add `iot.measurements` as the append-heavy measurement history table required by CDC container history and real-time dashboard flows.
-4. Add `admin.alert_rules` so alert thresholds and channel routing are stored explicitly instead of buried in `system_settings`.
-5. Add `incident.alert_events` so overflow-risk and operational alerts become queryable and acknowledgeable.
-6. Add `notify.notifications` and `notify.notification_deliveries` for reliable cross-channel notification tracking.
-7. If PostGIS is approved in the database layer, enable it here and add spatial columns to `core.zones`, `core.containers`, and `ops.tour_routes`.
-8. Backfill spatial columns from the current latitude, longitude, and route JSON payloads before the app starts reading from them.
-9. Add only the indexes required for the first operational dashboards; do not add analytical rollup tables or materialized views in this phase.
+2. Add `iot.sensor_devices` as the registry for fielded sensors.
+3. Add `iot.ingestion_events` as the raw-event staging table for the monolith worker.
+4. Add `iot.validated_measurement_events` as the validated-event store that decouples staging from downstream persistence.
+5. Add `iot.measurements` as the append-heavy measurement history table required by CDC container history and real-time dashboard flows.
+6. Add `admin.alert_rules` so alert thresholds and channel routing are stored explicitly instead of buried in `system_settings`.
+7. Add `incident.alert_events` so overflow-risk and operational alerts become queryable and acknowledgeable.
+8. Add `notify.notifications` and `notify.notification_deliveries` for reliable cross-channel notification tracking.
+9. If PostGIS is approved in the database layer, enable it here and add spatial columns to `core.zones`, `core.containers`, and `ops.tour_routes`.
+10. Backfill spatial columns from the current latitude, longitude, and route JSON payloads before the app starts reading from them.
+11. Add only the indexes required for the first operational dashboards; do not add analytical rollup tables or materialized views in this phase.
 
 ### Phase 3: Optional Backward-Compatibility Layer (Only If Needed)
 
