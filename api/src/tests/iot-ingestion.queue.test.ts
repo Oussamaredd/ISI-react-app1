@@ -71,4 +71,48 @@ describe('InMemoryIngestionQueue', () => {
     await waitFor(() => queue.getProcessedLastHour() === 3);
     expect(await queue.getPendingCount()).toBe(0);
   });
+
+  it('rejects enqueue while paused and resumes processing after resume', async () => {
+    queue = new InMemoryIngestionQueue();
+
+    queue.pause();
+    await expect(queue.enqueue(['event-1'])).rejects.toThrow('Queue is paused due to backpressure');
+
+    const processedEventIds: string[] = [];
+    queue.startProcessor(async (jobs) => {
+      processedEventIds.push(...jobs.flatMap((job) => job.eventIds));
+    });
+
+    queue.resume();
+    await queue.enqueue(['event-1']);
+
+    await waitFor(() => processedEventIds.length === 1);
+    expect(processedEventIds).toEqual(['event-1']);
+    expect(await queue.getPendingCount()).toBe(0);
+  });
+
+  it('requeues a failed batch and retries it on the next drain cycle', async () => {
+    queue = new InMemoryIngestionQueue();
+
+    await queue.enqueue(['event-1', 'event-2']);
+
+    const processedAttempts: string[][] = [];
+
+    queue.startProcessor(async (jobs) => {
+      processedAttempts.push(jobs.flatMap((job) => job.eventIds));
+
+      if (processedAttempts.length === 1) {
+        throw new Error('temporary processor failure');
+      }
+    });
+
+    await waitFor(() => processedAttempts.length === 2);
+
+    expect(processedAttempts).toEqual([
+      ['event-1', 'event-2'],
+      ['event-1', 'event-2'],
+    ]);
+    expect(await queue.getPendingCount()).toBe(0);
+    expect(queue.getProcessedLastHour()).toBe(2);
+  });
 });
