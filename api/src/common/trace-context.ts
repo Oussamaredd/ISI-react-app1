@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 
 import type { Request } from 'express';
 
+import { getPersistedTraceCarrier } from '../observability/tracing.helpers.js';
+
 export const TRACEPARENT_HEADER = 'traceparent';
 export const TRACESTATE_HEADER = 'tracestate';
 
@@ -66,6 +68,22 @@ export const normalizeTraceparent = (value: unknown): string | undefined => {
 export const resolveTraceContext = (
   request: TraceAwareRequest,
 ): TraceContext => {
+  const activeTraceCarrier = getPersistedTraceCarrier();
+  const activeTraceparent = normalizeTraceparent(activeTraceCarrier.traceparent);
+  const activeTracestate = normalizeSingleHeader(activeTraceCarrier.tracestate);
+
+  if (activeTraceparent) {
+    const [, traceId, spanId] = activeTraceparent.match(TRACEPARENT_PATTERN) ?? [];
+    if (traceId && spanId) {
+      return {
+        traceId,
+        spanId,
+        traceparent: activeTraceparent,
+        ...(activeTracestate ? { tracestate: activeTracestate } : {}),
+      };
+    }
+  }
+
   const requestTraceId = normalizeHex(request.traceId, HEX_32_PATTERN);
   const requestSpanId = normalizeHex(request.spanId, HEX_16_PATTERN);
   const requestTraceparent = normalizeTraceparent(request.traceparent);

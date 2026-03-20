@@ -1,6 +1,6 @@
 # DB Schema Namespace Plan
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
 Related status doc:
 
@@ -43,6 +43,7 @@ Target rule: keep `public` empty for business tables after migration; reserve it
 | `ops` | Tour planning, execution, route output, and collection events | CDC UC-A01, UC-A02, UC-G01, 10.1 tours | `tours`, `tour_stops`, `tour_routes`, `collection_events` |
 | `incident` | Citizen reports, anomaly catalog, anomaly handling, alert events | CDC UC-C01, UC-A03, UC-G02 | `citizen_reports`, `anomaly_types`, `anomaly_reports`, new `alert_events` |
 | `notify` | Notification intent and per-channel delivery tracking | CDC notifications, UC-C01, UC-G01, UC-AD02 | new `notifications`, new `notification_deliveries` |
+| `billing` | Transactional billing, invoices, and billable-source allocations | Workbook M2.5 billing service, ops/incident billing inputs | `accounts`, `rate_rules`, `runs`, `invoices`, `invoice_line_items`, `source_allocations` |
 | `game` | Citizen engagement, points, badges, and challenges | CDC UC-C02, UC-C03, 5.2 gamification | `gamification_profiles`, `challenges`, `challenge_participations` |
 | `audit` | Immutable business traceability | CDC 7.2 traceability, UC-AD01, 5.2 administration | `audit_logs` |
 | `admin` | Platform configuration and operational settings | CDC UC-AD02, 5.2 administration | `system_settings`, new `alert_rules` |
@@ -165,6 +166,31 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 11. `validation_summary`: schema and business-rule validation outcome summary.
 12. `normalized_payload`: normalized event envelope ready for later consumers.
 
+### `iot.validated_event_deliveries`
+
+1. Purpose: queue durable downstream projection work for validated events without relying on an external broker.
+2. `id`: UUID primary key for the delivery row.
+3. `consumer_name`: logical downstream consumer identifier such as `timeseries_projection`.
+4. `validated_event_id`: parent validated-event reference.
+5. `processing_status`: pending, processing, retry, failed, or completed state.
+6. `attempt_count`: consumer retry counter.
+7. `next_attempt_at`: next eligible retry time.
+8. `processing_started_at`: lease timestamp for stale-processing recovery.
+9. `processed_at`: successful projection completion timestamp.
+10. `failed_at`: terminal failure timestamp when retries are exhausted.
+11. `last_error`: compact failure message for diagnosis and replay planning.
+12. `traceparent` / `tracestate`: persisted W3C trace context so the consumer continues the originating trace.
+
+### `billing` schema additions
+
+1. Purpose: store transactional billing state, invoice artifacts, and billable-source allocations inside the monolith.
+2. `billing.accounts`: zone-scoped billing account registry with currency and activation state.
+3. `billing.rate_rules`: source-type, charge-type, pricing-unit, and penalty rules per billing account.
+4. `billing.runs`: one row per finalized billing period with subtotal, penalty total, total, and actor audit fields.
+5. `billing.invoices`: invoice headers linked to one billing run and billing account.
+6. `billing.invoice_line_items`: normalized invoice line items with quantity, unit, pricing, and metadata.
+7. `billing.source_allocations`: durable source-to-line-item allocations that prevent duplicate billing across reruns.
+
 ### `admin.alert_rules`
 
 1. Purpose: store admin-configured alert thresholds, notification routing, and channel activation without mixing that logic into `system_settings`.
@@ -258,13 +284,15 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 2. Add `iot.sensor_devices` as the registry for fielded sensors.
 3. Add `iot.ingestion_events` as the raw-event staging table for the monolith worker.
 4. Add `iot.validated_measurement_events` as the validated-event store that decouples staging from downstream persistence.
-5. Add `iot.measurements` as the append-heavy measurement history table required by CDC container history and real-time dashboard flows.
-6. Add `admin.alert_rules` so alert thresholds and channel routing are stored explicitly instead of buried in `system_settings`.
-7. Add `incident.alert_events` so overflow-risk and operational alerts become queryable and acknowledgeable.
-8. Add `notify.notifications` and `notify.notification_deliveries` for reliable cross-channel notification tracking.
-9. If PostGIS is approved in the database layer, enable it here and add spatial columns to `core.zones`, `core.containers`, and `ops.tour_routes`.
-10. Backfill spatial columns from the current latitude, longitude, and route JSON payloads before the app starts reading from them.
-11. Add only the indexes required for the first operational dashboards; do not add analytical rollup tables or materialized views in this phase.
+5. Add `iot.validated_event_deliveries` as the durable queue for downstream validated-event consumers.
+6. Add `iot.measurements` as the append-heavy measurement history table required by CDC container history and real-time dashboard flows.
+7. Add `billing.accounts`, `billing.rate_rules`, `billing.runs`, `billing.invoices`, `billing.invoice_line_items`, and `billing.source_allocations` for transactional billing and invoice auditability.
+8. Add `admin.alert_rules` so alert thresholds and channel routing are stored explicitly instead of buried in `system_settings`.
+9. Add `incident.alert_events` so overflow-risk and operational alerts become queryable and acknowledgeable.
+10. Add `notify.notifications` and `notify.notification_deliveries` for reliable cross-channel notification tracking.
+11. If PostGIS is approved in the database layer, enable it here and add spatial columns to `core.zones`, `core.containers`, and `ops.tour_routes`.
+12. Backfill spatial columns from the current latitude, longitude, and route JSON payloads before the app starts reading from them.
+13. Add only the indexes required for the first operational dashboards; do not add analytical rollup tables or materialized views in this phase.
 
 ### Phase 3: Optional Backward-Compatibility Layer (Only If Needed)
 

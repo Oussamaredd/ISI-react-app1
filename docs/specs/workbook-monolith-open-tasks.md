@@ -1,6 +1,6 @@
 ﻿# Workbook Open Tasks - Monolith Adaptation (Detailed)
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
 Source workbook: `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 
@@ -55,7 +55,8 @@ Status legend:
 - Workbook expected outcome: Code du MS Facturation; Schéma DB Facturation; Test de transaction ACID (avec rollback).
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through a dedicated billing module with zone-scoped billing accounts, rate rules, preview/finalize billing runs, invoice and invoice-line persistence, billable-source allocations that prevent double billing, RBAC-gated billing endpoints, and an explicit simulated-failure path for transaction rollback verification.
 
 ### M2.6 - Implémentation de la Journalisation (Logging Structuré)
 
@@ -72,7 +73,8 @@ Status legend:
 - Workbook expected outcome: Traces visibles dans Jaeger/Tempo; 5 Microservices instrumentés; Test de requête transversale.
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with OpenTelemetry bootstrap before Nest startup, OTLP export configuration, Jaeger support in the Docker observability profile, request and worker trace propagation, and business spans across auth exchange, citizen report creation, planning, route rebuild or stop validation, and the IoT ingestion plus consumer pipeline.
 
 ### M2.10 - Configuration de l'IAM/Authentification (OAuth 2.0 / JWT)
 
@@ -116,7 +118,8 @@ Status legend:
 - Workbook expected outcome: Code du Consumer (gestion des offsets, configuration HA); Écriture réussie dans la DB Time-Series.
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through a durable validated-event consumer module backed by `iot.validated_event_deliveries`, lease-based retry and recovery logic, idempotent projection into `iot.measurements`, container-state refresh, and health reporting for downstream consumer backlog and failures.
 
 ## Module M3
 
@@ -146,7 +149,7 @@ Status legend:
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
 - Status: `DONE`
-- Completion note: Delivered as a monolith-compatible staged-event worker: raw IoT payloads are stored in `iot.ingestion_events`, processed by an internal worker with schema validation, business-rule validation, cleaning and normalization, enrichment against sensor and container data, retry and failure handling, idempotency, validated-event storage in `iot.validated_measurement_events`, and compatibility writes to `iot.measurements` plus container status. API compatibility remains `202 Accepted` on both ingestion endpoints and latency-sensitive worker tests are included.
+- Completion note: Delivered as a monolith-compatible staged-event worker: raw IoT payloads are stored in `iot.ingestion_events`, processed by an internal worker with schema validation, business-rule validation, cleaning and normalization, enrichment against sensor and container data, retry and failure handling, idempotency, validated-event storage in `iot.validated_measurement_events`, and durable downstream delivery creation for the dedicated time-series consumer. API compatibility remains `202 Accepted` on both ingestion endpoints and latency-sensitive worker tests are included.
 
 ### M3.4 - Configuration des Alerts Critiques (Alertmanager)
 

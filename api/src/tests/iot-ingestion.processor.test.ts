@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IngestionProcessorService } from '../modules/iot/ingestion/ingestion.processor.js';
 import { IngestionRepository } from '../modules/iot/ingestion/ingestion.repository.js';
+import { ValidatedConsumerService } from '../modules/iot/validated-consumer/validated-consumer.service.js';
 
 const EVENT_ID = '11111111-1111-4111-8111-111111111111';
 const CONTAINER_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -28,6 +29,8 @@ const createClaimedEvent = (overrides: {
   measurementQuality: overrides.measurementQuality ?? 'valid',
   processingStatus: 'processing',
   attemptCount: overrides.attemptCount ?? 1,
+  traceparent: null,
+  tracestate: null,
   rawPayload: {
     source: 'iot-ingestion-api',
   },
@@ -42,14 +45,17 @@ describe('IngestionProcessorService', () => {
     repository = {
       claimEventForProcessing: vi.fn(),
       persistValidatedEvent: vi.fn().mockResolvedValue({
-        measurementId: 101,
         validatedEventId: 'validated-1',
+        deliveryIds: ['delivery-1'],
       }),
       markRejected: vi.fn().mockResolvedValue(undefined),
       markRetryOrFailed: vi.fn().mockResolvedValue(undefined),
     } as unknown as IngestionRepository;
+    const validatedConsumerService = {
+      enqueueValidatedDeliveryIds: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ValidatedConsumerService;
 
-    service = new IngestionProcessorService(repository);
+    service = new IngestionProcessorService(repository, validatedConsumerService);
   });
 
   it('normalizes and persists valid staged events', async () => {

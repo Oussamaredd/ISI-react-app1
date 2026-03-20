@@ -6,6 +6,7 @@ import type { Request } from 'express';
 import jwtPkg from 'jsonwebtoken';
 import type { Secret, SignOptions } from 'jsonwebtoken';
 
+import { withActiveSpan } from '../../observability/tracing.helpers.js';
 import { UsersService } from '../users/users.service.js';
 
 import type { AuthTokenPayload, AuthUser } from './auth.types.js';
@@ -369,46 +370,57 @@ export class AuthService {
   }
 
   async loginLocal(email: string, password: string): Promise<LocalLoginSuccess> {
-    const normalizedEmail = this.normalizeEmail(email);
-    const user = await this.usersService.findByEmail(normalizedEmail);
+    return withActiveSpan(
+      'auth.login_local',
+      async () => {
+        const normalizedEmail = this.normalizeEmail(email);
+        const user = await this.usersService.findByEmail(normalizedEmail);
 
-    if (!user) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
-    }
+        if (!user) {
+          throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+        }
 
-    if (user.authProvider === 'google' && !user.passwordHash) {
-      throw new ConflictException(GOOGLE_ACCOUNT_LOGIN_MESSAGE);
-    }
+        if (user.authProvider === 'google' && !user.passwordHash) {
+          throw new ConflictException(GOOGLE_ACCOUNT_LOGIN_MESSAGE);
+        }
 
-    if (!user.passwordHash) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
-    }
+        if (!user.passwordHash) {
+          throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+        }
 
-    const passwordMatches = await compare(password, user.passwordHash);
-    if (!passwordMatches) {
-      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
-    }
+        const passwordMatches = await compare(password, user.passwordHash);
+        if (!passwordMatches) {
+          throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+        }
 
-    if (user.isActive === false) {
-      throw new ForbiddenException('User account is inactive');
-    }
+        if (user.isActive === false) {
+          throw new ForbiddenException('User account is inactive');
+        }
 
-    const exchangeCode = this.issueExchangeCode({
-      provider: 'local',
-      id: user.id,
-      email: user.email,
-      name: user.displayName,
-      avatarUrl: user.avatarUrl ?? null,
-    });
+        const exchangeCode = this.issueExchangeCode({
+          provider: 'local',
+          id: user.id,
+          email: user.email,
+          name: user.displayName,
+          avatarUrl: user.avatarUrl ?? null,
+        });
 
-    const roles = await this.usersService.getRolesForUser(user.id);
-    const serialized = this.serializeUser(user, roles, 'local');
+        const roles = await this.usersService.getRolesForUser(user.id);
+        const serialized = this.serializeUser(user, roles, 'local');
 
-    return {
-      code: exchangeCode,
-      accessToken: this.createAccessToken(serialized),
-      user: serialized,
-    };
+        return {
+          code: exchangeCode,
+          accessToken: this.createAccessToken(serialized),
+          user: serialized,
+        };
+      },
+      {
+        attributes: {
+          'auth.provider': 'local',
+          'auth.email_domain': this.normalizeEmail(email).split('@')[1] ?? 'unknown',
+        },
+      },
+    );
   }
 
   async getCurrentUser(request: Pick<Request, 'headers'>) {
@@ -566,36 +578,46 @@ export class AuthService {
   }
 
   async exchangeCode(code: string): Promise<LocalAuthSuccess> {
-    const normalizedCode = code.trim();
-    if (!normalizedCode) {
-      throw new UnauthorizedException(INVALID_EXCHANGE_CODE_MESSAGE);
-    }
+    return withActiveSpan(
+      'auth.exchange_code',
+      async () => {
+        const normalizedCode = code.trim();
+        if (!normalizedCode) {
+          throw new UnauthorizedException(INVALID_EXCHANGE_CODE_MESSAGE);
+        }
 
-    this.pruneExpiredExchangeCodes();
+        this.pruneExpiredExchangeCodes();
 
-    const record = this.exchangeCodeStore.get(normalizedCode);
-    if (!record) {
-      throw new UnauthorizedException(INVALID_EXCHANGE_CODE_MESSAGE);
-    }
+        const record = this.exchangeCodeStore.get(normalizedCode);
+        if (!record) {
+          throw new UnauthorizedException(INVALID_EXCHANGE_CODE_MESSAGE);
+        }
 
-    this.exchangeCodeStore.delete(normalizedCode);
+        this.exchangeCodeStore.delete(normalizedCode);
 
-    const dbUser = await this.usersService.ensureUserForAuth(record.user);
-    if (!dbUser) {
-      throw new UnauthorizedException(INVALID_EXCHANGE_CODE_MESSAGE);
-    }
+        const dbUser = await this.usersService.ensureUserForAuth(record.user);
+        if (!dbUser) {
+          throw new UnauthorizedException(INVALID_EXCHANGE_CODE_MESSAGE);
+        }
 
-    if (dbUser.isActive === false) {
-      throw new ForbiddenException('User account is inactive');
-    }
+        if (dbUser.isActive === false) {
+          throw new ForbiddenException('User account is inactive');
+        }
 
-    const roles = await this.usersService.getRolesForUser(dbUser.id);
-    const serialized = this.serializeUser(dbUser, roles, record.user.provider);
+        const roles = await this.usersService.getRolesForUser(dbUser.id);
+        const serialized = this.serializeUser(dbUser, roles, record.user.provider);
 
-    return {
-      accessToken: this.createAccessToken(serialized),
-      user: serialized,
-    };
+        return {
+          accessToken: this.createAccessToken(serialized),
+          user: serialized,
+        };
+      },
+      {
+        attributes: {
+          'auth.provider': 'exchange_code',
+        },
+      },
+    );
   }
 
   async createPasswordReset(email: string) {

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The IoT ingestion service delivers workbook tasks `M2.1` and `M3.3` inside the modular monolith. It exposes async HTTP ingestion endpoints for sensor measurements, stages accepted raw events in PostgreSQL, and processes them through an internal worker that preserves the standard `controller -> service -> repository -> database` flow.
+The IoT ingestion service delivers workbook tasks `M2.1`, `M2.14`, and `M3.3` inside the modular monolith. It exposes async HTTP ingestion endpoints for sensor measurements, stages accepted raw events in PostgreSQL, validates them through an internal worker, and projects durable validated events through a dedicated downstream consumer while preserving the standard `controller -> service -> repository -> database` flow.
 
 This implementation is optimized for the current Development scope:
 
@@ -10,9 +10,9 @@ This implementation is optimized for the current Development scope:
 - Raw events are staged first in `iot.ingestion_events`.
 - Internal queue workers drain staged event identifiers concurrently.
 - The processing worker validates, normalizes, enriches, retries, and records validated results.
+- A dedicated validated-event consumer projects the durable event stream into `iot.measurements` and container status.
 - Backpressure protects the API during sustained spikes.
 - Sensor devices are auto-registered on first contact.
-- Current downstream writes remain active through `iot.measurements` and container status refreshes.
 
 Direct MQTT transport and external brokers remain future extensions. The current delivery is a monolith-compatible staged-event pipeline with retry and observability.
 
@@ -22,9 +22,10 @@ Direct MQTT transport and external brokers remain future extensions. The current
 2. The ingestion service stages each raw payload in `iot.ingestion_events`, including the normalized request envelope, timestamps, and optional idempotency key.
 3. The in-memory scheduler queues staged event IDs and the recovery loop re-enqueues runnable or stale leased rows.
 4. The processing worker claims staged rows, re-validates schema, enforces business rules, normalizes values, and enriches them with `sensor_devices`, `containers`, and container-type thresholds.
-5. Validated results are written to `iot.validated_measurement_events`, then projected into the current `iot.measurements` table and container fill-state updates so downstream reads remain unchanged.
-6. Rejected, retryable, failed, and validated states are stored back on `iot.ingestion_events`.
-7. `GET /api/iot/v1/health` reports backlog, retry/failure state, and processed-volume visibility for the worker.
+5. Validated results are written to `iot.validated_measurement_events` and a durable delivery row is created in `iot.validated_event_deliveries`.
+6. The validated-event consumer claims runnable deliveries, continues the originating trace context, and projects the event into `iot.measurements` plus container fill-state updates.
+7. Rejected, retryable, failed, and validated states are stored back on `iot.ingestion_events`, while consumer completion and retry state live on `iot.validated_event_deliveries`.
+8. `GET /api/iot/v1/health` reports both ingestion-worker and validated-consumer backlog, retry/failure state, and processed-volume visibility.
 
 ## Validation Contract
 
@@ -61,8 +62,11 @@ Worker-side business rules add:
 - Queue workers run concurrently according to `IOT_QUEUE_CONCURRENCY` and drain jobs up to `IOT_QUEUE_BATCH_SIZE`.
 - The worker uses processing leases, retry state, and stale-lease recovery so interrupted events return to the runnable pool.
 - Status transitions are `pending -> processing -> validated|retry|failed|rejected`.
+- Durable downstream delivery rows are stored in `iot.validated_event_deliveries` and follow `pending -> processing -> completed|retry|failed`.
+- The validated-event consumer uses `validatedEventId + measuredAt` idempotency when projecting into `iot.measurements`.
 - Retry backoff is exponential with a Development-owned ceiling of 3 attempts.
 - When backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the queue is paused and the API returns `503` until the backlog drops.
+- `traceparent` and `tracestate` are persisted on staged events, validated events, and delivery rows so the API request trace continues through both worker phases.
 
 ## API Endpoints
 
@@ -107,6 +111,14 @@ Returns:
     "failedCount": 1,
     "rejectedCount": 8,
     "oldestPendingAgeMs": 920
+  },
+  "consumer": {
+    "retryCount": 1,
+    "processingCount": 4,
+    "failedCount": 0,
+    "pendingCount": 7,
+    "processedLastHour": 44000,
+    "oldestPendingAgeMs": 340
   }
 }
 ```
@@ -122,6 +134,8 @@ If ingestion is disabled, the endpoint reports `status: "unhealthy"` and `queueE
 | `IOT_QUEUE_BATCH_SIZE` | `500` | Max staged-event IDs drained per worker batch |
 | `IOT_BACKPRESSURE_THRESHOLD` | `100000` | Staged-event backlog threshold that activates backpressure |
 | `IOT_MAX_BATCH_SIZE` | `1000` | Max measurements allowed in one batch request |
+| `IOT_VALIDATED_CONSUMER_CONCURRENCY` | `20` | Concurrent validated-event consumer workers |
+| `IOT_VALIDATED_CONSUMER_BATCH_SIZE` | `250` | Max validated-event delivery IDs drained per worker batch |
 
 Worker safeguards currently use fixed in-code defaults:
 

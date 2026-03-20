@@ -54,6 +54,11 @@ type IotValidatedMeasurementPayload = {
   processedAt: string;
 };
 
+type BillingRateRuleFilters = {
+  severity?: string;
+  eventType?: string;
+};
+
 export const authSchema = pgSchema('auth');
 export const coreSchema = pgSchema('core');
 export const iotSchema = pgSchema('iot');
@@ -65,6 +70,7 @@ export const auditSchema = pgSchema('audit');
 export const adminSchema = pgSchema('admin');
 export const exportSchema = pgSchema('export');
 export const supportSchema = pgSchema('support');
+export const billingSchema = pgSchema('billing');
 
 export const users = authSchema.table('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -206,6 +212,7 @@ export const measurements = iotSchema.table(
   'measurements',
   {
     id: bigserial('id', { mode: 'number' }),
+    validatedEventId: uuid('validated_event_id'),
     sensorDeviceId: uuid('sensor_device_id').references(() => sensorDevices.id, { onDelete: 'set null' }),
     containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
     measuredAt: timestamp('measured_at', { withTimezone: true }).notNull(),
@@ -219,6 +226,10 @@ export const measurements = iotSchema.table(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.measuredAt] }),
+    validatedEventMeasuredAtIdx: uniqueIndex('measurements_validated_event_measured_at_idx').on(
+      table.validatedEventId,
+      table.measuredAt,
+    ),
     containerMeasuredAtIdx: index('measurements_container_measured_at_idx').on(table.containerId, table.measuredAt),
     sensorMeasuredAtIdx: index('measurements_sensor_measured_at_idx').on(table.sensorDeviceId, table.measuredAt),
   }),
@@ -250,6 +261,8 @@ export const ingestionEvents = iotSchema.table(
     processingLatencyMs: integer('processing_latency_ms'),
     rawPayload: jsonb('raw_payload').$type<IotRawMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
     normalizedPayload: jsonb('normalized_payload').$type<Record<string, unknown>>(),
+    traceparent: text('traceparent'),
+    tracestate: text('tracestate'),
     receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -291,6 +304,8 @@ export const validatedMeasurementEvents = iotSchema.table(
     criticalThreshold: integer('critical_threshold'),
     validationSummary: jsonb('validation_summary').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
     normalizedPayload: jsonb('normalized_payload').$type<IotValidatedMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
+    traceparent: text('traceparent'),
+    tracestate: text('tracestate'),
     emittedAt: timestamp('emitted_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
@@ -302,6 +317,38 @@ export const validatedMeasurementEvents = iotSchema.table(
     sensorMeasuredAtIdx: index('validated_measurement_events_sensor_measured_at_idx').on(
       table.sensorDeviceId,
       table.measuredAt,
+    ),
+  }),
+);
+
+export const validatedEventDeliveries = iotSchema.table(
+  'validated_event_deliveries',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    consumerName: text('consumer_name').notNull(),
+    validatedEventId: uuid('validated_event_id')
+      .notNull()
+      .references(() => validatedMeasurementEvents.id, { onDelete: 'cascade' }),
+    processingStatus: text('processing_status').default('pending').notNull(),
+    attemptCount: integer('attempt_count').default(0).notNull(),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+    processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    traceparent: text('traceparent'),
+    tracestate: text('tracestate'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    consumerValidatedEventIdx: uniqueIndex('validated_event_deliveries_consumer_event_idx').on(
+      table.consumerName,
+      table.validatedEventId,
+    ),
+    statusNextAttemptIdx: index('validated_event_deliveries_status_next_attempt_idx').on(
+      table.processingStatus,
+      table.nextAttemptAt,
     ),
   }),
 );
@@ -611,6 +658,178 @@ export const alertEvents = incidentSchema.table(
   }),
 );
 
+export const billingAccounts = billingSchema.table(
+  'accounts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    scopeType: text('scope_type').notNull(),
+    scopeKey: text('scope_key').notNull(),
+    currency: text('currency').default('EUR').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    scopeIdx: uniqueIndex('billing_accounts_scope_idx').on(table.scopeType, table.scopeKey),
+    activeScopeIdx: index('billing_accounts_active_scope_idx').on(table.isActive, table.scopeType),
+  }),
+);
+
+export const billingRateRules = billingSchema.table(
+  'rate_rules',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    billingAccountId: uuid('billing_account_id')
+      .notNull()
+      .references(() => billingAccounts.id, { onDelete: 'cascade' }),
+    chargeType: text('charge_type').notNull(),
+    sourceType: text('source_type').notNull(),
+    unit: text('unit').default('event').notNull(),
+    unitPriceCents: integer('unit_price_cents').notNull(),
+    description: text('description').notNull(),
+    filters: jsonb('filters').$type<BillingRateRuleFilters>().default(sql`'{}'::jsonb`).notNull(),
+    isPenalty: boolean('is_penalty').default(false).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    accountChargeIdx: uniqueIndex('billing_rate_rules_account_charge_idx').on(
+      table.billingAccountId,
+      table.chargeType,
+    ),
+    activeSourceIdx: index('billing_rate_rules_active_source_idx').on(
+      table.billingAccountId,
+      table.isActive,
+      table.sourceType,
+    ),
+  }),
+);
+
+export const billingRuns = billingSchema.table(
+  'runs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    billingAccountId: uuid('billing_account_id')
+      .notNull()
+      .references(() => billingAccounts.id, { onDelete: 'cascade' }),
+    periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+    periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+    currency: text('currency').default('EUR').notNull(),
+    status: text('status').default('finalized').notNull(),
+    subtotalCents: integer('subtotal_cents').default(0).notNull(),
+    penaltyTotalCents: integer('penalty_total_cents').default(0).notNull(),
+    totalCents: integer('total_cents').default(0).notNull(),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    accountPeriodIdx: uniqueIndex('billing_runs_account_period_idx').on(
+      table.billingAccountId,
+      table.periodStart,
+      table.periodEnd,
+    ),
+    statusCreatedIdx: index('billing_runs_status_created_idx').on(table.status, table.createdAt),
+  }),
+);
+
+export const invoices = billingSchema.table(
+  'invoices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    billingRunId: uuid('billing_run_id')
+      .notNull()
+      .references(() => billingRuns.id, { onDelete: 'cascade' })
+      .unique(),
+    billingAccountId: uuid('billing_account_id')
+      .notNull()
+      .references(() => billingAccounts.id, { onDelete: 'cascade' }),
+    invoiceNumber: text('invoice_number').notNull().unique(),
+    status: text('status').default('issued').notNull(),
+    billToName: text('bill_to_name').notNull(),
+    currency: text('currency').default('EUR').notNull(),
+    periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+    periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+    subtotalCents: integer('subtotal_cents').default(0).notNull(),
+    penaltyTotalCents: integer('penalty_total_cents').default(0).notNull(),
+    totalCents: integer('total_cents').default(0).notNull(),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    accountIssuedIdx: index('billing_invoices_account_issued_idx').on(table.billingAccountId, table.issuedAt),
+  }),
+);
+
+export const invoiceLineItems = billingSchema.table(
+  'invoice_line_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    billingRunId: uuid('billing_run_id')
+      .notNull()
+      .references(() => billingRuns.id, { onDelete: 'cascade' }),
+    rateRuleId: uuid('rate_rule_id').references(() => billingRateRules.id, { onDelete: 'set null' }),
+    chargeType: text('charge_type').notNull(),
+    description: text('description').notNull(),
+    quantity: integer('quantity').notNull(),
+    unit: text('unit').notNull(),
+    unitPriceCents: integer('unit_price_cents').notNull(),
+    lineTotalCents: integer('line_total_cents').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    invoiceCreatedIdx: index('billing_invoice_line_items_invoice_created_idx').on(table.invoiceId, table.createdAt),
+  }),
+);
+
+export const billingSourceAllocations = billingSchema.table(
+  'source_allocations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    billingRunId: uuid('billing_run_id')
+      .notNull()
+      .references(() => billingRuns.id, { onDelete: 'cascade' }),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    lineItemId: uuid('line_item_id')
+      .notNull()
+      .references(() => invoiceLineItems.id, { onDelete: 'cascade' }),
+    billingAccountId: uuid('billing_account_id')
+      .notNull()
+      .references(() => billingAccounts.id, { onDelete: 'cascade' }),
+    rateRuleId: uuid('rate_rule_id').references(() => billingRateRules.id, { onDelete: 'set null' }),
+    chargeType: text('charge_type').notNull(),
+    sourceType: text('source_type').notNull(),
+    sourceId: text('source_id').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    accountChargeSourceIdx: uniqueIndex('billing_source_allocations_account_charge_source_idx').on(
+      table.billingAccountId,
+      table.chargeType,
+      table.sourceType,
+      table.sourceId,
+    ),
+    runSourceIdx: index('billing_source_allocations_run_source_idx').on(
+      table.billingRunId,
+      table.sourceType,
+      table.sourceId,
+    ),
+  }),
+);
+
 export const notifications = notifySchema.table(
   'notifications',
   {
@@ -675,6 +894,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   gamificationProfile: many(gamificationProfiles),
   challengeParticipations: many(challengeParticipations),
   anomalyReports: many(anomalyReports),
+  createdBillingRuns: many(billingRuns),
   reportExports: many(reportExports),
   acknowledgedAlerts: many(alertEvents, {
     relationName: 'alert_events_acknowledgedByUserId_users_id',
@@ -765,7 +985,7 @@ export const ingestionEventsRelations = relations(ingestionEvents, ({ many, one 
   validatedEvents: many(validatedMeasurementEvents),
 }));
 
-export const validatedMeasurementEventsRelations = relations(validatedMeasurementEvents, ({ one }) => ({
+export const validatedMeasurementEventsRelations = relations(validatedMeasurementEvents, ({ many, one }) => ({
   sourceEvent: one(ingestionEvents, {
     fields: [validatedMeasurementEvents.sourceEventId],
     references: [ingestionEvents.id],
@@ -777,6 +997,14 @@ export const validatedMeasurementEventsRelations = relations(validatedMeasuremen
   container: one(containers, {
     fields: [validatedMeasurementEvents.containerId],
     references: [containers.id],
+  }),
+  deliveries: many(validatedEventDeliveries),
+}));
+
+export const validatedEventDeliveriesRelations = relations(validatedEventDeliveries, ({ one }) => ({
+  validatedEvent: one(validatedMeasurementEvents, {
+    fields: [validatedEventDeliveries.validatedEventId],
+    references: [validatedMeasurementEvents.id],
   }),
 }));
 
@@ -897,6 +1125,91 @@ export const alertEventsRelations = relations(alertEvents, ({ one }) => ({
   }),
 }));
 
+export const billingAccountsRelations = relations(billingAccounts, ({ many }) => ({
+  rateRules: many(billingRateRules),
+  runs: many(billingRuns),
+  invoices: many(invoices),
+  sourceAllocations: many(billingSourceAllocations),
+}));
+
+export const billingRateRulesRelations = relations(billingRateRules, ({ many, one }) => ({
+  billingAccount: one(billingAccounts, {
+    fields: [billingRateRules.billingAccountId],
+    references: [billingAccounts.id],
+  }),
+  invoiceLineItems: many(invoiceLineItems),
+  sourceAllocations: many(billingSourceAllocations),
+}));
+
+export const billingRunsRelations = relations(billingRuns, ({ many, one }) => ({
+  billingAccount: one(billingAccounts, {
+    fields: [billingRuns.billingAccountId],
+    references: [billingAccounts.id],
+  }),
+  createdByUser: one(users, {
+    fields: [billingRuns.createdByUserId],
+    references: [users.id],
+  }),
+  invoiceLineItems: many(invoiceLineItems),
+  sourceAllocations: many(billingSourceAllocations),
+  invoice: one(invoices, {
+    fields: [billingRuns.id],
+    references: [invoices.billingRunId],
+  }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ many, one }) => ({
+  billingRun: one(billingRuns, {
+    fields: [invoices.billingRunId],
+    references: [billingRuns.id],
+  }),
+  billingAccount: one(billingAccounts, {
+    fields: [invoices.billingAccountId],
+    references: [billingAccounts.id],
+  }),
+  lineItems: many(invoiceLineItems),
+  sourceAllocations: many(billingSourceAllocations),
+}));
+
+export const invoiceLineItemsRelations = relations(invoiceLineItems, ({ many, one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceLineItems.invoiceId],
+    references: [invoices.id],
+  }),
+  billingRun: one(billingRuns, {
+    fields: [invoiceLineItems.billingRunId],
+    references: [billingRuns.id],
+  }),
+  rateRule: one(billingRateRules, {
+    fields: [invoiceLineItems.rateRuleId],
+    references: [billingRateRules.id],
+  }),
+  sourceAllocations: many(billingSourceAllocations),
+}));
+
+export const billingSourceAllocationsRelations = relations(billingSourceAllocations, ({ one }) => ({
+  billingRun: one(billingRuns, {
+    fields: [billingSourceAllocations.billingRunId],
+    references: [billingRuns.id],
+  }),
+  invoice: one(invoices, {
+    fields: [billingSourceAllocations.invoiceId],
+    references: [invoices.id],
+  }),
+  lineItem: one(invoiceLineItems, {
+    fields: [billingSourceAllocations.lineItemId],
+    references: [invoiceLineItems.id],
+  }),
+  billingAccount: one(billingAccounts, {
+    fields: [billingSourceAllocations.billingAccountId],
+    references: [billingAccounts.id],
+  }),
+  rateRule: one(billingRateRules, {
+    fields: [billingSourceAllocations.rateRuleId],
+    references: [billingRateRules.id],
+  }),
+}));
+
 export const reportExportsRelations = relations(reportExports, ({ one }) => ({
   requestedBy: one(users, {
     fields: [reportExports.requestedByUserId],
@@ -976,6 +1289,7 @@ export type SensorDevice = typeof sensorDevices.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
 export type IngestionEvent = typeof ingestionEvents.$inferSelect;
 export type ValidatedMeasurementEvent = typeof validatedMeasurementEvents.$inferSelect;
+export type ValidatedEventDelivery = typeof validatedEventDeliveries.$inferSelect;
 export type Tour = typeof tours.$inferSelect;
 export type TourStop = typeof tourStops.$inferSelect;
 export type TourRoute = typeof tourRoutes.$inferSelect;
@@ -993,6 +1307,12 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type AlertRule = typeof alertRules.$inferSelect;
 export type AlertEvent = typeof alertEvents.$inferSelect;
+export type BillingAccount = typeof billingAccounts.$inferSelect;
+export type BillingRateRule = typeof billingRateRules.$inferSelect;
+export type BillingRun = typeof billingRuns.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
+export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
+export type BillingSourceAllocation = typeof billingSourceAllocations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

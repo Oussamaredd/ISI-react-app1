@@ -12,6 +12,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 
 import { DEFAULT_IOT_CONFIG, type IotIngestionConfig } from '../../../config/iot-ingestion.js';
+import { getPersistedTraceCarrier, withActiveSpan } from '../../../observability/tracing.helpers.js';
+import { ValidatedConsumerService } from '../validated-consumer/validated-consumer.service.js';
 
 import type { IngestMeasurementDto } from './dto/ingest-measurement.dto.js';
 import type {
@@ -42,6 +44,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     @Inject(InMemoryIngestionQueue) private readonly queue: InMemoryIngestionQueue,
     @Inject(IngestionProcessorService)
     private readonly processorService: IngestionProcessorService,
+    private readonly validatedConsumerService: ValidatedConsumerService,
   ) {
     this.config = this.configService.get<IotIngestionConfig>('iotIngestion') ?? DEFAULT_IOT_CONFIG;
   }
@@ -78,46 +81,66 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
   }
 
   async ingestSingle(dto: IngestMeasurementDto): Promise<IngestResponseDto> {
-    this.ensureInitialized();
-    await this.checkBackpressure();
+    return withActiveSpan(
+      'iot.ingestion.accept.single',
+      async () => {
+        this.ensureInitialized();
+        await this.checkBackpressure();
 
-    const staged = await this.repository.stageMeasurements([this.toStagedMeasurement(dto, null)]);
-    await this.enqueueStagedEvents(staged);
+        const staged = await this.repository.stageMeasurements([this.toStagedMeasurement(dto, null)]);
+        await this.enqueueStagedEvents(staged);
 
-    return {
-      accepted: 1,
-      processing: true,
-      messageId: staged[0]?.id ?? randomUUID(),
-    };
+        return {
+          accepted: 1,
+          processing: true,
+          messageId: staged[0]?.id ?? randomUUID(),
+        };
+      },
+      {
+        attributes: {
+          'iot.device_uid': dto.deviceUid.trim(),
+        },
+      },
+    );
   }
 
   async ingestBatch(dtos: IngestMeasurementDto[]): Promise<BatchIngestResponseDto> {
-    this.ensureInitialized();
+    return withActiveSpan(
+      'iot.ingestion.accept.batch',
+      async () => {
+        this.ensureInitialized();
 
-    if (dtos.length === 0) {
-      throw new BadRequestException('At least one measurement is required.');
-    }
+        if (dtos.length === 0) {
+          throw new BadRequestException('At least one measurement is required.');
+        }
 
-    if (dtos.length > this.config.IOT_MAX_BATCH_SIZE) {
-      throw new BadRequestException(
-        `Batch size exceeds maximum of ${this.config.IOT_MAX_BATCH_SIZE}.`,
-      );
-    }
+        if (dtos.length > this.config.IOT_MAX_BATCH_SIZE) {
+          throw new BadRequestException(
+            `Batch size exceeds maximum of ${this.config.IOT_MAX_BATCH_SIZE}.`,
+          );
+        }
 
-    await this.checkBackpressure();
+        await this.checkBackpressure();
 
-    const batchId = randomUUID();
-    const staged = await this.repository.stageMeasurements(
-      dtos.map((dto) => this.toStagedMeasurement(dto, batchId)),
+        const batchId = randomUUID();
+        const staged = await this.repository.stageMeasurements(
+          dtos.map((dto) => this.toStagedMeasurement(dto, batchId)),
+        );
+
+        await this.enqueueStagedEvents(staged);
+
+        return {
+          accepted: dtos.length,
+          processing: true,
+          batchId,
+        };
+      },
+      {
+        attributes: {
+          'iot.batch_size': dtos.length,
+        },
+      },
     );
-
-    await this.enqueueStagedEvents(staged);
-
-    return {
-      accepted: dtos.length,
-      processing: true,
-      batchId,
-    };
   }
 
   async getHealth(): Promise<IngestionHealthDto> {
@@ -135,10 +158,19 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
           rejectedCount: 0,
           oldestPendingAgeMs: null,
         },
+        consumer: {
+          retryCount: 0,
+          processingCount: 0,
+          failedCount: 0,
+          pendingCount: 0,
+          processedLastHour: 0,
+          oldestPendingAgeMs: null,
+        },
       };
     }
 
     const stats = await this.repository.getHealthStats();
+    const consumerStats = await this.validatedConsumerService.getHealthSnapshot();
     const pendingCount = stats.pendingCount + stats.retryCount + stats.processingCount;
     const backpressureActive = pendingCount >= this.config.IOT_BACKPRESSURE_THRESHOLD;
 
@@ -161,6 +193,14 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         failedCount: stats.failedCount,
         rejectedCount: stats.rejectedCount,
         oldestPendingAgeMs: stats.oldestPendingAgeMs,
+      },
+      consumer: {
+        retryCount: consumerStats.retryCount,
+        processingCount: consumerStats.processingCount,
+        failedCount: consumerStats.failedCount,
+        pendingCount: consumerStats.pendingCount,
+        processedLastHour: consumerStats.completedLastHour,
+        oldestPendingAgeMs: consumerStats.oldestPendingAgeMs,
       },
     };
   }
@@ -272,6 +312,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
   private toStagedMeasurement(dto: IngestMeasurementDto, batchId: string | null): StagedMeasurementInput {
     const receivedAt = new Date();
+    const traceCarrier = getPersistedTraceCarrier();
     const normalizedDeviceUid = dto.deviceUid.trim();
     const normalizedMeasurementQuality = dto.measurementQuality?.trim().toLowerCase() ?? 'valid';
     const normalizedIdempotencyKey = dto.idempotencyKey?.trim() || null;
@@ -288,6 +329,8 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       signalStrength: dto.signalStrength ?? null,
       measurementQuality: normalizedMeasurementQuality,
       idempotencyKey: normalizedIdempotencyKey,
+      traceparent: traceCarrier.traceparent,
+      tracestate: traceCarrier.tracestate,
       receivedAt,
       rawPayload: {
         source: 'iot-ingestion-api',

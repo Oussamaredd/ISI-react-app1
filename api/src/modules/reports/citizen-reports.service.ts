@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import { withActiveSpan } from '../../observability/tracing.helpers.js';
+
 import { CitizenReportsRepository } from './citizen-reports.repository.js';
 import type { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
 
@@ -19,7 +21,18 @@ export class CitizenReportsService {
   }
 
   async create(dto: CreateCitizenReportDto) {
-    return this.repository.create(dto);
+    return withActiveSpan(
+      'citizen.report.create',
+      () => this.repository.create(dto),
+      {
+        attributes: {
+          'report.container_id': dto.containerId ?? 'unassigned',
+          'report.reporter_user_id': dto.reporterUserId ?? 'anonymous',
+          'report.has_location': Boolean(dto.latitude && dto.longitude),
+          'report.has_photo': Boolean(dto.photoUrl),
+        },
+      },
+    );
   }
 }
 

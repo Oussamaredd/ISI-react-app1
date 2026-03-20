@@ -32,6 +32,14 @@ describe('configuration', () => {
         level: 'info',
         format: 'pretty',
       },
+      observability: {
+        tracing: {
+          enabled: false,
+          serviceName: 'ecotrack-api',
+          exporterOtlpEndpoint: 'http://localhost:4318',
+          samplingRatio: 1,
+        },
+      },
       routing: {
         baseUrl: 'https://router.project-osrm.org',
         circuitBreaker: {
@@ -48,6 +56,8 @@ describe('configuration', () => {
         IOT_QUEUE_BATCH_SIZE: 500,
         IOT_BACKPRESSURE_THRESHOLD: 100000,
         IOT_MAX_BATCH_SIZE: 1000,
+        IOT_VALIDATED_CONSUMER_CONCURRENCY: 20,
+        IOT_VALIDATED_CONSUMER_BATCH_SIZE: 250,
         IOT_REDIS_URL: undefined,
       },
     });
@@ -61,6 +71,10 @@ describe('configuration', () => {
       RATE_LIMIT_WINDOW_MS: 'not-a-number',
       RATE_LIMIT_MAX_REQUESTS: '-5',
       LOG_LEVEL: 'DEBUG',
+      OTEL_TRACING_ENABLED: 'true',
+      OTEL_SERVICE_NAME: 'ecotrack-api-prod',
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.internal.example',
+      OTEL_TRACES_SAMPLER_RATIO: '0.25',
       ROUTING_API_BASE_URL: 'https://router.internal.example',
       ROUTING_TIMEOUT_MS: '5000',
       ROUTING_FAILURE_THRESHOLD: '7',
@@ -72,6 +86,8 @@ describe('configuration', () => {
       IOT_QUEUE_BATCH_SIZE: '40',
       IOT_BACKPRESSURE_THRESHOLD: '250',
       IOT_MAX_BATCH_SIZE: '500',
+      IOT_VALIDATED_CONSUMER_CONCURRENCY: '12',
+      IOT_VALIDATED_CONSUMER_BATCH_SIZE: '30',
       IOT_REDIS_URL: 'redis://cache.internal:6379',
     };
 
@@ -93,6 +109,14 @@ describe('configuration', () => {
         level: 'debug',
         format: 'json',
       },
+      observability: {
+        tracing: {
+          enabled: true,
+          serviceName: 'ecotrack-api-prod',
+          exporterOtlpEndpoint: 'https://otel.internal.example',
+          samplingRatio: 0.25,
+        },
+      },
       routing: {
         baseUrl: 'https://router.internal.example',
         circuitBreaker: {
@@ -109,6 +133,8 @@ describe('configuration', () => {
         IOT_QUEUE_BATCH_SIZE: 40,
         IOT_BACKPRESSURE_THRESHOLD: 250,
         IOT_MAX_BATCH_SIZE: 500,
+        IOT_VALIDATED_CONSUMER_CONCURRENCY: 12,
+        IOT_VALIDATED_CONSUMER_BATCH_SIZE: 30,
         IOT_REDIS_URL: 'redis://cache.internal:6379',
       },
     });

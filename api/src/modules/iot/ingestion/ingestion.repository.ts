@@ -4,9 +4,9 @@ import {
   containerTypes,
   containers,
   ingestionEvents,
-  measurements,
   sensorDevices,
   type DatabaseClient,
+  validatedEventDeliveries,
   validatedMeasurementEvents,
 } from 'ecotrack-database';
 
@@ -57,6 +57,8 @@ export class IngestionRepository {
           batteryPercent: measurement.batteryPercent,
           signalStrength: measurement.signalStrength,
           measurementQuality: measurement.measurementQuality,
+          traceparent: measurement.traceparent,
+          tracestate: measurement.tracestate,
           rawPayload: measurement.rawPayload as any,
           receivedAt: measurement.receivedAt,
         })
@@ -175,6 +177,8 @@ export class IngestionRepository {
         measurementQuality: ingestionEvents.measurementQuality,
         processingStatus: ingestionEvents.processingStatus,
         attemptCount: ingestionEvents.attemptCount,
+        traceparent: ingestionEvents.traceparent,
+        tracestate: ingestionEvents.tracestate,
         rawPayload: ingestionEvents.rawPayload,
         receivedAt: ingestionEvents.receivedAt,
       });
@@ -278,55 +282,29 @@ export class IngestionRepository {
           warningThreshold: thresholds.warningThreshold,
           criticalThreshold: thresholds.criticalThreshold,
           validationSummary: event.validationSummary,
+          traceparent: event.traceparent,
+          tracestate: event.tracestate,
           normalizedPayload,
         })
         .returning({
           id: validatedMeasurementEvents.id,
         });
 
-      const [measurementRecord] = await tx
-        .insert(measurements)
+      if (!validatedEvent) {
+        throw new Error('Failed to persist validated measurement event.');
+      }
+
+      const [createdDelivery] = await tx
+        .insert(validatedEventDeliveries)
         .values({
-          sensorDeviceId: resolvedSensor.id,
-          containerId: resolvedContainerId,
-          measuredAt: event.measuredAt,
-          fillLevelPercent: event.fillLevelPercent,
-          temperatureC: event.temperatureC,
-          batteryPercent: event.batteryPercent,
-          signalStrength: event.signalStrength,
-          measurementQuality: event.measurementQuality,
-          sourcePayload: {
-            source: 'iot-processing-worker',
-            sourceEventId: event.sourceEventId,
-            validatedEventId: validatedEvent?.id ?? null,
-            batchId: event.batchId,
-            deviceUid: event.deviceUid,
-            idempotencyKey: event.idempotencyKey,
-          },
-          receivedAt: event.receivedAt,
+          consumerName: 'timeseries_projection',
+          validatedEventId: validatedEvent.id,
+          traceparent: event.traceparent,
+          tracestate: event.tracestate,
         })
         .returning({
-          id: measurements.id,
+          id: validatedEventDeliveries.id,
         });
-
-      if (
-        resolvedContainerId &&
-        thresholds.warningThreshold !== null &&
-        thresholds.criticalThreshold !== null
-      ) {
-        await tx
-          .update(containers)
-          .set({
-            fillLevelPercent: event.fillLevelPercent,
-            status: this.resolveOperationalStatus(
-              event.fillLevelPercent,
-              thresholds.warningThreshold,
-              thresholds.criticalThreshold,
-            ),
-            updatedAt: new Date(),
-          })
-          .where(eq(containers.id, resolvedContainerId));
-      }
 
       await tx
         .update(ingestionEvents)
@@ -344,8 +322,8 @@ export class IngestionRepository {
         .where(eq(ingestionEvents.id, event.sourceEventId));
 
       return {
-        measurementId: measurementRecord?.id ?? null,
-        validatedEventId: validatedEvent?.id ?? null,
+        validatedEventId: validatedEvent.id,
+        deliveryIds: createdDelivery ? [createdDelivery.id] : [],
       };
     });
   }
@@ -515,21 +493,5 @@ export class IngestionRepository {
       warningThreshold: row?.warningThreshold ?? 80,
       criticalThreshold: row?.criticalThreshold ?? 95,
     };
-  }
-
-  private resolveOperationalStatus(
-    fillLevelPercent: number,
-    warningThreshold: number,
-    criticalThreshold: number,
-  ) {
-    if (fillLevelPercent >= criticalThreshold) {
-      return 'critical';
-    }
-
-    if (fillLevelPercent >= warningThreshold) {
-      return 'attention_required';
-    }
-
-    return 'available';
   }
 }

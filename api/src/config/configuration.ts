@@ -17,6 +17,9 @@ const DEFAULT_ROUTING_API_BASE_URL = 'https://router.project-osrm.org';
 const DEFAULT_ROUTING_TIMEOUT_MS = 10_000;
 const DEFAULT_ROUTING_FAILURE_THRESHOLD = 5;
 const DEFAULT_ROUTING_RESET_WINDOW_MS = 30_000;
+const DEFAULT_OTEL_SERVICE_NAME = 'ecotrack-api';
+const DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4318';
+const DEFAULT_OTEL_TRACES_SAMPLER_RATIO = 1;
 
 const toPositiveInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -62,6 +65,14 @@ export type AppConfig = {
     level: string;
     format: 'json' | 'pretty';
   };
+  observability: {
+    tracing: {
+      enabled: boolean;
+      serviceName: string;
+      exporterOtlpEndpoint: string;
+      samplingRatio: number;
+    };
+  };
   routing: {
     baseUrl: string;
     circuitBreaker: {
@@ -88,6 +99,20 @@ export default (): AppConfig => ({
   logging: {
     level: normalizeLogLevel(process.env.LOG_LEVEL),
     format: normalizeLogFormat(process.env.LOG_FORMAT, process.env.NODE_ENV),
+  },
+  observability: {
+    tracing: {
+      enabled: process.env.OTEL_TRACING_ENABLED?.trim().toLowerCase() === 'true',
+      serviceName: process.env.OTEL_SERVICE_NAME?.trim() || DEFAULT_OTEL_SERVICE_NAME,
+      exporterOtlpEndpoint:
+        process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim() || DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT,
+      samplingRatio: (() => {
+        const parsed = Number(process.env.OTEL_TRACES_SAMPLER_RATIO);
+        return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+          ? parsed
+          : DEFAULT_OTEL_TRACES_SAMPLER_RATIO;
+      })(),
+    },
   },
   routing: {
     baseUrl: process.env.ROUTING_API_BASE_URL ?? DEFAULT_ROUTING_API_BASE_URL,

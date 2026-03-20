@@ -24,6 +24,8 @@ export type StagedMeasurementInput = {
   signalStrength: number | null;
   measurementQuality: string;
   idempotencyKey: string | null;
+  traceparent: string | null;
+  tracestate: string | null;
   receivedAt: Date;
   rawPayload: Record<string, unknown>;
 };
@@ -50,6 +52,8 @@ export type ClaimedIngestionEvent = {
   measurementQuality: string;
   processingStatus: IngestionProcessingStatus;
   attemptCount: number;
+  traceparent: string | null;
+  tracestate: string | null;
   rawPayload: Record<string, unknown>;
   receivedAt: Date;
 };
@@ -67,6 +71,8 @@ export type NormalizedMeasurementEvent = {
   signalStrength: number | null;
   measurementQuality: 'valid' | 'suspect';
   idempotencyKey: string | null;
+  traceparent: string | null;
+  tracestate: string | null;
   receivedAt: Date;
   rawPayload: Record<string, unknown>;
   validationSummary: Record<string, unknown>;

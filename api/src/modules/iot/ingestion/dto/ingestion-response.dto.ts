@@ -23,4 +23,12 @@ export class IngestionHealthDto {
     rejectedCount: number;
     oldestPendingAgeMs: number | null;
   };
+  consumer!: {
+    retryCount: number;
+    processingCount: number;
+    failedCount: number;
+    pendingCount: number;
+    processedLastHour: number;
+    oldestPendingAgeMs: number | null;
+  };
 }

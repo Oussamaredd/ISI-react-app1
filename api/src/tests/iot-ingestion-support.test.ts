@@ -66,6 +66,14 @@ describe('IoT ingestion support surface', () => {
         rejectedCount: 0,
         oldestPendingAgeMs: null,
       },
+      consumer: {
+        retryCount: 0,
+        processingCount: 1,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 12,
+        oldestPendingAgeMs: null,
+      },
     });
 
     expect(singleResponse).toEqual({
@@ -79,5 +87,6 @@ describe('IoT ingestion support surface', () => {
       batchId: 'batch-1',
     });
     expect(healthResponse.processing.processingCount).toBe(2);
+    expect(healthResponse.consumer.processingCount).toBe(1);
   });
 });
