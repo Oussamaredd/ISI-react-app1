@@ -140,9 +140,23 @@ Checklist:
 
 - [x] Add `iot.ingestion_events` for durable raw-event staging.
 - [x] Add `iot.validated_measurement_events` for worker-produced validated results.
+- [x] Add `iot.validated_event_deliveries` for durable downstream consumer delivery state.
 - [x] Keep the workflow monolith-compatible and Development-owned.
-- [x] Preserve current downstream writes to `iot.measurements` and container status while later consumers remain open.
+- [x] Replace the direct validated-event projection write with a dedicated downstream consumer that updates `iot.measurements` and container status idempotently.
 - [x] Avoid external Kafka, warehouse, or specialty-track schema additions.
+
+### Task 4B - Add Transactional Billing Storage
+
+Status summary:
+
+- `DONE`
+
+Checklist:
+
+- [x] Add the `billing` schema for Development-owned transactional billing data.
+- [x] Add billing account, rate-rule, run, invoice, invoice-line-item, and source-allocation tables.
+- [x] Keep the billing domain monolith-compatible and relationally transactional.
+- [x] Avoid specialty-track analytics, fraud, or external payment-platform scope in this phase.
 
 ### Task 5 - Additive Changes To Existing Tables
 

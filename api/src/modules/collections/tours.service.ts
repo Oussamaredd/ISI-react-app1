@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { withActiveSpan } from '../../observability/tracing.helpers.js';
+
 import type { CreateTourDto } from './dto/create-tour.dto.js';
 import type { ReportAnomalyDto } from './dto/report-anomaly.dto.js';
 import type { UpdateTourDto } from './dto/update-tour.dto.js';
@@ -142,7 +144,19 @@ export class ToursService implements ToursRouteCoordinationPort {
   }
 
   async validateStop(tourId: string, stopId: string, actorUserId: string, dto: ValidateTourStopDto) {
-    return this.repository.validateStop(tourId, stopId, actorUserId, dto);
+    return withActiveSpan(
+      'collections.tour.validate_stop',
+      () => this.repository.validateStop(tourId, stopId, actorUserId, dto),
+      {
+        attributes: {
+          'tour.id': tourId,
+          'tour.stop_id': stopId,
+          'tour.actor_user_id': actorUserId,
+          'tour.volume_liters': dto.volumeLiters,
+          'tour.has_qr_code': Boolean(dto.qrCode),
+        },
+      },
+    );
   }
 
   async listAnomalyTypes() {
@@ -168,30 +182,41 @@ export class ToursService implements ToursRouteCoordinationPort {
   }
 
   async rebuildRoute(tourId: string, actorUserId: string) {
-    const tour = await this.repository.getTourById(tourId);
-    if (!tour) {
-      throw new NotFoundException('Tour not found');
-    }
+    return withActiveSpan(
+      'collections.tour.rebuild_route',
+      async () => {
+        const tour = await this.repository.getTourById(tourId);
+        if (!tour) {
+          throw new NotFoundException('Tour not found');
+        }
 
-    const routeGeometry = await this.persistRouteForTour(tourId);
-    if (!routeGeometry) {
-      throw new BadRequestException(
-        'This tour does not have enough mapped stop coordinates to rebuild a route.',
-      );
-    }
+        const routeGeometry = await this.persistRouteForTour(tourId);
+        if (!routeGeometry) {
+          throw new BadRequestException(
+            'This tour does not have enough mapped stop coordinates to rebuild a route.',
+          );
+        }
 
-    await this.repository.recordRouteRebuildAuditLog(tourId, actorUserId, {
-      source: routeGeometry.source,
-      provider: routeGeometry.provider,
-      distanceMeters: this.toDistanceMeters(routeGeometry.distanceKm),
-      durationMinutes: routeGeometry.durationMinutes,
-      resolvedAt: routeGeometry.resolvedAt,
-    });
+        await this.repository.recordRouteRebuildAuditLog(tourId, actorUserId, {
+          source: routeGeometry.source,
+          provider: routeGeometry.provider,
+          distanceMeters: this.toDistanceMeters(routeGeometry.distanceKm),
+          durationMinutes: routeGeometry.durationMinutes,
+          resolvedAt: routeGeometry.resolvedAt,
+        });
 
-    return {
-      tourId,
-      routeGeometry,
-    };
+        return {
+          tourId,
+          routeGeometry,
+        };
+      },
+      {
+        attributes: {
+          'tour.id': tourId,
+          'tour.actor_user_id': actorUserId,
+        },
+      },
+    );
   }
 
   async ensureRouteForTour(tourId: string) {

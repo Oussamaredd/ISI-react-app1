@@ -999,14 +999,13 @@ Mapping rules used in this backlog:
 
 ### M2 - Dev Core Runtime Services
 
-Status: `PARTIAL`
+Status: `DONE`
 Lane: `Dev Core`
-Open task IDs: `M2.5`, `M2.7`, `M2.14`
-Completed task IDs: `M2.1`, `M2.2`, `M2.4`, `M2.6`, `M2.10`, `M2.11`, `M2.12`, `M2.13`
+Completed task IDs: `M2.1`, `M2.2`, `M2.4`, `M2.5`, `M2.6`, `M2.7`, `M2.10`, `M2.11`, `M2.12`, `M2.13`, `M2.14`
 
 Description: Deliver the remaining runtime service hardening inside the modular monolith through `api` and `infrastructure`.
 
-Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, Prometheus RED/USE metrics for HTTP/runtime visibility, a concurrent IoT ingestion worker with benchmark coverage, three automated negative injection-safety tests on real admin endpoints, a blocking Semgrep SAST CI gate, and a routing circuit breaker with fallback tests.
+Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, OpenTelemetry/Jaeger trace export with business-span coverage, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, Prometheus RED/USE metrics for HTTP/runtime visibility, a concurrent IoT ingestion worker with a dedicated validated-event consumer, transactional billing with invoice persistence, three automated negative injection-safety tests on real admin endpoints, a blocking Semgrep SAST CI gate, and a routing circuit breaker with fallback tests.
 
 Checklist:
 - [x] Complete the IoT ingestion controller, service, repository, health, and benchmark work.
@@ -1022,7 +1021,7 @@ Completed task IDs: `M3.3`
 
 Description: Replace broker-cluster assumptions with a monolith event pipeline based on outbox and inbox patterns, workers, and replay-safe controls.
 
-Progress: IoT ingestion now stages raw events in PostgreSQL, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events, and preserves the current measurement and container-status write path while later consumers remain open.
+Progress: IoT ingestion now stages raw events in PostgreSQL, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events, creates durable downstream delivery rows, and projects time-series measurements plus container-status updates through a dedicated idempotent consumer.
 
 Checklist:
 - [x] Implement DB inbox-style staging and validated-event storage where required for the IoT flow.
@@ -1152,14 +1151,14 @@ Checklist:
 
 ### M13 - Observability Stack
 
-Status: `TODO_MONOLITH`
+Status: `PARTIAL`
 Lane: `Dev Observability`
 Open task IDs: `M13.1` to `M13.8`
 
 Description: Implement the remaining observability stack for the monolith runtime, including tracing, APM, KPIs, alerting, probes, synthetic checks, error tracking, and SLO or SLI reporting.
 
 Checklist:
-- [ ] Add tracing and APM coverage.
+- [x] Add tracing and APM coverage.
 - [ ] Add business KPI and alerting visibility.
 - [ ] Add synthetic checks, error tracking, and SLO or SLI reporting.
 

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { DatabaseModule } from '../../../database/database.module.js';
+import { ValidatedConsumerModule } from '../validated-consumer/validated-consumer.module.js';
 
 import { IngestionController } from './ingestion.controller.js';
 import { IngestionProcessorService } from './ingestion.processor.js';
@@ -10,7 +11,7 @@ import { IngestionRepository } from './ingestion.repository.js';
 import { IngestionService } from './ingestion.service.js';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule],
+  imports: [ConfigModule, DatabaseModule, ValidatedConsumerModule],
   controllers: [IngestionController],
   providers: [
     IngestionRepository,

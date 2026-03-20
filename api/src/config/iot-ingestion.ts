@@ -4,6 +4,8 @@ const DEFAULT_IOT_QUEUE_CONCURRENCY = 50;
 const DEFAULT_IOT_QUEUE_BATCH_SIZE = 500;
 const DEFAULT_IOT_BACKPRESSURE_THRESHOLD = 100000;
 const DEFAULT_IOT_MAX_BATCH_SIZE = 1000;
+const DEFAULT_IOT_VALIDATED_CONSUMER_CONCURRENCY = 20;
+const DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE = 250;
 
 const iotIngestionSchema = z.object({
   IOT_INGESTION_ENABLED: z
@@ -46,6 +48,20 @@ const iotIngestionSchema = z.object({
       return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_MAX_BATCH_SIZE;
     })
     .default(String(DEFAULT_IOT_MAX_BATCH_SIZE)),
+  IOT_VALIDATED_CONSUMER_CONCURRENCY: z
+    .string()
+    .transform((val) => {
+      const parsed = Number(val);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_VALIDATED_CONSUMER_CONCURRENCY;
+    })
+    .default(String(DEFAULT_IOT_VALIDATED_CONSUMER_CONCURRENCY)),
+  IOT_VALIDATED_CONSUMER_BATCH_SIZE: z
+    .string()
+    .transform((val) => {
+      const parsed = Number(val);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE;
+    })
+    .default(String(DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE)),
   IOT_REDIS_URL: z.string().optional(),
 });
 
@@ -65,5 +81,7 @@ export const DEFAULT_IOT_CONFIG: IotIngestionConfig = {
   IOT_QUEUE_BATCH_SIZE: DEFAULT_IOT_QUEUE_BATCH_SIZE,
   IOT_BACKPRESSURE_THRESHOLD: DEFAULT_IOT_BACKPRESSURE_THRESHOLD,
   IOT_MAX_BATCH_SIZE: DEFAULT_IOT_MAX_BATCH_SIZE,
+  IOT_VALIDATED_CONSUMER_CONCURRENCY: DEFAULT_IOT_VALIDATED_CONSUMER_CONCURRENCY,
+  IOT_VALIDATED_CONSUMER_BATCH_SIZE: DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE,
   IOT_REDIS_URL: undefined,
 };

@@ -14,6 +14,8 @@ vi.mock('../config/iot-ingestion.js', () => ({
     IOT_QUEUE_BATCH_SIZE: 25,
     IOT_BACKPRESSURE_THRESHOLD: 100000,
     IOT_MAX_BATCH_SIZE: 1000,
+    IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
+    IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
   },
 }));
 
@@ -32,6 +34,8 @@ describe('IngestionService', () => {
     IOT_QUEUE_BATCH_SIZE: 25,
     IOT_BACKPRESSURE_THRESHOLD: 100000,
     IOT_MAX_BATCH_SIZE: 1000,
+    IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
+    IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
   };
 
   beforeEach(() => {
@@ -62,6 +66,16 @@ describe('IngestionService', () => {
     processorService = {
       processStagedEvent: vi.fn().mockResolvedValue({ status: 'validated' }),
     } as unknown as IngestionProcessorService;
+    const validatedConsumerService = {
+      getHealthSnapshot: vi.fn().mockResolvedValue({
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        completedLastHour: 0,
+        oldestPendingAgeMs: null,
+      }),
+    };
 
     service = new IngestionService(
       {
@@ -76,6 +90,7 @@ describe('IngestionService', () => {
       repository,
       queue,
       processorService,
+      validatedConsumerService as any,
     );
   });
 
@@ -189,6 +204,14 @@ describe('IngestionService', () => {
         rejectedCount: 3,
         oldestPendingAgeMs: 1200,
       },
+      consumer: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 0,
+        oldestPendingAgeMs: null,
+      },
     });
   });
 
@@ -210,6 +233,16 @@ describe('IngestionService', () => {
       repository,
       queue,
       processorService,
+      {
+        getHealthSnapshot: vi.fn().mockResolvedValue({
+          pendingCount: 0,
+          retryCount: 0,
+          processingCount: 0,
+          failedCount: 0,
+          completedLastHour: 0,
+          oldestPendingAgeMs: null,
+        }),
+      } as any,
     );
 
     const startProcessorSpy = vi.spyOn(queue, 'startProcessor');
@@ -229,6 +262,14 @@ describe('IngestionService', () => {
         processingCount: 0,
         failedCount: 0,
         rejectedCount: 0,
+        oldestPendingAgeMs: null,
+      },
+      consumer: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 0,
         oldestPendingAgeMs: null,
       },
     });

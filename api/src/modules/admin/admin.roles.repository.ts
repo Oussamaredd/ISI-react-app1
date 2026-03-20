@@ -24,6 +24,8 @@ const AVAILABLE_PERMISSIONS = [
   'ecotrack.gamification.read',
   'ecotrack.gamification.write',
   'ecotrack.analytics.read',
+  'ecotrack.billing.read',
+  'ecotrack.billing.write',
 ];
 const AVAILABLE_PERMISSIONS_SET = new Set(AVAILABLE_PERMISSIONS.map((permission) => permission.toLowerCase()));
 
@@ -51,6 +53,8 @@ const DEFAULT_ROLES = [
       'ecotrack.gamification.read',
       'ecotrack.gamification.write',
       'ecotrack.analytics.read',
+      'ecotrack.billing.read',
+      'ecotrack.billing.write',
     ],
   },
   {
@@ -76,6 +80,8 @@ const DEFAULT_ROLES = [
       'ecotrack.gamification.read',
       'ecotrack.gamification.write',
       'ecotrack.analytics.read',
+      'ecotrack.billing.read',
+      'ecotrack.billing.write',
     ],
   },
   {
@@ -92,6 +98,8 @@ const DEFAULT_ROLES = [
       'ecotrack.citizenReports.read',
       'ecotrack.gamification.read',
       'ecotrack.analytics.read',
+      'ecotrack.billing.read',
+      'ecotrack.billing.write',
     ],
   },
   {

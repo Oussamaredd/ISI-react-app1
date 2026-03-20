@@ -78,9 +78,10 @@ PUT /zones/:id
 `GET /api/containers` returns mapped container summaries used by mobile reporting, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
 `POST /api/iot/v1/measurements` accepts one validated sensor measurement and returns `202 Accepted` after the raw payload is staged in `iot.ingestion_events` for async worker processing.
 `POST /api/iot/v1/measurements/batch` accepts a validated non-empty measurement array up to `IOT_MAX_BATCH_SIZE` and returns `202 Accepted` with a batch identifier after staging each raw event.
-The monolith processing worker then performs schema validation, business-rule validation, normalization, enrichment with sensor and container context, validated-event storage, and the current downstream `iot.measurements` / container-status writes.
+The monolith processing worker then performs schema validation, business-rule validation, normalization, enrichment with sensor and container context, validated-event storage, and durable delivery creation in `iot.validated_event_deliveries`.
+The downstream validated-event consumer projects those durable deliveries into `iot.measurements` and container-status updates with idempotent retry handling.
 `deviceUid` plus `idempotencyKey` is treated as the staging deduplication key when `idempotencyKey` is provided.
-`GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, and worker processing counters.
+`GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, worker processing counters, and downstream consumer counters.
 When staged-event backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the ingestion endpoints respond with `503` until the backlog falls below the configured ceiling.
 
 ### Citizen Reporting and Engagement
@@ -181,6 +182,25 @@ GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and 
 `GET /api/planning/alerts` exposes persisted `alert_events`, and `POST /api/planning/alerts/:id/acknowledge` marks an alert as acknowledged.
 `GET /api/planning/notifications` returns recent persisted notifications with their delivery attempts.
 
+### Billing
+
+```text
+GET /billing/accounts
+POST /billing/accounts
+POST /billing/accounts/:billingAccountId/rate-rules
+POST /billing/runs/preview
+POST /billing/runs/finalize
+GET /billing/invoices
+GET /billing/invoices/:invoiceId
+```
+
+Billing notes:
+- Billing is currently Development-owned and zone-scoped only.
+- `POST /billing/runs/preview` computes billable collection-event and alert-event line items without persisting a billing run.
+- `POST /billing/runs/finalize` persists the billing run, invoice, invoice line items, and source allocations in one transaction; duplicate account-period finalization is rejected.
+- `GET /billing/invoices` and `GET /billing/invoices/:invoiceId` expose finalized invoice history and line items.
+- `ecotrack.billing.read` gates read endpoints and `ecotrack.billing.write` gates create/finalize endpoints.
+
 ### Analytics and Gamification
 
 ```text
@@ -277,7 +297,12 @@ Metrics notes:
 
 IoT ingestion health notes:
 - `GET /api/iot/v1/health` includes `processing.retryCount`, `processing.processingCount`, `processing.failedCount`, `processing.rejectedCount`, and `processing.oldestPendingAgeMs`.
+- `GET /api/iot/v1/health` also includes `consumer.retryCount`, `consumer.processingCount`, `consumer.failedCount`, `consumer.pendingCount`, `consumer.processedLastHour`, and `consumer.oldestPendingAgeMs`.
 - Health returns `healthy`, `degraded`, or `unhealthy` based on queue enablement, backlog pressure, and worker retry or failure state.
+
+Tracing notes:
+- When `OTEL_TRACING_ENABLED=true`, OpenTelemetry exports traces to the configured OTLP endpoint and Jaeger can display end-to-end spans for auth exchange, citizen reports, planning flows, tour validation, route rebuilds, and the IoT worker pipeline.
+- The IoT worker path persists W3C trace context on staging, validated events, and downstream delivery rows so the consumer continues the originating trace instead of emitting disconnected traces.
 
 ## OpenAPI References
 

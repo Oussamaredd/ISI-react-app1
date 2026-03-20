@@ -127,6 +127,13 @@
       "when": 1773930787122,
       "tag": "0017_optimal_shard",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1774022400000,
+      "tag": "0018_priority_observability_billing",
+      "breakpoints": true
     }
   ]
 }

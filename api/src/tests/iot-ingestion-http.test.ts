@@ -20,6 +20,8 @@ vi.mock('../config/iot-ingestion.js', () => ({
     IOT_QUEUE_BATCH_SIZE: 25,
     IOT_BACKPRESSURE_THRESHOLD: 100000,
     IOT_MAX_BATCH_SIZE: 1000,
+    IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
+    IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
   },
 }));
 
@@ -35,6 +37,8 @@ describe('IngestionController (HTTP)', () => {
     IOT_QUEUE_BATCH_SIZE: 25,
     IOT_BACKPRESSURE_THRESHOLD: 100000,
     IOT_MAX_BATCH_SIZE: 1000,
+    IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
+    IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
   };
 
   beforeEach(async () => {
@@ -64,6 +68,16 @@ describe('IngestionController (HTTP)', () => {
     const processorService = {
       processStagedEvent: vi.fn().mockResolvedValue({ status: 'validated' }),
     } as unknown as IngestionProcessorService;
+    const validatedConsumerService = {
+      getHealthSnapshot: vi.fn().mockResolvedValue({
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        completedLastHour: 0,
+        oldestPendingAgeMs: null,
+      }),
+    };
 
     service = new IngestionService(
       {
@@ -78,6 +92,7 @@ describe('IngestionController (HTTP)', () => {
       repository,
       queue,
       processorService,
+      validatedConsumerService as any,
     );
 
     service.onModuleInit();
@@ -150,6 +165,14 @@ describe('IngestionController (HTTP)', () => {
         processingCount: 0,
         failedCount: 0,
         rejectedCount: 0,
+        oldestPendingAgeMs: null,
+      },
+      consumer: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 0,
         oldestPendingAgeMs: null,
       },
     });

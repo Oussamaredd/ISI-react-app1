@@ -132,6 +132,25 @@ services:
     networks:
       - ticket-management-network
 
+  jaeger:
+    profiles: ["obs"]
+    image: jaegertracing/all-in-one:1.57
+    container_name: jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:16686"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ticket-management-network
+
   grafana:
     profiles: ["obs"]
     image: grafana/grafana:10.4.2
@@ -140,9 +159,13 @@ services:
     ports:
       - "3030:3000"
     volumes:
+      - ./tooling/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./tooling/monitoring/grafana/dashboards/dashboardproviders.yml:/etc/grafana/provisioning/dashboards/dashboardproviders.yml
+      - ./tooling/monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-storage:/var/lib/grafana
     depends_on:
       - prometheus
+      - jaeger
     networks:
       - ticket-management-network
 

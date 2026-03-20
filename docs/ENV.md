@@ -45,6 +45,12 @@ Neon managed baseline note:
 - `IOT_QUEUE_BATCH_SIZE` for the maximum measurements drained per worker batch and DB insert chunk
 - `IOT_BACKPRESSURE_THRESHOLD` for the queued-measurement ceiling that activates ingestion backpressure
 - `IOT_MAX_BATCH_SIZE` for the maximum measurements accepted in one HTTP batch request
+- `IOT_VALIDATED_CONSUMER_CONCURRENCY` for the downstream validated-event projection worker concurrency
+- `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per consumer batch
+- `OTEL_TRACING_ENABLED` to enable OpenTelemetry trace export from the API and worker flows
+- `OTEL_SERVICE_NAME` for the OpenTelemetry service name emitted by the API runtime
+- `OTEL_EXPORTER_OTLP_ENDPOINT` for the OTLP HTTP collector endpoint used by trace export
+- `OTEL_TRACES_SAMPLER_RATIO` for probabilistic trace sampling from `0` to `1`
 - `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
 - `EXPO_PUBLIC_API_BASE_URL` for the native mobile API base URL (must resolve to a device/simulator reachable API origin)
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
@@ -54,6 +60,8 @@ Agent tour mapping note:
 - `ROUTING_API_BASE_URL` is used by the API to build and persist `tour_routes` records; the frontend does not call the routing provider directly.
 - `ROUTING_TIMEOUT_MS`, `ROUTING_FAILURE_THRESHOLD`, and `ROUTING_RESET_WINDOW_MS` tune the tour-routing circuit breaker so agent-route rebuilds fall back cleanly during upstream routing outages.
 - `IOT_INGESTION_ENABLED`, `IOT_QUEUE_CONCURRENCY`, `IOT_QUEUE_BATCH_SIZE`, `IOT_BACKPRESSURE_THRESHOLD`, and `IOT_MAX_BATCH_SIZE` configure the monolith IoT ingestion worker used by `POST /api/iot/v1/measurements` and `POST /api/iot/v1/measurements/batch`.
+- `IOT_VALIDATED_CONSUMER_CONCURRENCY` and `IOT_VALIDATED_CONSUMER_BATCH_SIZE` configure the downstream validated-event consumer that projects durable validated events into `iot.measurements` and container state.
+- `OTEL_TRACING_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_TRACES_SAMPLER_RATIO` configure OpenTelemetry tracing for HTTP requests, auth exchange, citizen reporting, route planning, tour validation, and the IoT worker pipeline.
 - `APP_BASE_URL` for backend-to-frontend auth callback redirects (fallbacks: `APP_URL`, `CLIENT_ORIGIN`)
 - `JWT_ACCESS_SECRET` for local access-token signing (Bearer JWT)
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
@@ -85,6 +93,14 @@ Agent tour mapping note:
 - `LOG_LEVEL` for API logger level (`fatal|error|warn|info|debug|trace|silent`); in non-production, `debug|trace` also enables verbose Nest startup logs
 - `LOG_FORMAT` for API log output format (`json` or `pretty`); defaults to `pretty` outside production and `json` in production
 
+## Optional Observability Keys
+
+- `OTEL_TRACING_ENABLED` enables OpenTelemetry trace export (default `false`)
+- `OTEL_SERVICE_NAME` sets the service name reported to the collector (default `ecotrack-api`)
+- `OTEL_EXPORTER_OTLP_ENDPOINT` sets the collector base URL for OTLP HTTP export (default `http://localhost:4318` in local/native dev)
+- `OTEL_TRACES_SAMPLER_RATIO` sets probabilistic sampling between `0` and `1` (default `1`)
+- For Docker dev with the `obs` profile enabled, set `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318` and inspect traces in Jaeger at `http://localhost:16686`.
+
 ## Optional Routing Resilience Keys
 
 - `ROUTING_TIMEOUT_MS` for the maximum duration of one routing-provider call before it is treated as a failure (default `10000`)
@@ -98,6 +114,8 @@ Agent tour mapping note:
 - `IOT_QUEUE_BATCH_SIZE` for the maximum measurements processed per worker batch and DB write chunk (default `500`)
 - `IOT_BACKPRESSURE_THRESHOLD` for the queued-measurement ceiling that pauses new ingestion requests with `503` responses (default `100000`)
 - `IOT_MAX_BATCH_SIZE` for the maximum measurements allowed in one HTTP batch request (default `1000`)
+- `IOT_VALIDATED_CONSUMER_CONCURRENCY` for the number of downstream validated-event consumer workers (default `20`)
+- `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per worker batch (default `250`)
 
 ## Optional CI Quality Keys
 
@@ -152,6 +170,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
 - `Traceparent` is emitted on every response and reused from valid incoming W3C trace context when provided.
 - `Tracestate` is echoed on responses when the incoming request carries it.
 - Structured API logs emit `traceId` and `spanId` alongside request metadata.
+- The IoT worker path persists `traceparent` and `tracestate` on staged and validated events so the downstream consumer continues the originating request trace instead of starting an unrelated trace tree.
 
 ## Auth Exchange Flow
 
@@ -228,6 +247,7 @@ cp infrastructure/environments/.env.docker.example infrastructure/environments/.
 ```bash
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core config
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core up -d --build
+docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d jaeger grafana prometheus
 ```
 
 ## References

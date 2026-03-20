@@ -1,5 +1,6 @@
 import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
 
+import { withActiveSpan } from '../../observability/tracing.helpers.js';
 import { AuthService } from '../auth/auth.service.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import {
@@ -87,38 +88,63 @@ export class PlanningService {
   }
 
   async optimizeTour(dto: OptimizeTourDto) {
-    return this.repository.optimizeTour(dto);
+    return withActiveSpan(
+      'planning.optimize_tour',
+      () => this.repository.optimizeTour(dto),
+      {
+        attributes: {
+          'planning.zone_id': dto.zoneId,
+          'planning.manual_container_count': dto.manualContainerIds?.length ?? 0,
+          'planning.fill_threshold_percent': dto.fillThresholdPercent,
+        },
+      },
+    );
   }
 
   async createPlannedTour(dto: CreatePlannedTourDto, actorUserId: string) {
-    const tour = await this.repository.createPlannedTour(dto, actorUserId);
-    const tourId = this.readEntityId(tour);
-    if (tourId) {
-      await this.toursRouteCoordinator.ensureRouteForTour(tourId);
-    }
+    return withActiveSpan(
+      'planning.create_planned_tour',
+      async () => {
+        const tour = await this.repository.createPlannedTour(dto, actorUserId);
+        const tourId = this.readEntityId(tour);
+        if (tourId) {
+          await this.toursRouteCoordinator.ensureRouteForTour(tourId);
+        }
 
-    this.publishStreamEvent(
-      REALTIME_EVENT_NAMES.tourUpdated,
+        this.publishStreamEvent(
+          REALTIME_EVENT_NAMES.tourUpdated,
+          {
+            timestamp: new Date().toISOString(),
+            tour: {
+              id: this.readEntityId(tour),
+              status: this.readEntityField(tour, 'status'),
+              assignedAgentId:
+                this.readEntityField(tour, 'assignedAgentId') ??
+                this.readEntityField(tour, 'assigned_agent_id') ??
+                dto.assignedAgentId ??
+                null,
+              zoneId:
+                this.readEntityField(tour, 'zoneId') ??
+                this.readEntityField(tour, 'zone_id') ??
+                dto.zoneId,
+            },
+          },
+          true,
+        );
+
+        await this.publishDashboardSnapshotSafely('creating planned tour');
+
+        return tour;
+      },
       {
-        timestamp: new Date().toISOString(),
-        tour: {
-          id: this.readEntityId(tour),
-          status: this.readEntityField(tour, 'status'),
-          assignedAgentId:
-            this.readEntityField(tour, 'assignedAgentId') ??
-            this.readEntityField(tour, 'assigned_agent_id') ??
-            dto.assignedAgentId ??
-            null,
-          zoneId:
-            this.readEntityField(tour, 'zoneId') ?? this.readEntityField(tour, 'zone_id') ?? dto.zoneId,
+        attributes: {
+          'planning.zone_id': dto.zoneId,
+          'planning.assigned_agent_id': dto.assignedAgentId ?? 'unassigned',
+          'planning.stop_count': dto.orderedContainerIds.length,
+          'planning.actor_user_id': actorUserId,
         },
       },
-      true,
     );
-
-    await this.publishDashboardSnapshotSafely('creating planned tour');
-
-    return tour;
   }
 
   async getManagerDashboard() {
@@ -138,34 +164,46 @@ export class PlanningService {
   }
 
   async triggerEmergencyCollection(dto: TriggerEmergencyCollectionDto, actorUserId: string) {
-    const emergencyResult = await this.repository.triggerEmergencyCollection(dto, actorUserId);
-    const emergencyTourId = this.readEntityId(
-      typeof emergencyResult === 'object' && emergencyResult && 'emergencyTour' in emergencyResult
-        ? (emergencyResult as { emergencyTour?: unknown }).emergencyTour
-        : emergencyResult,
-    );
+    return withActiveSpan(
+      'planning.trigger_emergency_collection',
+      async () => {
+        const emergencyResult = await this.repository.triggerEmergencyCollection(dto, actorUserId);
+        const emergencyTourId = this.readEntityId(
+          typeof emergencyResult === 'object' && emergencyResult && 'emergencyTour' in emergencyResult
+            ? (emergencyResult as { emergencyTour?: unknown }).emergencyTour
+            : emergencyResult,
+        );
 
-    if (emergencyTourId) {
-      await this.toursRouteCoordinator.ensureRouteForTour(emergencyTourId);
-    }
+        if (emergencyTourId) {
+          await this.toursRouteCoordinator.ensureRouteForTour(emergencyTourId);
+        }
 
-    this.publishStreamEvent(
-      REALTIME_EVENT_NAMES.emergencyCreated,
+        this.publishStreamEvent(
+          REALTIME_EVENT_NAMES.emergencyCreated,
+          {
+            timestamp: new Date().toISOString(),
+            emergency: {
+              id: this.readEntityId(emergencyResult),
+              containerId: dto.containerId,
+              reason: dto.reason,
+              createdBy: actorUserId,
+            },
+          },
+          true,
+        );
+
+        await this.publishDashboardSnapshotSafely('triggering emergency collection');
+
+        return emergencyResult;
+      },
       {
-        timestamp: new Date().toISOString(),
-        emergency: {
-          id: this.readEntityId(emergencyResult),
-          containerId: dto.containerId,
-          reason: dto.reason,
-          createdBy: actorUserId,
+        attributes: {
+          'planning.container_id': dto.containerId,
+          'planning.assigned_agent_id': dto.assignedAgentId ?? 'unassigned',
+          'planning.actor_user_id': actorUserId,
         },
       },
-      true,
     );
-
-    await this.publishDashboardSnapshotSafely('triggering emergency collection');
-
-    return emergencyResult;
   }
 
   async generateReport(dto: GenerateReportDto, actorUserId: string) {

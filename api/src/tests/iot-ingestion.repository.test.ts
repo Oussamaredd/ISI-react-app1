@@ -15,6 +15,8 @@ const createMeasurementInput = (overrides: Record<string, unknown> = {}) => ({
   signalStrength: null,
   measurementQuality: 'valid',
   idempotencyKey: 'dup-key',
+  traceparent: null,
+  tracestate: null,
   receivedAt: new Date('2026-03-19T10:00:01.000Z'),
   rawPayload: {
     source: 'iot-ingestion-api',
@@ -35,6 +37,8 @@ const createNormalizedEvent = (overrides: Record<string, unknown> = {}) => ({
   signalStrength: -65,
   measurementQuality: 'valid',
   idempotencyKey: null,
+  traceparent: null,
+  tracestate: null,
   receivedAt: new Date('2026-03-19T10:00:01.000Z'),
   rawPayload: {
     source: 'iot-ingestion-api',
@@ -327,9 +331,8 @@ describe('IngestionRepository', () => {
     );
   });
 
-  it('persists validated events and preserves downstream measurement/container updates', async () => {
+  it('persists validated events and enqueues a downstream delivery', async () => {
     const sensorUpdateWhere = vi.fn().mockResolvedValue(undefined);
-    const containerUpdateWhere = vi.fn().mockResolvedValue(undefined);
     const ingestionUpdateWhere = vi.fn().mockResolvedValue(undefined);
 
     const tx = {
@@ -382,7 +385,7 @@ describe('IngestionRepository', () => {
           values: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([
               {
-                id: 101,
+                id: 'delivery-1',
               },
             ]),
           }),
@@ -392,11 +395,6 @@ describe('IngestionRepository', () => {
         .mockReturnValueOnce({
           set: vi.fn().mockReturnValue({
             where: sensorUpdateWhere,
-          }),
-        })
-        .mockReturnValueOnce({
-          set: vi.fn().mockReturnValue({
-            where: containerUpdateWhere,
           }),
         })
         .mockReturnValueOnce({
@@ -414,10 +412,9 @@ describe('IngestionRepository', () => {
     const result = await repository.persistValidatedEvent(createNormalizedEvent() as any);
 
     expect(result).toEqual({
-      measurementId: 101,
       validatedEventId: 'validated-1',
+      deliveryIds: ['delivery-1'],
     });
-    expect(containerUpdateWhere).toHaveBeenCalledTimes(1);
     expect(ingestionUpdateWhere).toHaveBeenCalledTimes(1);
   });
 
@@ -653,24 +650,5 @@ describe('IngestionRepository', () => {
       warningThreshold: 80,
       criticalThreshold: 95,
     });
-  });
-
-  it.each([
-    {
-      fillLevelPercent: 30,
-      expectedStatus: 'available',
-    },
-    {
-      fillLevelPercent: 85,
-      expectedStatus: 'attention_required',
-    },
-    {
-      fillLevelPercent: 96,
-      expectedStatus: 'critical',
-    },
-  ])('maps fill level $fillLevelPercent to $expectedStatus', ({ fillLevelPercent, expectedStatus }) => {
-    const repository = new IngestionRepository({} as any);
-
-    expect((repository as any).resolveOperationalStatus(fillLevelPercent, 80, 95)).toBe(expectedStatus);
   });
 });

@@ -1,13 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import dotenv from 'dotenv';
 import type { Request } from 'express';
 import { LoggerModule } from 'nestjs-pino';
 import type { Options as PinoHttpOptions } from 'pino-http';
@@ -15,6 +11,7 @@ import type { Options as PinoHttpOptions } from 'pino-http';
 import { getRequestIdFromRequest } from './common/request-id.js';
 import { resolveTraceContext } from './common/trace-context.js';
 import configuration from './config/configuration.js';
+import { apiEnvFilePath, ensureApiEnvLoaded } from './config/env-file.js';
 import {
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
   DEFAULT_RATE_LIMIT_WINDOW_MS,
@@ -24,6 +21,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
 import { CitizenModule } from './modules/citizen/citizen.module.js';
 import { ToursModule } from './modules/collections/tours.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
@@ -59,13 +57,7 @@ const SENSITIVE_LOG_PATHS = [
   'res.headers["set-cookie"]',
 ];
 
-const workspaceDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const rootEnvPath = path.resolve(workspaceDir, '..', '.env');
-const envFilePath = fs.existsSync(rootEnvPath) ? rootEnvPath : undefined;
-
-if (envFilePath) {
-  dotenv.config({ path: envFilePath });
-}
+ensureApiEnvLoaded();
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
   const parsed = Number(value);
@@ -179,7 +171,7 @@ const getTraceFields = (request: Request) => {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath,
+      envFilePath: apiEnvFilePath,
       load: [configuration],
       validate: validateEnv,
     }),
@@ -284,6 +276,7 @@ const getTraceFields = (request: Request) => {
     AuthModule,
     HealthModule,
     TicketsModule,
+    BillingModule,
     DashboardModule,
     AdminModule,
     MonitoringModule,

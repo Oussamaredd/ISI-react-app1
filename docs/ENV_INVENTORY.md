@@ -75,6 +75,8 @@ Visibility legend:
 | IOT_MAX_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_QUEUE_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_QUEUE_CONCURRENCY | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_VALIDATED_CONSUMER_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_VALIDATED_CONSUMER_CONCURRENCY | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_ACCESS_EXPIRES_IN | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_ACCESS_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_EXPIRES_IN | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -86,6 +88,10 @@ Visibility legend:
 | MAX_FILE_SIZE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | METRICS_PORT | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | NODE_ENV | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| OTEL_EXPORTER_OTLP_ENDPOINT | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| OTEL_SERVICE_NAME | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| OTEL_TRACES_SAMPLER_RATIO | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| OTEL_TRACING_ENABLED | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | PORT | api | private | local-dev, deploy-dev, deploy-staging, deploy-prod | removed API runtime alias (normalize to `API_PORT`) |
 | POSTGRES_DB | infrastructure | private | docker-dev | canonical compose DB container setting |
 | POSTGRES_PASSWORD | infrastructure | private | docker-dev | canonical compose DB container setting |

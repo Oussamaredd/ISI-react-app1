@@ -1,22 +1,14 @@
 import 'reflect-metadata';
-import { Logger as NestLogger, ValidationPipe, type LogLevel } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { json, urlencoded } from 'express';
-import helmet from 'helmet';
-import { Logger } from 'nestjs-pino';
 
-import { AppModule } from './app.module.js';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
-import { requestIdMiddleware } from './common/middleware/request-id.middleware.js';
-import { traceContextMiddleware } from './common/middleware/trace-context.middleware.js';
-import { resolveCorsOrigins } from './config/cors-origins.js';
-import { HealthService } from './modules/health/health.service.js';
-import { attachRootHealthRoutes } from './modules/health/root-health-routes.js';
+import type { LogLevel } from '@nestjs/common';
+
+import { ensureApiEnvLoaded } from './config/env-file.js';
+import { startTelemetry } from './observability/tracing.js';
 
 const resolveNestLoggerOption = (
   nodeEnv: string | undefined,
   logLevel: string | undefined,
-): LogLevel[] | false => {
+): false | LogLevel[] => {
   const normalizedEnv = nodeEnv?.trim().toLowerCase() ?? 'development';
   const normalizedLevel = logLevel?.trim().toLowerCase();
 
@@ -32,66 +24,135 @@ const resolveNestLoggerOption = (
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-    logger: resolveNestLoggerOption(process.env.NODE_ENV, process.env.LOG_LEVEL),
-  });
+  ensureApiEnvLoaded();
+  const telemetry = await startTelemetry(process.env);
+  let telemetryShutdownRegistered = false;
+  let telemetryShutdownStarted = false;
 
-  app.useLogger(app.get(Logger));
-  app.flushLogs();
+  const shutdownTelemetry = async () => {
+    if (telemetryShutdownStarted) {
+      return;
+    }
 
-  app.use(traceContextMiddleware);
-  app.use(requestIdMiddleware);
-  app.use(json({ limit: '5mb' }));
-  app.use(
-    urlencoded({
-      extended: true,
-      limit: '5mb',
-    }),
-  );
-  app.use(
-    helmet({
-      // CSP is disabled because this process serves API responses, not browser-rendered HTML.
-      contentSecurityPolicy: false,
-    }),
-  );
+    telemetryShutdownStarted = true;
+    await telemetry.shutdown();
+  };
 
-  app.setGlobalPrefix('api');
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-  app.useGlobalFilters(new HttpExceptionFilter());
+  try {
+    const [
+      nestCommon,
+      nestCore,
+      expressModule,
+      helmetModule,
+      nestPino,
+      appModuleImport,
+      exceptionFilterImport,
+      requestIdMiddlewareImport,
+      traceContextMiddlewareImport,
+      corsOriginsImport,
+      healthServiceImport,
+      rootHealthRoutesImport,
+    ] = await Promise.all([
+      import('@nestjs/common'),
+      import('@nestjs/core'),
+      import('express'),
+      import('helmet'),
+      import('nestjs-pino'),
+      import('./app.module.js'),
+      import('./common/filters/http-exception.filter.js'),
+      import('./common/middleware/request-id.middleware.js'),
+      import('./common/middleware/trace-context.middleware.js'),
+      import('./config/cors-origins.js'),
+      import('./modules/health/health.service.js'),
+      import('./modules/health/root-health-routes.js'),
+    ]);
 
-  const port = Number(process.env.API_PORT ?? 3001);
-  const host = process.env.API_HOST ?? '0.0.0.0';
-  const origins = resolveCorsOrigins({
-    corsOrigins: process.env.CORS_ORIGINS,
-    clientOrigin: process.env.CLIENT_ORIGIN,
-    nodeEnv: process.env.NODE_ENV,
-  });
+    const { Logger: NestLogger, ValidationPipe } = nestCommon;
+    const { NestFactory } = nestCore;
+    const { json, urlencoded } = expressModule;
+    const helmet = helmetModule.default;
+    const { Logger } = nestPino;
+    const { AppModule } = appModuleImport;
+    const { HttpExceptionFilter } = exceptionFilterImport;
+    const { requestIdMiddleware } = requestIdMiddlewareImport;
+    const { traceContextMiddleware } = traceContextMiddlewareImport;
+    const { resolveCorsOrigins } = corsOriginsImport;
+    const { HealthService } = healthServiceImport;
+    const { attachRootHealthRoutes } = rootHealthRoutesImport;
 
-  app.enableCors({
-    origin: origins,
-    credentials: true,
-  });
+    const app = await NestFactory.create(AppModule, {
+      bufferLogs: true,
+      logger: resolveNestLoggerOption(process.env.NODE_ENV, process.env.LOG_LEVEL),
+    });
 
-  const expressApp = app.getHttpAdapter().getInstance();
-  // Trust the immediate frontend edge proxy so client IP/proto metadata stays accurate.
-  expressApp.set('trust proxy', 1);
-  attachRootHealthRoutes(expressApp, app.get(HealthService));
+    app.useLogger(app.get(Logger));
+    app.flushLogs();
 
-  await app.listen(port, host);
-  const displayHost = host === '0.0.0.0' ? 'localhost' : host;
-  NestLogger.log(`API listening on http://${displayHost}:${port}/api`, 'Bootstrap');
+    app.use(traceContextMiddleware);
+    app.use(requestIdMiddleware);
+    app.use(json({ limit: '5mb' }));
+    app.use(
+      urlencoded({
+        extended: true,
+        limit: '5mb',
+      }),
+    );
+    app.use(
+      helmet({
+        contentSecurityPolicy: false,
+      }),
+    );
+
+    app.setGlobalPrefix('api');
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
+    app.useGlobalFilters(new HttpExceptionFilter());
+
+    const port = Number(process.env.API_PORT ?? 3001);
+    const host = process.env.API_HOST ?? '0.0.0.0';
+    const origins = resolveCorsOrigins({
+      corsOrigins: process.env.CORS_ORIGINS,
+      clientOrigin: process.env.CLIENT_ORIGIN,
+      nodeEnv: process.env.NODE_ENV,
+    });
+
+    app.enableCors({
+      origin: origins,
+      credentials: true,
+    });
+
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.set('trust proxy', 1);
+    attachRootHealthRoutes(expressApp, app.get(HealthService));
+
+    if (!telemetryShutdownRegistered) {
+      telemetryShutdownRegistered = true;
+      process.once('SIGINT', () => {
+        void shutdownTelemetry();
+      });
+      process.once('SIGTERM', () => {
+        void shutdownTelemetry();
+      });
+      process.once('beforeExit', () => {
+        void shutdownTelemetry();
+      });
+    }
+
+    await app.listen(port, host);
+    const displayHost = host === '0.0.0.0' ? 'localhost' : host;
+    NestLogger.log(`API listening on http://${displayHost}:${port}/api`, 'Bootstrap');
+  } catch (error) {
+    await shutdownTelemetry();
+    throw error;
+  }
 }
 
 bootstrap().catch((error) => {
-  // Ensure startup failures are visible even when Nest logger levels are reduced.
   console.error('[Bootstrap] Failed to bootstrap API', error);
-  NestLogger.error('Failed to bootstrap API', error instanceof Error ? error.stack : String(error));
   process.exitCode = 1;
 });
