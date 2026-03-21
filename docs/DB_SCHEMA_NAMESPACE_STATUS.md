@@ -1,6 +1,6 @@
 # DB Schema Namespace Rollout Status
 
-Last updated: 2026-03-19
+Last updated: 2026-03-21
 
 ## Purpose
 
@@ -135,6 +135,10 @@ Checklist:
 Status summary:
 
 - `DONE`
+
+Implementation note:
+
+- `database/migrations/0019_strong_bulldozer.sql` uses `NULLIF("routing_key", '') IS NULL` in its validated-event backfill predicate so empty-string normalization stays PostgreSQL-correct and does not trip Sonar's null-comparison rule on the migration SQL.
 
 Checklist:
 

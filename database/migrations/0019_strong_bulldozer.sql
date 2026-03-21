@@ -24,7 +24,7 @@ UPDATE "iot"."validated_measurement_events"
 SET
   "routing_key" = "device_uid",
   "producer_transaction_id" = "source_event_id"
-WHERE "routing_key" = '' OR "producer_transaction_id" IS NULL;
+WHERE NULLIF("routing_key", '') IS NULL OR "producer_transaction_id" IS NULL;
 --> statement-breakpoint
 UPDATE "iot"."validated_event_deliveries" AS deliveries
 SET
