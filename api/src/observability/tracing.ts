@@ -21,6 +21,16 @@ const DEFAULT_SAMPLING_RATIO = 1;
 
 const parseBoolean = (value: string | undefined) => value?.trim().toLowerCase() === 'true';
 
+export const trimTrailingSlashes = (value: string) => {
+  let endIndex = value.length;
+
+  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 47) {
+    endIndex -= 1;
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex);
+};
+
 const parseSamplingRatio = (value: string | undefined) => {
   if (!value) {
     return DEFAULT_SAMPLING_RATIO;
@@ -30,13 +40,13 @@ const parseSamplingRatio = (value: string | undefined) => {
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : DEFAULT_SAMPLING_RATIO;
 };
 
-const normalizeOtlpEndpoint = (value: string | undefined) => {
+export const normalizeOtlpEndpoint = (value: string | undefined) => {
   const normalized = value?.trim();
   if (!normalized) {
     return DEFAULT_EXPORTER_URL;
   }
 
-  return normalized.endsWith('/v1/traces') ? normalized : `${normalized.replace(/\/+$/, '')}/v1/traces`;
+  return normalized.endsWith('/v1/traces') ? normalized : `${trimTrailingSlashes(normalized)}/v1/traces`;
 };
 
 export async function startTelemetry(
