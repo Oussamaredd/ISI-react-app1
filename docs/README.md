@@ -31,7 +31,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `.github/workflows/CI.yaml` - canonical `CI Integration` workflow for PR/main with path-aware lanes, a required Semgrep SAST job for `api/src` and `database/schema`, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
 - `.github/workflows/docs-pages.yml` - docs-only GitHub Pages publishing workflow using `docs/` as the site source
 - SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
-- Sonar coverage gate currently excludes `database/**`, selected frontend auth/bootstrap routing files, and selected users/auth service files pending dedicated coverage instrumentation alignment in the broader app/api source set
+- Sonar coverage gate currently excludes `database/**`, selected frontend auth/bootstrap routing files, and selected API passive/bootstrap files (for example DTO/module/type-only wiring and a small set of tracing/worker bootstrap files) pending dedicated coverage instrumentation alignment in the broader app/api source set
 - Preflight now enforces `node infrastructure/scripts/validate-sonar-coverage-alignment.mjs`, which compares the full branch diff against workspace Vitest coverage includes and `sonar.coverage.exclusions`; each changed `app/src/**` or `api/src/**` source file must live in exactly one lane
 - `.github/workflows/CD.yml` - canonical `CD Deployment` workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
