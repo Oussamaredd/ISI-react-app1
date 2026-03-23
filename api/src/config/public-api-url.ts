@@ -2,8 +2,18 @@ export const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
 
 const ALLOWED_PUBLIC_API_PATHS = new Set(['/', '/api']);
 
+export const trimTrailingSlashes = (value: string) => {
+  let endIndex = value.length;
+
+  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 47) {
+    endIndex -= 1;
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex);
+};
+
 const normalizePathname = (pathname: string) => {
-  const trimmed = pathname.replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(pathname);
   return trimmed.length > 0 ? trimmed : '/';
 };
 

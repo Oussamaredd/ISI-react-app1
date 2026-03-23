@@ -4,6 +4,16 @@ import { clearAccessToken, withAuthHeader } from './authToken';
 const FALLBACK_API_BASE = 'http://localhost:3001';
 const EDGE_PROXY_ENABLED = import.meta.env.VITE_USE_EDGE_API_PROXY === 'true';
 
+const trimTrailingSlashes = (value: string) => {
+  let endIndex = value.length;
+
+  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 47) {
+    endIndex -= 1;
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex);
+};
+
 const resolveDefaultApiBase = () => {
   if (typeof window !== 'undefined' && typeof window.location?.origin === 'string') {
     const origin = window.location.origin.trim();
@@ -35,7 +45,7 @@ const resolveApiBaseFromRuntime = () => {
 const rawApiBase =
   resolveApiBaseFromRuntime();
 
-const trimmedApiBase = rawApiBase.replace(/\/+$/, '');
+const trimmedApiBase = trimTrailingSlashes(rawApiBase);
 export const API_BASE = trimmedApiBase.endsWith('/api')
   ? trimmedApiBase.slice(0, -4)
   : trimmedApiBase;

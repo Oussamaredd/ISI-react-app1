@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 import { resolveCorsOrigins } from './cors-origins.js';
-import { buildOAuthCallbackUrlFromApiBase, OAUTH_CALLBACK_PATH, parsePublicApiBaseUrl } from './public-api-url.js';
+import {
+  buildOAuthCallbackUrlFromApiBase,
+  OAUTH_CALLBACK_PATH,
+  parsePublicApiBaseUrl,
+  trimTrailingSlashes,
+} from './public-api-url.js';
 const GOOGLE_WEB_CLIENT_ID_PATTERN = /^\d+-[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
 
 const envSchema = z.object({
@@ -72,7 +77,7 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
 
     if (result.data.API_BASE_URL) {
       const expectedCallbackUrl = buildOAuthCallbackUrlFromApiBase(result.data.API_BASE_URL, 'API_BASE_URL');
-      if (callbackUrl.replace(/\/+$/, '') !== expectedCallbackUrl) {
+      if (trimTrailingSlashes(callbackUrl) !== expectedCallbackUrl) {
         throw new Error(
           `GOOGLE_CALLBACK_URL must match the callback derived from API_BASE_URL (${expectedCallbackUrl}).`,
         );

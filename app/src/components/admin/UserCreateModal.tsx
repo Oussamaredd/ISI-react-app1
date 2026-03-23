@@ -16,7 +16,23 @@ type UserCreateModalProps = {
   roles: Role[];
 };
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isPlausibleEmailAddress = (value: string) => {
+  if (value.includes(' ')) {
+    return false;
+  }
+
+  const atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@') || atIndex === value.length - 1) {
+    return false;
+  }
+
+  const domain = value.slice(atIndex + 1);
+  if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
+    return false;
+  }
+
+  return domain.split('.').every((segment) => segment.length > 0);
+};
 
 export function UserCreateModal({ onClose, roles }: UserCreateModalProps) {
   const [email, setEmail] = useState('');
@@ -59,7 +75,7 @@ export function UserCreateModal({ onClose, roles }: UserCreateModalProps) {
       return 'Email is required.';
     }
 
-    if (!EMAIL_REGEX.test(normalizedEmail)) {
+    if (!isPlausibleEmailAddress(normalizedEmail)) {
       return 'Please enter a valid email address.';
     }
 
@@ -101,7 +117,12 @@ export function UserCreateModal({ onClose, roles }: UserCreateModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="ops-admin-modal-overlay" onClick={handleClose} />
+        <button
+          type="button"
+          className="ops-admin-modal-overlay"
+          onClick={handleClose}
+          aria-label="Close add user dialog"
+        />
 
         <div className="ops-admin-modal-panel inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform">
           <div className="flex items-center justify-between mb-6">

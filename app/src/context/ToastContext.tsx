@@ -56,6 +56,14 @@ const TOAST_ICONS: Record<ToastType, string> = {
   info: "i",
 };
 
+let nextToastId = 1;
+
+const getNextToastId = () => {
+  const id = nextToastId;
+  nextToastId += 1;
+  return id;
+};
+
 export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
 
@@ -83,7 +91,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   const addToast = React.useCallback(
     (message: ToastInput, type: ToastType = "info", options: ToastOptions = {}) => {
       const resolved = resolveToastInput(message, type, options);
-      const id = Date.now() + Math.random();
+      const id = getNextToastId();
       const toast: Toast = {
         id,
         message: resolved.message,

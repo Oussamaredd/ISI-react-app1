@@ -45,6 +45,53 @@ const toFiniteNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const isWhitespaceCharacter = (charCode: number) =>
+  charCode === 9 ||
+  charCode === 10 ||
+  charCode === 11 ||
+  charCode === 12 ||
+  charCode === 13 ||
+  charCode === 32;
+
+const removeWhitespace = (value: string) => {
+  let compact = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const charCode = value.charCodeAt(index);
+    if (!isWhitespaceCharacter(charCode)) {
+      compact += value[index];
+    }
+  }
+
+  return compact;
+};
+
+const trimBase64Padding = (value: string) => {
+  let endIndex = value.length;
+
+  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 61) {
+    endIndex -= 1;
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex);
+};
+
+const isBase64Alphabet = (value: string) => {
+  for (let index = 0; index < value.length; index += 1) {
+    const charCode = value.charCodeAt(index);
+    const isUppercaseLetter = charCode >= 65 && charCode <= 90;
+    const isLowercaseLetter = charCode >= 97 && charCode <= 122;
+    const isDigit = charCode >= 48 && charCode <= 57;
+    const isSeparator = charCode === 43 || charCode === 47 || charCode === 61;
+
+    if (!isUppercaseLetter && !isLowercaseLetter && !isDigit && !isSeparator) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const normalizeReportFormat = (rawFormat?: string | null): ReportFormat => {
   const normalized = rawFormat?.trim().toLowerCase();
 
@@ -179,12 +226,12 @@ export const createReportArtifact = (payload: ReportPayload, rawFormat?: string 
 };
 
 const isLikelyBase64 = (value: string) => {
-  const compact = value.replace(/\s+/g, '');
+  const compact = removeWhitespace(value);
   if (compact.length === 0 || compact.length % 4 !== 0) {
     return false;
   }
 
-  if (!/^[A-Za-z0-9+/=]+$/.test(compact)) {
+  if (!isBase64Alphabet(compact)) {
     return false;
   }
 
@@ -193,14 +240,14 @@ const isLikelyBase64 = (value: string) => {
     return false;
   }
 
-  const normalizedInput = compact.replace(/=+$/, '');
-  const normalizedDecoded = decoded.toString('base64').replace(/=+$/, '');
+  const normalizedInput = trimBase64Padding(compact);
+  const normalizedDecoded = trimBase64Padding(decoded.toString('base64'));
   return normalizedDecoded === normalizedInput;
 };
 
 export const decodeStoredReportContent = (storedContent: string): Buffer => {
   if (isLikelyBase64(storedContent)) {
-    return Buffer.from(storedContent.replace(/\s+/g, ''), 'base64');
+    return Buffer.from(removeWhitespace(storedContent), 'base64');
   }
 
   return Buffer.from(storedContent, 'utf8');

@@ -76,6 +76,7 @@ Agent tour mapping note:
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - `GOOGLE_CALLBACK_URL` for OAuth redirect callback (required in deploy templates; canonical path is fixed and should match `API_BASE_URL + /api/auth/google/callback`)
+- `API_BASE_URL` accepts only absolute `http`/`https` URLs with no credentials, query string, or hash, and its path must normalize to `/` or `/api`.
 
 ## Port Contract
 
@@ -158,6 +159,7 @@ Agent tour mapping note:
 
 - `CORS_ORIGINS` is canonical for HTTP + WebSocket browser-origin allowlisting.
 - Values must be comma-separated origin roots (`scheme://host[:port]`) with no path/query/fragment.
+- Trailing slashes are normalized away, but any remaining path segment still fails validation.
 - Wildcard (`*`) is forbidden because API/WS CORS is credentialed.
 - Deploy workflows (`deploy-dev`, `deploy-staging`, `deploy-prod`) should use HTTPS origins only (localhost exceptions are for controlled local checks).
 - `APP_URL` should use one of the origins listed in `CORS_ORIGINS`.
@@ -258,6 +260,7 @@ Removed runtime aliases (no longer read by API runtime):
 - Canonical docker-dev callback URI: `http://localhost:3000/api/auth/google/callback`
 - Callback path is fixed: `/api/auth/google/callback`
 - When `API_BASE_URL` is set, `GOOGLE_CALLBACK_URL` should match the callback derived from that public API base exactly.
+- Trailing slashes on `GOOGLE_CALLBACK_URL` are ignored for the equality check, but mismatched host, port, protocol, or callback path are still rejected.
 - `GOOGLE_CLIENT_ID` must use Google Web OAuth client format (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - When `API_BASE_URL` is not set and `GOOGLE_CALLBACK_URL` points at localhost, its port must match `API_PORT`
 - Google Console authorized redirect URI must exactly match runtime callback URI

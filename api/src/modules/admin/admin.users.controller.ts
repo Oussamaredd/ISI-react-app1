@@ -17,6 +17,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import bcryptPkg from 'bcryptjs';
+import { isEmail } from 'class-validator';
 import type { Request } from 'express';
 
 import { USERS_ADMIN_PORT, type UsersAdminPort } from '../users/users.contract.js';
@@ -30,8 +31,6 @@ import { getRequestMetadata } from './admin.utils.js';
 const { hash } = bcryptPkg as unknown as {
   hash: (plaintext: string, rounds: number) => Promise<string>;
 };
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const parseOptionalBooleanQuery = (value: string | undefined, fieldName: string) => {
   if (value == null) {
@@ -143,7 +142,7 @@ export class AdminUsersController {
       const rawIsActive = body.isActive ?? body.is_active;
       const isActive = typeof rawIsActive === 'boolean' ? rawIsActive : true;
 
-      if (!email || !EMAIL_PATTERN.test(email)) {
+      if (!email || !isEmail(email)) {
         throw new BadRequestException('A valid email is required.');
       }
 

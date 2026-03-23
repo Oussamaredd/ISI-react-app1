@@ -23,6 +23,7 @@ Special case:
 
 - `/#<section-id>` remains accessible for authenticated users to support route+scroll links back to marketing sections.
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
+- `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
 
 ## Product routes (`/app/*`)
 
@@ -36,7 +37,7 @@ Special case:
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, assignment, and manual persisted-route rebuild for the last created tour |
 | `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
-| `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history |
+| `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address |
 | `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views |
 | `/app/tickets` | `Navigate` redirect | Compatibility redirect to `/app/support#simple` |
 | `/app/tickets/advanced` | `Navigate` redirect | Compatibility redirect to `/app/support#advanced` |

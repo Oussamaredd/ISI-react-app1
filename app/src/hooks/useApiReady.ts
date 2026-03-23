@@ -10,8 +10,18 @@ export type ApiReachability = 'checking' | 'ready' | 'degraded';
 const getRetryDelayMs = (attemptCount: number) =>
   API_READY_RETRY_DELAYS_MS[attemptCount] ?? API_READY_STEADY_RETRY_DELAY_MS;
 
+const trimTrailingSlashes = (value: string) => {
+  let endIndex = value.length;
+
+  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 47) {
+    endIndex -= 1;
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex);
+};
+
 const normalizeApiBaseUrl = (apiBaseUrl: string) => {
-  const trimmed = apiBaseUrl.trim().replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(apiBaseUrl.trim());
   if (!trimmed) {
     if (typeof window !== 'undefined' && typeof window.location?.origin === 'string') {
       const origin = window.location.origin.trim();

@@ -1,5 +1,9 @@
 import { resolveCorsOrigins } from '../../config/cors-origins.js';
-import { buildOAuthCallbackUrlFromApiBase, OAUTH_CALLBACK_PATH } from '../../config/public-api-url.js';
+import {
+  buildOAuthCallbackUrlFromApiBase,
+  OAUTH_CALLBACK_PATH,
+  trimTrailingSlashes,
+} from '../../config/public-api-url.js';
 
 const DEFAULT_APP_BASE_URL = 'http://localhost:5173';
 const DEFAULT_API_PORT = 3001;
@@ -39,7 +43,7 @@ export const getGoogleCallbackUrl = () => {
         `Invalid GOOGLE_CALLBACK_URL path: expected '${OAUTH_CALLBACK_PATH}', got '${parsed.pathname}'.`,
       );
     }
-    return explicitCallback.replace(/\/+$/, '');
+    return trimTrailingSlashes(explicitCallback);
   }
 
   const apiBase = getEnvValue('API_BASE_URL');
@@ -103,7 +107,7 @@ export const buildRedirectUrl = (
   authenticated: boolean,
   options?: { errorMessage?: string },
 ) => {
-  const base = getClientRedirectBase().replace(/\/+$/, '');
+  const base = trimTrailingSlashes(getClientRedirectBase());
   const params = new URLSearchParams();
   params.set('auth', authenticated ? 'true' : 'false');
 
@@ -120,7 +124,7 @@ export const buildAuthCallbackUrl = (params: {
   errorMessage?: string;
   nextPath?: string;
 }) => {
-  const base = getAppBaseUrl().replace(/\/+$/, '');
+  const base = trimTrailingSlashes(getAppBaseUrl());
   const query = new URLSearchParams();
 
   if (params.code) {

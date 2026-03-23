@@ -1,3 +1,5 @@
+import { trimTrailingSlashes } from './public-api-url.js';
+
 const DEFAULT_CORS_ORIGIN = 'http://localhost:5173';
 
 type ResolveCorsOriginsOptions = {
@@ -9,7 +11,7 @@ type ResolveCorsOriginsOptions = {
 const normalizeNodeEnv = (nodeEnv?: string) => nodeEnv?.trim().toLowerCase() ?? 'development';
 
 const normalizePathname = (pathname: string) => {
-  const trimmed = pathname.replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(pathname);
   return trimmed.length > 0 ? trimmed : '/';
 };
 

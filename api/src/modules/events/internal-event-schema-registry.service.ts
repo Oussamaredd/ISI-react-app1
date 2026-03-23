@@ -33,7 +33,7 @@ export class InternalEventSchemaRegistryService {
   }
 
   listSubjects() {
-    return [...this.schemasBySubject.keys()].sort();
+    return [...this.schemasBySubject.keys()].sort((left, right) => left.localeCompare(right));
   }
 
   listSchemas(subject: InternalEventSchemaSubject) {

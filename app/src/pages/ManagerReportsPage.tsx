@@ -24,7 +24,23 @@ const HISTORY_FILTERS = [
   { id: "emailOnly", label: "Email delivery" },
   { id: "attention", label: "Needs attention" },
 ] as const;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isPlausibleEmailAddress = (value: string) => {
+  if (value.includes(" ")) {
+    return false;
+  }
+
+  const atIndex = value.indexOf("@");
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf("@") || atIndex === value.length - 1) {
+    return false;
+  }
+
+  const domain = value.slice(atIndex + 1);
+  if (!domain.includes(".") || domain.startsWith(".") || domain.endsWith(".")) {
+    return false;
+  }
+
+  return domain.split(".").every((segment) => segment.length > 0);
+};
 const DISPLAY_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -308,7 +324,7 @@ export default function ManagerReportsPage() {
       const normalizedEmail = emailTo.trim().toLowerCase();
       if (!normalizedEmail) {
         errors.emailTo = "Enter a recipient email address.";
-      } else if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      } else if (!isPlausibleEmailAddress(normalizedEmail)) {
         errors.emailTo = "Enter a valid email address.";
       }
     }

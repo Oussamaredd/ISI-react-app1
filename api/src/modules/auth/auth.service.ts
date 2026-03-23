@@ -6,6 +6,7 @@ import type { Request } from 'express';
 import jwtPkg from 'jsonwebtoken';
 import type { Secret, SignOptions } from 'jsonwebtoken';
 
+import { trimTrailingSlashes } from '../../config/public-api-url.js';
 import { withActiveSpan } from '../../observability/tracing.helpers.js';
 import { UsersService } from '../users/users.service.js';
 
@@ -49,6 +50,11 @@ const WEBSOCKET_SESSION_TOKEN_TYPE = 'planning_ws_session';
 const EXCHANGE_CODE_BYTES = 24;
 const EXCHANGE_CODE_TTL_MS = 60_000;
 const STREAM_SESSION_TTL_MS = 120_000;
+
+const stripQueryString = (value: string) => {
+  const queryIndex = value.indexOf('?');
+  return queryIndex === -1 ? value : value.slice(0, queryIndex);
+};
 
 type LocalAuthSuccess = {
   accessToken: string;
@@ -834,9 +840,9 @@ export class AuthService {
       return { statusCode: 200 as const, body: { success: true } };
     }
 
-    const baseUrl = this.getAuthRedirectUrl(false).replace(/\?.*$/, '');
+    const baseUrl = stripQueryString(this.getAuthRedirectUrl(false));
     const separator = baseUrl.includes('?') ? '&' : '?';
-    const devResetUrl = `${baseUrl.replace(/\/+$/, '')}/reset-password${separator}token=${encodeURIComponent(rawToken)}`;
+    const devResetUrl = `${trimTrailingSlashes(baseUrl)}/reset-password${separator}token=${encodeURIComponent(rawToken)}`;
     return { statusCode: 200 as const, body: { devResetUrl } };
   }
 

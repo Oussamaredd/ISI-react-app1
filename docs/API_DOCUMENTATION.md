@@ -281,6 +281,7 @@ POST /admin/event-workflow/replay/deliveries
 Admin query validation notes:
 - `GET /admin/users`: `is_active` must be `"true"` or `"false"` when provided.
 - `GET /admin/users`: `created_from` and `created_to` must be valid date values.
+- `POST /admin/users`: `email` must be a syntactically valid single-address email value before the API will hash the password and create the account.
 - `GET /admin/audit-logs`: `date_from` and `date_to` must be valid date values.
 - `GET /admin/audit-logs`: date-only `date_to` queries are treated as inclusive through `23:59:59.999`.
 - `POST /admin/roles` and `PUT /admin/roles/:id` accept only known platform permission identifiers.

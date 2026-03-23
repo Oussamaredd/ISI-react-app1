@@ -17,7 +17,7 @@ const inFlightExchangeByCode = new Map<string, Promise<AuthSuccess>>();
 
 const requestExchangeSession = (code: string) => {
   const existingRequest = inFlightExchangeByCode.get(code);
-  if (existingRequest) {
+  if (existingRequest !== undefined) {
     return existingRequest;
   }
 
