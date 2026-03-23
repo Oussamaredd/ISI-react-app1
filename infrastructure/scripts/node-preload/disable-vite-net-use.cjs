@@ -1,16 +1,85 @@
 const childProcess = require('node:child_process');
 const { EventEmitter } = require('node:events');
-const { syncBuiltinESMExports } = require('node:module');
+const { createRequire, syncBuiltinESMExports } = require('node:module');
 const path = require('node:path');
 
 const NET_USE_COMMAND = 'net use';
 const shouldPatch =
   process.platform === 'win32' && process.env.ECOTRACK_ALLOW_VITE_NET_USE !== '1';
+const repoRoot = path.resolve(__dirname, '..', '..', '..');
 const ESBUILD_PACKAGE_BY_ARCH = {
   arm64: '@esbuild/win32-arm64',
   ia32: '@esbuild/win32-ia32',
   x64: '@esbuild/win32-x64',
 };
+const WORKSPACE_NAMES = ['app', 'mobile', 'api', 'database'];
+
+function detectWorkspaceHint() {
+  const argvEntry = process.argv[1] || '';
+  const cwd = process.cwd();
+
+  for (const workspaceName of WORKSPACE_NAMES) {
+    const marker = `${path.sep}${workspaceName}${path.sep}`;
+    if (
+      argvEntry.includes(marker) ||
+      cwd === path.join(repoRoot, workspaceName) ||
+      cwd.includes(marker)
+    ) {
+      return workspaceName;
+    }
+  }
+
+  return null;
+}
+
+function createResolutionRequires() {
+  const packageJsonPaths = [];
+  const workspaceHint = detectWorkspaceHint();
+
+  const pushPackageJson = (packageJsonPath) => {
+    if (!packageJsonPaths.includes(packageJsonPath)) {
+      packageJsonPaths.push(packageJsonPath);
+    }
+  };
+
+  if (workspaceHint) {
+    pushPackageJson(path.join(repoRoot, workspaceHint, 'package.json'));
+  }
+
+  pushPackageJson(path.join(repoRoot, 'package.json'));
+
+  for (const workspaceName of WORKSPACE_NAMES) {
+    pushPackageJson(path.join(repoRoot, workspaceName, 'package.json'));
+  }
+
+  return packageJsonPaths.map((packageJsonPath) => createRequire(packageJsonPath));
+}
+
+const resolutionRequires = createResolutionRequires();
+
+function resolveFromCandidates(specifier) {
+  for (const requireFromCandidate of resolutionRequires) {
+    try {
+      return requireFromCandidate.resolve(specifier);
+    } catch {
+      // Keep trying the next candidate.
+    }
+  }
+
+  throw new Error(`Unable to resolve ${specifier} from the repo root or any workspace.`);
+}
+
+function requireFromCandidates(specifier) {
+  for (const requireFromCandidate of resolutionRequires) {
+    try {
+      return requireFromCandidate(specifier);
+    } catch {
+      // Keep trying the next candidate.
+    }
+  }
+
+  throw new Error(`Unable to require ${specifier} from the repo root or any workspace.`);
+}
 
 function detectSpawnRestriction() {
   const esbuildPackageName = ESBUILD_PACKAGE_BY_ARCH[process.arch];
@@ -19,8 +88,8 @@ function detectSpawnRestriction() {
   }
 
   try {
-    const esbuildVersion = require('esbuild').version;
-    const esbuildPackageRoot = path.dirname(require.resolve(`${esbuildPackageName}/package.json`));
+    const esbuildVersion = requireFromCandidates('esbuild').version;
+    const esbuildPackageRoot = path.dirname(resolveFromCandidates(`${esbuildPackageName}/package.json`));
     const esbuildBinaryPath = path.join(esbuildPackageRoot, 'esbuild.exe');
     const child = childProcess.spawn(esbuildBinaryPath, [`--service=${esbuildVersion}`, '--ping'], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -38,7 +107,7 @@ function detectSpawnRestriction() {
 if (detectSpawnRestriction()) {
   process.env.ECOTRACK_VITE_SPAWN_RESTRICTED = '1';
 
-  const esbuild = require('esbuild');
+  const esbuild = requireFromCandidates('esbuild');
   if (!esbuild.__ecotrackTransformPatched && typeof esbuild.transformSync === 'function') {
     const originalTransformSync = esbuild.transformSync.bind(esbuild);
     esbuild.transform = async (input, options) => originalTransformSync(input, options);

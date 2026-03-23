@@ -22,10 +22,17 @@ For the current runtime port and origin contract, use `docs/ENV.md` as the activ
 ## Local/Native Setup
 
 ```bash
+npm ci --include=dev
 cp .env.example .env
 cp app/.env.example app/.env.local
 cp mobile/.env.example mobile/.env.local
 ```
+
+Workspace install contract:
+
+- Run installs from the repo root only and keep `package-lock.json` at the repo root only.
+- Do not use `npm install --prefix <workspace>` or create workspace-local `package-lock.json` files.
+- If the local toolchain drifts on Windows, stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, then run `npm run validate:workspace-toolchain`.
 
 Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
@@ -121,6 +128,7 @@ Deprecated aliases:
 
 ```bash
 npm run validate-env:all
+npm run validate:workspace-toolchain
 npm run dev:doctor
 npm run dev:mobile
 npm run infra:health

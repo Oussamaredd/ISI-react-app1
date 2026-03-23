@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others-on-fail -n api,types \"cross-env NODE_ENV=development tsx watch --tsconfig tsconfig.json src/main.ts\" \"tsc -p tsconfig.build.json -w --noEmit\"",
-    "build": "npx --yes -p typescript@5.7.2 -p @types/node@22.10.1 tsc -p tsconfig.build.json",
-    "start": "cross-env NODE_ENV=production node dist/main.js",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
     "start:debug": "npm run build && cross-env NODE_ENV=development node dist/main.js",
-    "lint": "npx --yes -p eslint@9.14.0 eslint .",
-    "typecheck": "npx --yes -p typescript@5.7.2 -p @types/node@22.10.1 tsc --noEmit",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "node ./scripts/run-vitest.mjs --configLoader runner --run",
     "test:coverage": "node ./scripts/run-vitest.mjs --configLoader runner --coverage"
   },

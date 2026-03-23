@@ -16,7 +16,7 @@ Use this checklist to confirm the current EcoTrack implementation is demo-ready.
 1. Install dependencies:
 
 ```bash
-npm install
+npm ci --include=dev
 ```
 
 2. Prepare local env files:

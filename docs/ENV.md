@@ -228,6 +228,12 @@ Removed runtime aliases (no longer read by API runtime):
 2. Canonical workflow env file
 3. `.example` templates (never runtime inputs)
 
+## Workspace Install Contract
+
+- The monorepo install contract is one committed root `package-lock.json` plus repo-root `npm ci --include=dev`.
+- Do not use `npm install --prefix <workspace>` or create workspace-local `package-lock.json` files.
+- Use `npm run validate:workspace-toolchain` before cross-layer build, lint, test, or Render verification when local dependency drift is suspected.
+
 ## Frontend/Backend Separation
 
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
@@ -265,6 +271,7 @@ Removed runtime aliases (no longer read by API runtime):
 ## Local Setup
 
 ```bash
+npm ci --include=dev
 cp .env.example .env
 cp app/.env.example app/.env.local
 cp mobile/.env.example mobile/.env.local

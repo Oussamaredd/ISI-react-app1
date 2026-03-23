@@ -116,8 +116,9 @@ Validated implementation notes:
 - The Render runtime binds through `API_PORT=10000`.
 - The readiness health check path is `/api/health/ready`.
 - On the Render free plan, database migrations are a manual release step: run `npm run db:migrate --workspace=ecotrack-database` against the direct Neon `DATABASE_URL` before deploys that include schema changes.
-- `npm ci --omit=dev` is outside the supported Render contract for this monorepo; the canonical build path installs the required workspace toolchain and verifies that API runtime dependencies such as `express` resolve from `api/dist/main.js` before deploy completes.
+- `npm ci --omit=dev` is outside the supported Render contract for this monorepo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, and verifies that API runtime dependencies such as `express` resolve from `api/dist/main.js` before deploy completes.
 - Local Windows verification should use `npm run deploy:render:verify-local` if native-module file locks make `npm ci` fail with `EPERM`.
+- Local recovery uses one repo-root install contract only: stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, run `npm run validate:workspace-toolchain`, then rerun Render verification. Do not use workspace-local `--prefix` installs.
 - Baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Task 6.
 
 ## Task 5 - Provision Cloudflare Pages For The Frontend

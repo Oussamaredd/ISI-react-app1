@@ -40,7 +40,7 @@ Precedence: process env > canonical workflow env file > `.example` templates.
 ## Quick Start (Local/Native)
 
 ```bash
-npm install
+npm ci --include=dev
 cp .env.example .env
 cp app/.env.example app/.env.local
 cp mobile/.env.example mobile/.env.local
@@ -71,7 +71,13 @@ Mobile API base helpers:
 - `npm run mobile:env:ios-simulator` writes the iOS simulator API URL into `mobile/.env.local`.
 - `npm run mobile:start:tunnel` starts Expo with a tunnelled JS bundle while still requiring a reachable backend API origin.
 
-`npm install` now runs a `prepare` step that configures the repository-local git hooks path to `.githooks`, so doc-sync checks run automatically on `git commit`. If hooks ever need to be reinstalled manually, run `npm run hooks:install`.
+Repo-root installs run a `prepare` step that configures the repository-local git hooks path to `.githooks`, so doc-sync checks run automatically on `git commit`. If hooks ever need to be reinstalled manually, run `npm run hooks:install`.
+
+Install contract:
+
+- Use the committed root lockfile with repo-root installs only.
+- Do not recover the monorepo with `npm install --prefix <workspace>` or ad-hoc workspace-local installs.
+- If the local toolchain drifts, stop active Node/Vite/Expo processes and rerun `npm ci --include=dev` from the repo root.
 
 ## Port Contract
 
@@ -200,6 +206,7 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run lint --workspace=ecotrack-mobile` - mobile workspace lint
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
 - `npm run validate-env:all` - validate all committed env templates for local, Docker, and deploy workflows
+- `npm run validate:workspace-toolchain` - verify the root lockfile and required workspace tool packages before cross-layer build/lint/test flows
 - `npm run validate-doc-sync` - validate that behavior, env, schema, workflow, and release changes update the required docs in the same change set
 - `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
 - `npm run ci:quality:k6` - run the default K6 smoke scenario pack against the direct API

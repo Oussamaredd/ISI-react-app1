@@ -1,9 +1,57 @@
+import fs from "node:fs";
 import ts from "typescript";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const require = createRequire(import.meta.url);
-const { version } = require("../../../node_modules/esbuild/package.json");
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(currentDir, "..", "..", "..");
+const workspaceNames = ["app", "mobile", "api", "database"];
+const workspaceHint = workspaceNames.find((workspaceName) => {
+  const marker = `${path.sep}${workspaceName}${path.sep}`;
+  const argvEntry = process.argv[1] ?? "";
+  const cwd = process.cwd();
+
+  return (
+    argvEntry.includes(marker) ||
+    cwd === path.join(repoRoot, workspaceName) ||
+    cwd.includes(marker)
+  );
+});
+const resolutionPackageJsonPaths = [];
+const pushResolutionCandidate = (packageJsonPath) => {
+  if (fs.existsSync(packageJsonPath) && !resolutionPackageJsonPaths.includes(packageJsonPath)) {
+    resolutionPackageJsonPaths.push(packageJsonPath);
+  }
+};
+
+if (workspaceHint) {
+  pushResolutionCandidate(path.join(repoRoot, workspaceHint, "package.json"));
+}
+
+pushResolutionCandidate(path.join(repoRoot, "package.json"));
+
+for (const workspaceName of workspaceNames) {
+  pushResolutionCandidate(path.join(repoRoot, workspaceName, "package.json"));
+}
+
+const resolutionRequires = resolutionPackageJsonPaths.map((packageJsonPath) => createRequire(packageJsonPath));
+
+const resolvePackageJson = (specifier) => {
+  for (const requireFromCandidate of resolutionRequires) {
+    try {
+      const resolvedPath = requireFromCandidate.resolve(specifier);
+      return requireFromCandidate(resolvedPath);
+    } catch {
+      // Keep trying the next candidate.
+    }
+  }
+
+  return null;
+};
+
+const esbuildPackageJson = resolvePackageJson("esbuild/package.json");
+const version = esbuildPackageJson?.version ?? "0.0.0-fallback";
 const tsconfigOptionsCache = new Map();
 
 function normalizeSourcefile(sourcefile) {

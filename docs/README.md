@@ -64,7 +64,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 
 Install:
 ```bash
-npm install
+npm ci --include=dev
 ```
 
 Develop:
@@ -95,6 +95,7 @@ npm run test:e2e
 npm run test:coverage
 npm run test:coverage:api
 npm run validate-env:all
+npm run validate:workspace-toolchain
 node infrastructure/scripts/validate-sonar-coverage-alignment.mjs
 npm run validate-specs
 node infrastructure/scripts/ci/generate-cdc-summary.mjs
@@ -114,7 +115,7 @@ npm run build --workspace=ecotrack-app
 Frontend bundle budgets are enforced during `ecotrack-app` builds via `app/scripts/check-bundle-size.mjs`.
 Use `ECOTRACK_ENTRY_CHUNK_BUDGET_KB` and `ECOTRACK_LOGO_BUDGET_KB` to override default limits in CI or local runs.
 UI theme contract checks are enforced during `ecotrack-app` lint via `app/scripts/validate-theme-contract.mjs`.
-Doc-sync checks are enforced via `npm run validate-doc-sync` and the managed `.githooks/pre-commit` hook that `npm install` configures automatically through the root `prepare` script.
+Doc-sync checks are enforced via `npm run validate-doc-sync` and the managed `.githooks/pre-commit` hook that repo-root installs configure automatically through the root `prepare` script.
 
 Database:
 ```bash

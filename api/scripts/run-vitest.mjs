@@ -1,6 +1,5 @@
 import "../../infrastructure/scripts/node-preload/disable-vite-net-use.cjs";
 
-import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { registerHooks } from "node:module";
@@ -46,22 +45,7 @@ const vitestEntrypoints = [
 const vitestEntrypoint = vitestEntrypoints.find((candidate) => fs.existsSync(candidate));
 
 if (!vitestEntrypoint) {
-  const exitCode = await new Promise((resolve) => {
-    const child = spawn(
-      "npx",
-      ["-y", "vitest@4.0.17", ...process.argv.slice(2)],
-      {
-        stdio: "inherit",
-        shell: true,
-      },
-    );
-
-    child.on("close", (code) => {
-      resolve(code ?? 1);
-    });
-  });
-
-  process.exit(exitCode);
+  throw new Error("Unable to locate Vitest entrypoint in api or root node_modules.");
 }
 
 await import(pathToFileURL(vitestEntrypoint).href);

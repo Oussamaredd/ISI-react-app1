@@ -161,8 +161,9 @@ Completion definition:
   - readiness health check uses `/api/health/ready`
   - baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Phase 6 work
   - because the service is on the Render free plan, migrations run manually via `npm run db:migrate --workspace=ecotrack-database` against the direct Neon connection string before deploys that include schema changes
-  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical build path installs the workspace dev toolchain, compiles `database` and `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
+  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, compiles `database` and `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
   - local Windows verification should use `npm run deploy:render:verify-local` instead of the full Render build command if `npm ci` is blocked by file-locking or antivirus on native modules under `node_modules`
+  - local recovery uses one repo-root install contract only: stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, run `npm run validate:workspace-toolchain`, then rerun Render verification; do not use workspace-local `--prefix` installs
 
 Checklist:
 
