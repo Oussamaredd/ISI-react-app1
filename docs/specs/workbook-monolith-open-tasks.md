@@ -794,6 +794,7 @@ Status legend:
 
 - Lane default: `Dev Platform`
 - Status default: `DEFERRED_PLATFORM`
+- Current module outcome: the monolith deployment baseline is complete through a split of `DONE`, `DEFERRED_PLATFORM`, and `HANDOFF_SECURITY` items instead of leaving all workbook wording open.
 
 ### M9.1 - Pipeline CI/CD Multi-Environnements GitLab CI
 
@@ -801,7 +802,8 @@ Status legend:
 - Workbook expected outcome: Fichier .gitlab-ci.yml complet 7 stages; Configuration SonarQube quality gates project; Scripts déploiement Kubernetes Kustomize overlays (dev/staging/prod); Configuration GitLab CI/CD Variables secrets; Integration Slack notifications webhooks; Documentation pipeline architecture flowchart; Runbook operational troubleshooting pipeline failures; Dashboard GitLab CI analytics metrics
 - Monolith adaptation: Implement through existing monorepo CI/CD and release automation for a single deployable monolith artifact.
 - Lane: `Dev Platform`
-- Status: `DEFERRED_PLATFORM`
+- Status: `DONE`
+- Completion note: Delivered through `.github/workflows/CI.yaml`, `.github/workflows/CD.yml`, `infrastructure/scripts/ci/pre-deploy-validation.sh`, and the repo-owned release scripts under `infrastructure/scripts/ci/`. The current baseline now includes pre-deploy validation, environment-scoped deploy jobs (`deploy-dev`, `deploy-staging`, `deploy-prod`), optional migration execution, deploy-hook automation, hosted smoke checks, release evidence artifacts, and a documented rollback-by-ref procedure for the single deployable monolith.
 
 ### M9.2 - Infrastructure as Code Terraform AWS/Azure Multi-Cloud
 
@@ -810,6 +812,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
+- Deferral note: Current scope keeps Terraform as a future-compatible interface only. The repo now documents that compatibility point in `infrastructure/tooling/terraform/README.md`, while the supported deployment path remains Cloudflare Pages + Render + Neon instead of repo-managed multi-cloud infrastructure.
 
 ### M9.3 - Configuration Management Ansible Automation
 
@@ -818,6 +821,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
+- Deferral note: The current hosted monolith baseline does not use repo-managed server fleets, so Ansible automation is intentionally deferred until configuration-management ownership is needed beyond Cloudflare, Render, and Neon.
 
 ### M9.4 - Docker Multi-Stage Builds Optimisation Images
 
@@ -825,7 +829,8 @@ Status legend:
 - Workbook expected outcome: Dockerfiles multi-stage optimisés (backend Node.js, frontend React, workers Python); Configuration .dockerignore; Docker Compose development environment; Scripts build CI/CD BuildKit cache; Documentation best practices images optimization; Scan vulnerabilities Trivy rapports; Registry configuration garbage collection; Métriques Prometheus monitoring images size/vulnerabilities
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Platform`
-- Status: `DEFERRED_PLATFORM`
+- Status: `DONE`
+- Completion note: Delivered through `infrastructure/Dockerfile`, `app/Dockerfile`, `.github/workflows/CI.yaml`, and the Docker Compose baseline. The repo now uses multi-stage builds, OCI image labels, API non-root runtime ownership, frontend release-version injection, CI cache-aware image builds, and Trivy scans for the built API and frontend images.
 
 ### M9.5 - Kubernetes Production Deployment Manifests
 
@@ -834,6 +839,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
+- Deferral note: Kubernetes manifests are not part of the current supported deployment path. EcoTrack currently deploys as one hosted monolith via Cloudflare Pages + Render + Neon, and cluster rollout remains an explicit later platform expansion.
 
 ### M9.6 - Helm Charts Packaging Applications Kubernetes
 
@@ -842,6 +848,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
+- Deferral note: Helm packaging is deferred with the Kubernetes deployment path. The current monolith baseline does not ship or promote Helm charts because the supported release path is environment-gated hosted deployment, not cluster package management.
 
 ### M9.7 - GitOps ArgoCD Continuous Deployment Kubernetes
 
@@ -850,6 +857,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
+- Deferral note: GitOps via ArgoCD is deferred until EcoTrack adopts a Kubernetes-based deployment target. The current release baseline uses GitHub Actions environments, provider deploy hooks, and hosted smoke checks instead of cluster reconciliation.
 
 ### M9.8 - Secrets Management HashiCorp Vault Integration
 
@@ -857,7 +865,8 @@ Status legend:
 - Workbook expected outcome: Vault cluster 3 nodes HA installation; Configuration secrets engines (kv-v2, database, transit, pki); Policies HCL access control teams; Kubernetes integration Vault Agent sidecar; External Secrets Operator CRDs; Audit logging Elasticsearch forwarding; Monitoring Prometheus metrics; Documentation secrets lifecycle guide; Runbook operational procedures unseal recovery
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
-- Status: `DEFERRED_PLATFORM`
+- Status: `HANDOFF_SECURITY`
+- Handoff note: The current Development-owned baseline uses provider secret managers and committed env templates only. HashiCorp Vault rollout, policy design, secret rotation governance, and audit controls remain a Security handoff while the Development-only scope freeze is active.
 
 ### M9.9 - Monitoring Production Prometheus + Grafana
 
@@ -865,7 +874,8 @@ Status legend:
 - Workbook expected outcome: Prometheus Operator installation Kubernetes; ServiceMonitors auto-discovery applications; Exporters déployés (node-exporter, postgres-exporter, kafka-exporter); Dashboards Grafana (overview, applications, infrastructure); Queries PromQL métriques business/technique; PrometheusRules alerting (high CPU, memory, latency, errors); Alertmanager configuration routing PagerDuty/Slack; Documentation runbook alerts troubleshooting
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Platform`
-- Status: `DEFERRED_PLATFORM`
+- Status: `DONE`
+- Completion note: Delivered through `api/src/modules/monitoring/**`, `infrastructure/tooling/monitoring/**`, `infrastructure/docker-compose.yml`, `docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md`, and the deployment/env documentation updates. The supported path now includes API Prometheus metrics, Grafana dashboards, Alertmanager routing, release smoke validation, documented ownership, and explicit retention/tuning expectations for the single deployable monolith.
 
 ### M9.10 - Logging Centralisé ELK Stack (Elasticsearch + Logstash + Kibana)
 
@@ -873,7 +883,8 @@ Status legend:
 - Workbook expected outcome: Elasticsearch cluster 3 nodes installation; Logstash pipelines configuration (input/filter/output); Filebeat shippers déployés applications Kubernetes; Kibana dashboards logs (overview, errors, applications); Index templates patterns mappings; ILM policies retention lifecycle; Security X-Pack authentication RBAC; Monitoring Stack Monitoring cluster health; Documentation architecture logging flow; Runbook operational troubleshooting
 - Monolith adaptation: Adapt CI/CD and ops work to single-deployable monolith delivery before multi-cluster evolution.
 - Lane: `Dev Platform`
-- Status: `DEFERRED_PLATFORM`
+- Status: `DONE`
+- Completion note: Delivered through structured API log shipping in `api/src/app.module.ts` and `api/src/observability/logstash-stream.ts`, the `obs` ELK stack in `infrastructure/docker-compose.yml`, and the updated `docs/ELK.md` production-path guidance. The baseline now defines searchable release-aware logs, supported shipping configuration, retention expectations, validation steps, and ownership for centralized logs on the monolith path.
 
 ## Module M10
 
@@ -936,7 +947,8 @@ Status legend:
 - Workbook expected outcome: Profiling Clinic.js doctor/flame/bubbleprof/heapprofiler rapports HTML; Flamegraphs CPU hotspots analyse fonctions consommant CPU; Async tracing bubbleprof délais détection bottlenecks I/O; Memory profiling heap snapshots leaks détection; Node.js --inspect Chrome DevTools profiling; Métriques Prometheus monitoring production CPU/memory/eventloop; Optimisations identifiées documentation (queries, serialization, pooling); Benchmarks autocannon avant/après gains mesurés; Guide profiling troubleshooting performance
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through repo-owned `perf:clinic*` and `perf:autocannon` commands, artifact output directories under `tmp/performance`, extended runtime metrics, and the canonical performance operations runbook.
 
 ### M11.2 - Stratégie Caching Multi-Niveaux Redis + CDN
 
@@ -944,7 +956,8 @@ Status legend:
 - Workbook expected outcome: L1 cache mémoire node-cache application; L2 cache Redis stratégies (Cache-Aside, Write-Behind, Refresh-Ahead); Configuration Redis cluster sharding; Cache patterns invalidation (TTL, event-based, tag-based, versioning); Redis data structures (String, Hash, List, Set, Sorted Set); CDN configuration CloudFlare assets statiques cache TTL purge; HTTP headers Cache-Control ETag Last-Modified; Cache busting hashed filenames service workers; Monitoring Redis hit rate memory metrics; Benchmarks performance avant/après gains 10x throughput; Documentation guide caching strategies
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with the API `CacheService`, optional Redis L2 backend, response-cache decorators and headers on dashboard/planning/citizen/analytics reads, invalidation hooks on write paths, Pages and Nginx cache policies, and Cloudflare purge automation.
 
 ### M11.3 - Optimisation Requêtes PostgreSQL Indexes EXPLAIN ANALYZE
 
@@ -952,7 +965,8 @@ Status legend:
 - Workbook expected outcome: Analyse pg_stat_statements requêtes lentes identification; EXPLAIN ANALYZE execution plans interprétation; Indexes création stratégies (B-tree, GIN, GiST, BRIN, composite, partial); Query optimization techniques (SELECT colonnes, prepared statements, JOIN order, EXISTS vs IN); Partitioning tables range/list/hash; Vacuum maintenance autovacuum tuning; PgBouncer connection pooling configuration; Monitoring pg_stat_* views cache hit ratio slow queries; Prometheus postgres_exporter métriques; Benchmarks pgbench TPS avant/après 6x gains; Documentation guide optimisation PostgreSQL
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the read-path index migration `0024_hard_bullseye.sql`, SQL baseline files for `pg_stat_statements` and `EXPLAIN ANALYZE`, the `perf:pgbench` command, and schema-status documentation for the new indexes.
 
 ### M11.4 - Compression Responses Gzip Brotli HTTP/2
 
@@ -960,7 +974,8 @@ Status legend:
 - Workbook expected outcome: Middleware compression Express gzip configuration level threshold; Middleware shrink-ray Brotli quality tuning; Nginx configuration HTTP/2 gzip brotli TLS 1.3; Server push Link headers http2_push directives; Preload hints HTML <link rel preload prefetch dns-prefetch preconnect>; CDN CloudFlare configuration compression HTTP/2; Monitoring Content-Encoding compression ratio bandwidth savings; Benchmarks avant/après gzip/brotli/HTTP/2 gains latency bandwidth; Documentation guide compression best practices
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with API gzip compression and SSE-aware filtering, Docker Nginx asset caching plus gzip configuration, Cloudflare Pages header policies, and documented HTTP/2/Brotli ownership at the HAProxy and Cloudflare edge layers.
 
 ### M11.5 - Lazy Loading Images Code Splitting React
 
@@ -968,7 +983,8 @@ Status legend:
 - Workbook expected outcome: Images lazy loading native <img loading=lazy> + Intersection Observer polyfill; React lazy loading react-lazy-load-image-component; Code splitting React.lazy dynamic imports Suspense fallback; Route-based splitting React Router chunks; Component-based splitting modals charts conditional rendering; Webpack splitChunks configuration bundle analyzer; Next.js next/image next/dynamic optimizations; Monitoring Lighthouse Core Web Vitals bundle size; Benchmarks avant/après bundle size load time FCP LCP; Documentation guide lazy loading code splitting
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with route and dashboard-panel code splitting, responsive logo assets with `srcset` and `sizes`, lazy decoding and image loading where applicable, fetch-priority tuning for the primary brand asset, and preserved Lighthouse gating.
 
 ### M11.6 - Service Workers PWA Offline-First Cache Strategies
 
@@ -976,7 +992,8 @@ Status legend:
 - Workbook expected outcome: Service Worker sw.js registration install activate fetch lifecycle; Stratégies caching (Cache-First, Network-First, Stale-While-Revalidate, Network-Only, Cache-Only); Workbox library routing strategies precache backgroundSync; Background Sync queue offline sync retry; Push Notifications subscribe pushManager showNotification; Manifest.json PWA installable icons display; Testing DevTools offline simulation Lighthouse PWA audit; Monitoring Service Worker events analytics cache hits errors; Documentation guide PWA strategies offline-first; Exemples use cases offline forms push alerts
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with a real `manifest.json`, install banner flow, service-worker shell and static-asset precache, offline fallback, background sync refresh, push and notification click handlers, and updated service-worker tests.
 
 ### M11.7 - Database Connection Pooling PgBouncer Optimisation
 
@@ -984,7 +1001,8 @@ Status legend:
 - Workbook expected outcome: PgBouncer configuration pgbouncer.ini pool modes (transaction, session, statement); Tuning max_client_conn default_pool_size max_db_connections; Authentication auth_type userlist auth_query; Monitoring SHOW STATS POOLS DATABASES CLIENTS SERVERS; Prometheus pgbouncer_exporter metrics Grafana dashboard alerting; Application configuration connection string pool settings; Connection overhead benchmarks 200ms→1ms 200x faster; High availability multiple instances load balancer; Documentation guide PgBouncer pooling troubleshooting connection leaks
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with `DATABASE_POOLER_URL`, `DATABASE_POOL_MAX`, runtime support for pooled DB traffic, and repo-owned PgBouncer templates plus operating notes for pool inspection and before/after benchmark capture.
 
 ### M11.8 - Load Balancing HAProxy Round-Robin Health Checks
 
@@ -992,7 +1010,8 @@ Status legend:
 - Workbook expected outcome: HAProxy configuration haproxy.cfg frontend backend; Load balancing algorithms (roundrobin, leastconn, source, uri); Health checks active passive httpchk expect; Sticky sessions cookie insert source hash stick-table; SSL termination bind ssl crt certificates TLS; Statistics dashboard stats enable UI; Logging syslog custom format Elasticsearch; Prometheus haproxy_exporter metrics Grafana alerting; High availability Keepalived VRRP VIP failover; Testing failover curl health checks kill servers; Benchmarks throughput latency 3x scaling; Documentation guide HAProxy configuration troubleshooting
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a repo-owned HAProxy baseline with round-robin balancing, `/healthz` checks, TLS and HTTP/2 edge scaffolding, sticky-session support, stats exposure, and documented operator guidance.
 
 ### M11.9 - Horizontal Scaling Kubernetes HPA Auto-Scaling Pods
 
@@ -1000,7 +1019,8 @@ Status legend:
 - Workbook expected outcome: HPA configuration kubectl autoscale YAML manifest; Métriques CPU memory custom Prometheus Adapter; Behavior scaleUp scaleDown policies stabilization; PodDisruptionBudget minAvailable maxUnavailable availability; Cluster Autoscaler AWS ASG Azure VMSS GCP Node Pools; KEDA event-driven ScaledObject Kafka Prometheus triggers; Monitoring kubectl get describe hpa Prometheus metrics Grafana dashboard; Testing load test K6 scaling up down verification; Cost optimization rightsize requests Spot instances; Documentation guide auto-scaling troubleshooting flapping; Benchmarks throughput scaling linear 10x capacity
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as repo-owned Kubernetes performance templates for `Deployment`, `Service`, `HPA`, `PDB`, `ServiceMonitor`, and optional KEDA scaling, with explicit guidance that cluster-specific wiring is an environment rollout step.
 
 ### M11.10 - Content Delivery Network CloudFlare CDN Global Distribution
 
@@ -1008,7 +1028,8 @@ Status legend:
 - Workbook expected outcome: CloudFlare setup account DNS nameservers A records CNAME proxied; Caching Page Rules Cache Level TTL aggressive static assets; Purge cache API Purge Everything by URL by Tag CI/CD integration; Compression Auto Minify Brotli Polish image optimization; Security DDoS WAF rate limiting SSL/TLS HTTPS HSTS; Performance HTTP/3 Early Hints AMP Argo Smart Routing; Workers edge computing JavaScript serverless KV Durable Objects; Analytics dashboard Traffic Cache Performance Security Logs Logpush; Testing dig curl WebPageTest CF-Cache-Status CF-RAY latency; Benchmarks latency 500ms→50ms 90% reduction bandwidth savings 80%; Documentation guide CloudFlare configuration troubleshooting
 - Monolith adaptation: Apply performance tuning at monolith runtime and frontend bundle layers, validated by repeatable benchmark/test runs.
 - Lane: `Dev Performance`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with Cloudflare-ready cache headers, explicit CDN-aware cache tags on public analytics reads, purge automation keyed by `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_API_TOKEN`, and the shared performance runbook for provider-side rollout and troubleshooting.
 
 ## Module M12
 

@@ -1,6 +1,6 @@
 # Frontend Routes and Behavior
 
-This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/main.tsx`). SPA refresh support is preserved via Nginx fallback rewrite (`app/nginx.conf`).
+This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/main.tsx`). SPA refresh support is preserved via Nginx fallback rewrite (`app/nginx.conf`) for both local container runs and the production image.
 
 ## Route groups
 
@@ -44,7 +44,7 @@ Special case:
 | `/app/tickets/create` | `Navigate` redirect | Compatibility redirect to `/app/support#create` |
 | `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param |
 | `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow |
-| `/app/settings` | `SettingsPage` | User profile settings (display name update) |
+| `/app/settings` | `SettingsPage` | Account settings workspace for display name updates, profile photo upload/removal, password changes for local accounts, and account/security overview panels |
 | `/app/admin` | `AdminDashboard` | Requires `admin`/`super_admin` role |
 
 Authenticated shell behavior:
@@ -52,6 +52,7 @@ Authenticated shell behavior:
 - All `/app/*` routes render inside a shared sidebar layout.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with the shared Workspace hub first.
+- Primary navigation can include Workspace, Dashboard, Agent Tour, Tour Planning, Tour Operations, Manager Reports, Report Overflow, Citizen Profile, and Challenges depending on role.
 - Sidebar bottom: Settings, Support, optional Admin Center, and Sign Out actions.
 - Sidebar toggle behavior:
   - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
@@ -60,11 +61,30 @@ Authenticated shell behavior:
   - Mobile (`max-width: 720px`): overlay drawer with dimmed backdrop; supports close via toggle, `Esc`, backdrop click, and route navigation.
   - Accessibility: toggle uses `aria-expanded` + `aria-controls`; mobile drawer traps focus while open, sets initial focus into the drawer, restores focus to toggle on close, and prevents background scroll.
 - Main content header is sticky and keeps both the page name and account identity (avatar + name) visible while scrolling.
+- The page title in the sticky header is derived from the active route, including support/ticket compatibility routes and role-specific workspace pages.
 - Non-dashboard `/app/*` workspace pages use full main-section width (`width: 100%`) with container-aware responsive styles, so grid/tab/detail layouts reflow when sidebar width changes (expanded vs compressed), not only on viewport breakpoints.
 - Sign Out returns users to the landing page (`/`).
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 - Unauthorized authenticated requests for `/app/dashboard` are redirected back to `/app` instead of rendering the dashboard.
 - `/app/dashboard` now lazy-loads non-critical analytics panels and a manager heatmap panel after the shell and KPI strip have rendered.
+- Settings form behavior:
+  - Display name changes are validated client-side before submission.
+  - Profile photos accept PNG, JPEG, or WEBP uploads up to 1 MB and are stored as profile/avatar URLs or data URLs.
+  - Password changes are available only for `local` accounts; Google SSO accounts are shown provider guidance instead.
+
+## Frontend edge behavior (`app/nginx.conf`)
+
+- `GET /health` is handled at the frontend edge and proxied to the backend health endpoint so the frontend container can act as the public entry point during Docker-based deployments.
+- `/api` and `/api/*` are reverse proxied to the backend container, preserving forwarded headers.
+- Realtime planning endpoints keep dedicated proxy rules:
+  - `/api/planning/ws` enables websocket upgrade headers and long read/write timeouts.
+  - `/api/planning/stream` disables proxy buffering/cache so SSE delivery is not delayed.
+- Static asset caching is tiered:
+  - `/assets/*` uses long-lived immutable caching.
+  - `/branding/*` and application icons use shorter cache windows with stale-while-revalidate support.
+  - `/manifest.json` must revalidate quickly.
+  - `/ecotrack-map-sw.js` is served `no-cache`.
+- All remaining paths fall back to `/index.html` so direct browser refreshes keep SPA routing intact.
 
 ## Landing sections and hash navigation
 

@@ -1113,18 +1113,20 @@ Checklist:
 
 ### M9 - CI/CD and Ops Hardening for a Single Deployable Unit
 
-Status: `PARTIAL`
+Status: `DONE`
 Lane: `Dev Platform`
-Open task IDs: `M9.1` to `M9.10`
+Completed task IDs: `M9.1`, `M9.4`, `M9.9`, `M9.10`
+Deferred task IDs: `M9.2`, `M9.3`, `M9.5`, `M9.6`, `M9.7`
+Handoff task IDs: `M9.8`
 
 Description: Adapt the operations backlog to a single deployable unit with reproducible builds, promotion rules, runtime monitoring, centralized logs, and optional GitOps or IaC templates.
 
-Progress: Reproducible builds, deployment validation, runtime monitoring, centralized logs, and Terraform compatibility points are now present, but broader promotion automation and GitOps-style controls remain intentionally lightweight.
+Progress: The monolith release baseline now uses a real GitHub Actions promotion flow with environment-gated deploy jobs, release manifest artifacts, optional migration execution, hosted smoke validation, and a documented rollback-by-ref procedure. Docker builds now carry release metadata, multi-stage hardening, frontend bundle release tagging, and Trivy image scanning in CI. The supported observability path now documents Prometheus, Grafana, Alertmanager, structured log shipping, ELK validation, ownership, and retention expectations for the single deployable unit. Multi-cloud IaC, configuration-management, Kubernetes packaging, GitOps, and Vault-specific rollout remain intentionally deferred or handed off under the current monolith scope.
 
 Checklist:
-- [ ] Stabilize promotion and deployment workflows for the monolith.
-- [ ] Add centralized operational visibility and release controls.
-- [ ] Keep optional IaC and GitOps templates as future-compatible assets.
+- [x] Stabilize promotion and deployment workflows for the monolith.
+- [x] Add centralized operational visibility and release controls.
+- [x] Keep optional IaC and GitOps templates as future-compatible assets while marking out-of-scope items explicitly as deferred or handoff.
 
 ### M10 - Non-Functional Quality Expansion
 
@@ -1144,18 +1146,18 @@ Checklist:
 
 ### M11 - Performance Backlog
 
-Status: `PARTIAL`
+Status: `DONE`
 Lane: `Dev Performance`
-Open task IDs: `M11.1` to `M11.10`
+Completed task IDs: `M11.1`, `M11.2`, `M11.3`, `M11.4`, `M11.5`, `M11.6`, `M11.7`, `M11.8`, `M11.9`, `M11.10`
 
 Description: Execute the remaining performance backlog around profiling, SQL tuning, caching, compression, lazy loading, connection pooling, and horizontal scaling readiness.
 
-Progress: Lazy loading, agent caching and offline fallback, and repo-owned K6 performance lanes are implemented, but dedicated profiling, deeper SQL and compression work, and scaling-readiness follow-through remain open.
+Progress: The performance backlog is now closed with repo-owned Clinic and autocannon profiling commands, Redis-backed API caching and cache headers, SQL baselines plus new read-path indexes, API compression and edge cache policies, installable PWA assets, and PgBouncer, HAProxy, Kubernetes, and Cloudflare operator templates documented in the performance runbook.
 
 Checklist:
-- [ ] Profile hot paths across frontend and backend.
-- [ ] Tune SQL, caching, and transport efficiency.
-- [ ] Prepare scaling readiness for the monolith runtime.
+- [x] Profile hot paths across frontend and backend.
+- [x] Tune SQL, caching, and transport efficiency.
+- [x] Prepare scaling readiness for the monolith runtime.
 
 ### M12 - Security Implementation Dependency Set
 

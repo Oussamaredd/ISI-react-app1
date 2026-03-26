@@ -2,6 +2,8 @@
 
 Use this checklist before enabling Kubernetes-style service discovery for EcoTrack realtime metrics.
 
+This checklist is post-baseline platform work. It is not part of the current M9 completion criteria for the hosted monolith deployment path.
+
 ## Current Development Status
 
 - Realtime transport metrics are already exposed by API at `GET /api/metrics`.
