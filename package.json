@@ -72,11 +72,22 @@
     "validate-doc-sync": "node ./infrastructure/scripts/validate-doc-sync.mjs",
     "validate-specs": "node ./infrastructure/scripts/validate-spec-contracts.mjs",
     "ci:cdc:summary": "node ./infrastructure/scripts/ci/generate-cdc-summary.mjs",
+    "ci:release:manifest": "node ./infrastructure/scripts/ci/generate-release-manifest.mjs",
+    "ci:release:deploy-hooks": "node ./infrastructure/scripts/ci/run-deploy-hooks.mjs",
+    "ci:release:smoke": "node ./infrastructure/scripts/ci/run-release-smoke.mjs",
     "ci:quality:k6": "node ./infrastructure/scripts/ci/run-k6-scenarios.mjs --profile smoke",
     "ci:quality:mutation": "node ./infrastructure/scripts/ci/run-mutation-gate.mjs",
     "ci:quality:visual": "node ./infrastructure/scripts/ci/run-visual-gate.mjs",
     "ci:quality:visual:snapshots": "node ./infrastructure/scripts/ci/run-visual-snapshots.mjs",
     "ci:quality:lighthouse": "node ./infrastructure/scripts/ci/run-lighthouse-gate.mjs",
+    "perf:autocannon": "node ./infrastructure/scripts/performance/run-autocannon.mjs",
+    "perf:clinic": "node ./infrastructure/scripts/performance/run-clinic.mjs",
+    "perf:clinic:doctor": "node ./infrastructure/scripts/performance/run-clinic.mjs --mode doctor -- node api/dist/main.js",
+    "perf:clinic:flame": "node ./infrastructure/scripts/performance/run-clinic.mjs --mode flame -- node api/dist/main.js",
+    "perf:clinic:bubbleprof": "node ./infrastructure/scripts/performance/run-clinic.mjs --mode bubbleprof -- node api/dist/main.js",
+    "perf:clinic:heapprofiler": "node ./infrastructure/scripts/performance/run-clinic.mjs --mode heapprofiler -- node api/dist/main.js",
+    "perf:pgbench": "node ./infrastructure/scripts/performance/run-pgbench-baseline.mjs",
+    "perf:cloudflare:purge": "node ./infrastructure/scripts/performance/purge-cloudflare-cache.mjs",
     "infra:up": "npm run docker:dev --workspace=ecotrack-infrastructure",
     "infra:down": "npm run docker:down --workspace=ecotrack-infrastructure",
     "infra:health": "npm run health --workspace=ecotrack-infrastructure",
@@ -93,6 +104,8 @@
     "lodash": "4.17.23"
   },
   "devDependencies": {
+    "autocannon": "^8.0.0",
+    "clinic": "^13.0.0",
     "concurrently": "^8.2.2"
   }
 }

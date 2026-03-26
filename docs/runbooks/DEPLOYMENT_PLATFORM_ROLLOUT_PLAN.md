@@ -1,6 +1,6 @@
 # Deployment Platform Rollout Plan
 
-Last updated: 2026-03-07
+Last updated: 2026-03-26
 
 ## Scope
 
@@ -271,16 +271,57 @@ Completion definition:
 Implemented release discipline:
 
 - release order:
-  1. confirm the target Neon project, branch, database, and direct `DATABASE_URL`
-  2. run `npm run db:migrate --workspace=ecotrack-database`
-  3. optionally run `npm run db:seed --workspace=ecotrack-database`
-  4. start or update the Render service
-  5. deploy or promote the Cloudflare Pages frontend
-  6. run smoke checks on readiness, API reachability, auth, and critical routes
-- migrations remain an explicit manual release step on the current Render free plan
+  1. run `.github/workflows/CD.yml` (`CD Deployment`) against the intended target environment
+  2. let the workflow execute repo-owned pre-deploy validation (`validate-env`, lint, typecheck, tests, Render verification, frontend production build)
+  3. optionally run `npm run db:migrate --workspace=ecotrack-database` from the workflow when `run_migrations=true`
+  4. trigger the backend and frontend deploy hooks owned by the target GitHub Environment
+  5. run hosted smoke checks on frontend HTML, API readiness, optional OAuth redirect, and optional release-version assertions
+  6. review the uploaded release artifacts and GitHub step summary before closing the release
+- migrations stay explicit and operator-controlled even though the workflow can execute them
 - seed data is allowed only for local development and deliberate non-production demo resets; it is not part of the production release path
-- rollback after a failed deploy is not automatic: prefer a forward fix and redeploy, and use Neon restore/backup recovery before reopening traffic if schema or data reversal is required
+- rollback after a failed deploy is not automatic: re-run `CD Deployment` from the previous known-good git ref and the same target environment, prefer a forward fix where possible, and use Neon restore/backup recovery before reopening traffic if schema or data reversal is required
 - first-release bootstrap path uses the tracked Drizzle migration chain against the direct Neon URL before the first hosted API deploy, with seed data remaining optional and non-production only
+
+GitHub Actions automation baseline (2026-03-26):
+
+- `push` to `main` now deploys the `development` environment automatically after the validation gate passes.
+- `workflow_dispatch` promotes `development`, `staging`, or `production` and supports `run_migrations` plus `skip_hosted_smoke` inputs.
+- GitHub Environments `deploy-dev`, `deploy-staging`, and `deploy-prod` own the deploy-hook URLs, smoke target URLs, approval rules, and target-specific secrets.
+- Every release run writes a release manifest plus deploy-hook and smoke evidence under `tmp/ci/release`, uploads the files as GitHub artifacts, and publishes the markdown summaries in the workflow run.
+
+GitHub Environment contract:
+
+- Required vars:
+  - `CD_DEPLOY_APP_URL`
+  - `CD_DEPLOY_API_HEALTH_URL`
+- Optional vars:
+  - `CD_DEPLOY_FRONTEND_HEALTH_URL`
+  - `CD_DEPLOY_OAUTH_ENTRY_URL`
+  - `CD_DEPLOY_EXPECTED_OAUTH_CALLBACK_URL`
+  - `CD_DEPLOY_EXPECTED_API_BASE_URL`
+  - `CD_DEPLOY_EXPECTED_API_RELEASE_VERSION`
+  - `CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION`
+  - `CD_FRONTEND_DEPLOY_HOOK_METHOD`
+  - `CD_BACKEND_DEPLOY_HOOK_METHOD`
+  - `CD_RELEASE_SMOKE_TIMEOUT_MS`
+  - `CD_RELEASE_SMOKE_INTERVAL_MS`
+- Required secrets when migrations are enabled:
+  - `DATABASE_URL`
+- Optional secrets for provider-triggered deployment:
+  - `CD_FRONTEND_DEPLOY_HOOK_URL`
+  - `CD_BACKEND_DEPLOY_HOOK_URL`
+
+Hosted smoke coverage:
+
+- required checks:
+  - frontend root URL returns HTML
+  - API readiness URL returns HTTP `200`
+  - API readiness payload includes `release.version`
+- optional checks when configured:
+  - frontend health endpoint returns HTTP `200`
+  - OAuth entry redirects to the expected callback URL
+  - frontend HTML exposes the expected `ecotrack-api-base-url` meta tag
+  - frontend HTML exposes the expected `ecotrack-release-version` meta tag
 
 Checklist:
 
@@ -319,6 +360,13 @@ Minimum validation areas:
 - role-protected app navigation
 - critical manager, citizen, and agent workflows
 - realtime connectivity and fallback behavior
+
+Post-release operational checks:
+
+- review the uploaded release manifest, deploy-hook evidence, and hosted smoke artifact in the GitHub Actions run
+- confirm the deployed API still exposes `GET /api/metrics`
+- confirm Prometheus/Grafana or the managed equivalent is scraping the new release and alert rules stay green
+- confirm the centralized log sink is receiving current-release API logs and that `traceId` search is still working
 
 Checklist:
 

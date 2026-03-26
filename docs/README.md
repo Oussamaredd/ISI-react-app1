@@ -30,11 +30,12 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased deployment plan for Cloudflare Pages, Render, and Neon
 - `runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current Neon Phase 3 baseline, validated resources, and direct-connection workflow
 - `.github/workflows/CI.yaml` - canonical `CI Integration` workflow for PR/main with path-aware lanes, a required Semgrep SAST job for `api/src` and `database/schema`, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
+- `npm run ci:release:manifest`, `npm run ci:release:deploy-hooks`, and `npm run ci:release:smoke` - repo-owned release helpers used by the deployment workflow
 - `.github/workflows/docs-pages.yml` - docs-only GitHub Pages publishing workflow using `docs/` as the site source
 - SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - Sonar coverage gate currently excludes `database/**`, selected frontend auth/bootstrap routing files, and selected API passive/bootstrap files (for example DTO/module/type-only wiring and a small set of tracing/worker bootstrap files) pending dedicated coverage instrumentation alignment in the broader app/api source set
 - Preflight now enforces `node infrastructure/scripts/validate-sonar-coverage-alignment.mjs`, which compares the full branch diff against workspace Vitest coverage includes and `sonar.coverage.exclusions`; each changed `app/src/**` or `api/src/**` source file must live in exactly one lane
-- `.github/workflows/CD.yml` - canonical `CD Deployment` workflow
+- `.github/workflows/CD.yml` - canonical `CD Deployment` workflow with environment-gated release automation, hosted smoke checks, and release evidence artifacts
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
 - `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
@@ -99,6 +100,9 @@ npm run validate:workspace-toolchain
 node infrastructure/scripts/validate-sonar-coverage-alignment.mjs
 npm run validate-specs
 node infrastructure/scripts/ci/generate-cdc-summary.mjs
+npm run ci:release:manifest
+npm run ci:release:deploy-hooks
+npm run ci:release:smoke
 npm run ci:quality:k6
 node infrastructure/scripts/ci/run-mutation-gate.mjs
 node infrastructure/scripts/ci/run-visual-gate.mjs

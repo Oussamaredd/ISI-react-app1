@@ -7,12 +7,14 @@ npm run validate-env:all
 echo "[ci] enforce architecture boundaries"
 npm run lint
 
-echo "[ci] build and typecheck database workspace"
-npm run build --workspace=ecotrack-database
-npm run typecheck --workspace=ecotrack-database
+echo "[ci] typecheck all workspaces"
+npm run typecheck
 
-echo "[ci] run database migrations"
-npm run db:migrate --workspace=ecotrack-database
+echo "[ci] run the full monorepo test suite"
+npm run test
 
-echo "[ci] run backend tests"
-npm run test:api
+echo "[ci] verify backend deploy/runtime contract"
+npm run deploy:render:verify-local
+
+echo "[ci] build the frontend release bundle"
+npm run build --workspace=ecotrack-app

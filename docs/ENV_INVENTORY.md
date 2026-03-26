@@ -1,6 +1,6 @@
 # Environment Variable Inventory
 
-Last updated: 2026-03-23
+Last updated: 2026-03-26
 
 This inventory is a reference snapshot, not the day-to-day policy document. For the active runtime contract, use `docs/ENV.md`.
 
@@ -14,6 +14,7 @@ Env files discovered in repo scope (`.`, `app/`, `api/`, `database/`, `infrastru
 - `app/.env.example`
 - `app/.env.app`
 - `app/.env.landing`
+- `app/.env.production`
 - `api/.env`
 - `api/.env.example`
 - `database/.env.example`
@@ -56,12 +57,35 @@ Visibility legend:
 | APP_BASE_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical optional explicit frontend app base |
 | APP_URL | api | private | docker-dev, deploy-dev, deploy-staging, deploy-prod | supported frontend app-origin fallback (`APP_BASE_URL` takes precedence when both are set) |
 | BCRYPT_ROUNDS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| CACHE_MAX_SIZE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| CACHE_TTL | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_ANALYTICS_TTL_SECONDS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_CITIZEN_TTL_SECONDS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_DASHBOARD_TTL_SECONDS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_DEFAULT_TTL_SECONDS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_ENABLED | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_MAX_MEMORY_ENTRIES | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_PLANNING_TTL_SECONDS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_PREFIX | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| CACHE_REDIS_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| CD_BACKEND_DEPLOY_HOOK_METHOD | infrastructure | private | ci | optional GitHub Actions environment variable for backend deploy-hook HTTP method |
+| CD_BACKEND_DEPLOY_HOOK_URL | infrastructure | private | ci | optional GitHub Actions environment secret for backend deploy hook |
+| CD_DEPLOY_API_HEALTH_URL | infrastructure | private | ci | hosted API readiness URL for CD manifest and smoke validation |
+| CD_DEPLOY_APP_URL | infrastructure | private | ci | hosted frontend root URL for CD manifest and smoke validation |
+| CD_DEPLOY_EXPECTED_API_BASE_URL | infrastructure | private | ci | optional frontend API-base assertion for hosted release smoke |
+| CD_DEPLOY_EXPECTED_API_RELEASE_VERSION | infrastructure | private | ci | optional API release-version assertion for hosted release smoke |
+| CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION | infrastructure | private | ci | optional frontend release-version assertion for hosted release smoke |
+| CD_DEPLOY_EXPECTED_OAUTH_CALLBACK_URL | infrastructure | private | ci | optional OAuth callback assertion for hosted release smoke |
+| CD_DEPLOY_FRONTEND_HEALTH_URL | infrastructure | private | ci | optional frontend health URL for hosted release smoke |
+| CD_DEPLOY_OAUTH_ENTRY_URL | infrastructure | private | ci | optional hosted OAuth entry URL for hosted release smoke |
+| CD_FRONTEND_DEPLOY_HOOK_METHOD | infrastructure | private | ci | optional GitHub Actions environment variable for frontend deploy-hook HTTP method |
+| CD_FRONTEND_DEPLOY_HOOK_URL | infrastructure | private | ci | optional GitHub Actions environment secret for frontend deploy hook |
+| CD_RELEASE_SMOKE_INTERVAL_MS | infrastructure | private | ci | optional hosted release-smoke polling interval override |
+| CD_RELEASE_SMOKE_TIMEOUT_MS | infrastructure | private | ci | optional hosted release-smoke timeout override |
 | CLIENT_ORIGIN | api | private | local-dev, docker-dev | transitional alias (prefer `CORS_ORIGINS`) |
+| CLOUDFLARE_API_TOKEN | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod, ci | canonical (optional purge automation token) |
+| CLOUDFLARE_ZONE_ID | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod, ci | canonical (optional purge automation zone id) |
 | CORS_ORIGINS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
-| DATABASE_POOL_MAX | database | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| DATABASE_POOL_MIN | database | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| DATABASE_POOL_MAX | database | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| DATABASE_POOLER_URL | database | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional runtime pooler) |
 | DATABASE_URL | database | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | DB_HOST | database | private | local-dev, docker-dev | deprecated alias (normalize to `DATABASE_URL`) |
 | DB_NAME | database | private | local-dev, docker-dev | deprecated alias (normalize to `DATABASE_URL`) |
@@ -109,7 +133,9 @@ Visibility legend:
 | POSTGRES_USER | infrastructure | private | docker-dev | canonical compose DB container setting |
 | RATE_LIMIT_MAX_REQUESTS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | RATE_LIMIT_WINDOW_MS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
-| REDIS_URL | infrastructure | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| RESPONSE_COMPRESSION_ENABLED | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| RESPONSE_COMPRESSION_LEVEL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| RESPONSE_COMPRESSION_THRESHOLD_BYTES | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ROUTING_API_BASE_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ROUTING_FAILURE_THRESHOLD | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ROUTING_RESET_WINDOW_MS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |

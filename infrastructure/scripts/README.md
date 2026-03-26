@@ -8,6 +8,9 @@ Execution policy:
 - `infrastructure/scripts/validate-spec-contracts.mjs` enforces CDC traceability matrix integrity and executable-spec contracts.
 - `infrastructure/scripts/install-git-hooks.mjs` configures the repo-local git hooks path to `.githooks`.
 - `infrastructure/scripts/ci/run-k6-scenarios.mjs` runs the repo-owned K6 scenario pack and exports summaries under `tmp/ci/k6`.
+- `infrastructure/scripts/ci/generate-release-manifest.mjs` writes a repo-owned release manifest and markdown summary under `tmp/ci/release`.
+- `infrastructure/scripts/ci/run-deploy-hooks.mjs` triggers optional frontend/backend deploy hooks and records their outcomes under `tmp/ci/release`.
+- `infrastructure/scripts/ci/run-release-smoke.mjs` polls hosted frontend/backend endpoints and records release smoke evidence under `tmp/ci/release`.
 - `infrastructure/scripts/ci/run-mutation-gate.mjs` runs the focused Stryker mutation gate defined in `infrastructure/tooling/quality/stryker.config.mjs`.
 - `infrastructure/scripts/ci/run-visual-gate.mjs` runs Percy with either `CI_PERCY_COMMAND` or the default snapshot flow in `run-visual-snapshots.mjs`.
 - `infrastructure/scripts/ci/run-lighthouse-gate.mjs` builds the app, serves a local preview, and writes Lighthouse reports to `tmp/ci/lighthouse`.
@@ -23,5 +26,8 @@ Common host commands:
 - `npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario api-restart`
 - `npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario api-restart --api-transport docker`
 - `npm run verify:docker --workspace=ecotrack-infrastructure`
+- `npm run ci:release:manifest`
+- `npm run ci:release:deploy-hooks`
+- `npm run ci:release:smoke`
 - `npm run ci:quality:k6`
 - `npm run ci:quality:visual:snapshots`

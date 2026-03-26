@@ -209,6 +209,9 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run validate:workspace-toolchain` - verify the root lockfile and required workspace tool packages before cross-layer build/lint/test flows
 - `npm run validate-doc-sync` - validate that behavior, env, schema, workflow, and release changes update the required docs in the same change set
 - `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
+- `npm run ci:release:manifest` - generate the release manifest consumed by `CD Deployment`
+- `npm run ci:release:deploy-hooks` - trigger configured frontend/backend deploy hooks and capture evidence
+- `npm run ci:release:smoke` - run hosted release smoke checks against deployed frontend/backend URLs
 - `npm run ci:quality:k6` - run the default K6 smoke scenario pack against the direct API
 - `npm run ci:quality:mutation` - run mutation gate hook (enabled by CI variable)
 - `npm run ci:quality:visual` - run Percy visual-regression gate (defaults to the repo snapshot flow when no custom Percy command is set)
@@ -245,8 +248,8 @@ Release and contributor references:
 
 ## CI/CD
 
-- `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes, and now includes a required `Semgrep SAST` job for `api/src` and `database/schema`
-- `CD.yml`: canonical `CD Deployment` workflow; GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
+- `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes, builds both monolith images with release labels, and runs Trivy scans on the built API/frontend images
+- `CD.yml`: canonical `CD Deployment` workflow; `main` auto-promotes `development`, `workflow_dispatch` promotes `development|staging|production`, and each release run writes manifest/deploy-hook/smoke evidence artifacts plus a rollback-by-ref summary. GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 - The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/runbooks/EXTENDED_QUALITY_GATES.md`.
 

@@ -349,7 +349,7 @@ jobs:
           if-no-files-found: ignore
 
   docker-build:
-    name: Docker Build Check
+    name: Docker Build and Scan
     runs-on: ubuntu-latest
     needs: [changes, preflight]
     if: >-
@@ -365,16 +365,81 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Determine release metadata
+        id: release
+        shell: bash
+        run: |
+          echo "version=$(node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(pkg.version || '0.0.0');")" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image using infrastructure Dockerfile
+      - name: Build API image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./infrastructure/Dockerfile
+          load: true
           push: false
-          load: false
+          tags: local/ecotrack-api:ci
+          cache-from: type=gha,scope=ecotrack-api
+          cache-to: type=gha,mode=max,scope=ecotrack-api
+          build-args: |
+            APP_VERSION=${{ steps.release.outputs.version }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ steps.release.outputs.build_date }}
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./app/Dockerfile
+          load: true
+          push: false
+          tags: local/ecotrack-app:ci
+          cache-from: type=gha,scope=ecotrack-app
+          cache-to: type=gha,mode=max,scope=ecotrack-app
+          build-args: |
+            APP_VERSION=${{ steps.release.outputs.version }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ steps.release.outputs.build_date }}
+
+      - name: Scan API image with Trivy
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --no-progress \
+            local/ecotrack-api:ci | tee tmp/ci/trivy-api.txt
+
+      - name: Scan frontend image with Trivy
+        shell: bash
+        run: |
+          mkdir -p tmp/ci
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.59.1 image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --no-progress \
+            local/ecotrack-app:ci | tee tmp/ci/trivy-app.txt
+
+      - name: Upload image scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-scan-report
+          path: |
+            tmp/ci/trivy-api.txt
+            tmp/ci/trivy-app.txt
+          if-no-files-found: ignore
 
   sonar:
     name: SonarCloud Analysis and Quality Gate

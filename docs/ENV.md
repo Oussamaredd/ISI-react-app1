@@ -28,12 +28,15 @@ Neon managed baseline note:
 - Neon is the managed deployment Postgres baseline for Phase 3.
 - Local Docker Postgres remains a local-only sandbox and is not continuously synced with Neon.
 - For Neon-backed migration and seed operations, `DATABASE_URL` must be the direct Neon connection string, not the pooled `-pooler` hostname.
+- `DATABASE_POOLER_URL`, when used, is for runtime traffic only and should point at a PgBouncer or provider pooler listener.
 - Store Neon connection strings only in local untracked env files or deployment/provider secret stores.
 - See `docs/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the bootstrap and validation workflow.
 
 ## Canonical Keys
 
 - `DATABASE_URL` for database connectivity
+- `DATABASE_POOLER_URL` for optional pooled runtime database connectivity
+- `DATABASE_POOL_MAX` for the application-side postgres client pool ceiling
 - `API_PORT` for API listen port
 - `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
@@ -49,6 +52,18 @@ Neon managed baseline note:
 - `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per consumer batch
 - `IOT_INGESTION_SHARD_COUNT` for the number of virtual partitions used by the staged-ingestion worker
 - `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual partitions used by the validated-event consumer
+- `CACHE_ENABLED` to turn API read caching on or off
+- `CACHE_PREFIX` for cache-key namespace isolation across environments
+- `CACHE_DEFAULT_TTL_SECONDS` for default API read-cache TTL
+- `CACHE_DASHBOARD_TTL_SECONDS` for dashboard read-cache TTL
+- `CACHE_PLANNING_TTL_SECONDS` for planning read-cache TTL
+- `CACHE_ANALYTICS_TTL_SECONDS` for analytics read-cache TTL
+- `CACHE_CITIZEN_TTL_SECONDS` for citizen read-cache TTL
+- `CACHE_MAX_MEMORY_ENTRIES` for the in-memory L1 cache size ceiling
+- `CACHE_REDIS_URL` for the optional Redis L2 cache backend
+- `RESPONSE_COMPRESSION_ENABLED` to turn API response compression on or off
+- `RESPONSE_COMPRESSION_THRESHOLD_BYTES` for the minimum response size before compression applies
+- `RESPONSE_COMPRESSION_LEVEL` for gzip compression level tuning
 - `OTEL_TRACING_ENABLED` to enable OpenTelemetry trace export from the API and worker flows
 - `OTEL_SERVICE_NAME` for the OpenTelemetry service name emitted by the API runtime
 - `OTEL_EXPORTER_OTLP_ENDPOINT` for the OTLP HTTP collector endpoint used by trace export
@@ -63,6 +78,7 @@ Neon managed baseline note:
 - `VITE_SENTRY_DSN` and `EXPO_PUBLIC_SENTRY_DSN` for optional client-side Sentry issue capture on web and mobile
 - `VITE_RELEASE_VERSION` and `EXPO_PUBLIC_RELEASE_VERSION` for client release tagging in Sentry and backend telemetry
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` for build-time source-map upload; keep them in shell/CI secrets, not client env files
+- `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_API_TOKEN` for manual CDN purge automation through `npm run perf:cloudflare:purge`
 
 Agent tour mapping note:
 - `ROUTING_API_BASE_URL` is used by the API to build and persist `tour_routes` records; the frontend does not call the routing provider directly.
@@ -142,6 +158,42 @@ Agent tour mapping note:
 - `IOT_INGESTION_SHARD_COUNT` for the number of virtual shards used by the staged-ingestion queue and recovery loop (default `12`)
 - `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual shards used by the validated-delivery queue and recovery loop (default `12`)
 
+## Optional Performance And Edge Keys
+
+- `DATABASE_POOLER_URL` points API runtime traffic at a PgBouncer or provider pooler while keeping migrations and seeds on direct `DATABASE_URL`
+- `DATABASE_POOL_MAX` sets the postgres-js pool ceiling used by the API process (default `5`)
+- `CACHE_ENABLED` enables API read caching (default `true`)
+- `CACHE_PREFIX` scopes cache keys by environment or deployment slot (default `ecotrack`)
+- `CACHE_DEFAULT_TTL_SECONDS` sets the fallback read-cache TTL (default `60`)
+- `CACHE_DASHBOARD_TTL_SECONDS` sets dashboard TTL (default `30`)
+- `CACHE_PLANNING_TTL_SECONDS` sets planning TTL (default `20`)
+- `CACHE_ANALYTICS_TTL_SECONDS` sets analytics TTL (default `60`)
+- `CACHE_CITIZEN_TTL_SECONDS` sets citizen TTL (default `30`)
+- `CACHE_MAX_MEMORY_ENTRIES` caps the in-process L1 cache size (default `250`)
+- `CACHE_REDIS_URL` enables Redis-backed L2 caching when a valid URL is provided
+- `RESPONSE_COMPRESSION_ENABLED` enables gzip compression for eligible API responses (default `true`)
+- `RESPONSE_COMPRESSION_THRESHOLD_BYTES` sets the minimum payload size before compression (default `1024`)
+- `RESPONSE_COMPRESSION_LEVEL` sets gzip level from `-1` to `9` (default `6`)
+- `CLOUDFLARE_ZONE_ID` identifies the Cloudflare zone used by purge automation
+- `CLOUDFLARE_API_TOKEN` authorizes `npm run perf:cloudflare:purge`; keep it in shell, CI, or secret-manager injection only
+
+## Optional CD Release Keys
+
+- GitHub Actions release environments are `deploy-dev`, `deploy-staging`, and `deploy-prod`.
+- Store `CD_*` release keys in GitHub Actions environment vars or secrets, not in committed runtime env files.
+- `CD_DEPLOY_APP_URL` sets the hosted frontend root URL used by the release manifest and hosted smoke checks.
+- `CD_DEPLOY_API_HEALTH_URL` sets the hosted API readiness URL used by the release manifest and hosted smoke checks.
+- `CD_DEPLOY_FRONTEND_HEALTH_URL` optionally adds a dedicated frontend health probe to the hosted smoke run.
+- `CD_DEPLOY_OAUTH_ENTRY_URL` optionally adds an OAuth redirect check to the hosted smoke run.
+- `CD_DEPLOY_EXPECTED_OAUTH_CALLBACK_URL` sets the expected callback destination for the OAuth smoke assertion.
+- `CD_DEPLOY_EXPECTED_API_BASE_URL` sets the expected frontend `ecotrack-api-base-url` meta tag value when the frontend build exposes it.
+- `CD_DEPLOY_EXPECTED_API_RELEASE_VERSION` optionally overrides the expected API `release.version`; when omitted, the release smoke defaults to the repo `package.json` version.
+- `CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION` optionally asserts the frontend `ecotrack-release-version` meta tag and should be set only when the hosted frontend build injects `VITE_RELEASE_VERSION`.
+- `CD_FRONTEND_DEPLOY_HOOK_URL` and `CD_BACKEND_DEPLOY_HOOK_URL` are optional GitHub Environment secrets used to trigger provider-specific frontend/backend deployments.
+- `CD_FRONTEND_DEPLOY_HOOK_METHOD` and `CD_BACKEND_DEPLOY_HOOK_METHOD` optionally override the deploy-hook HTTP method (`POST` by default).
+- `CD_RELEASE_SMOKE_TIMEOUT_MS` and `CD_RELEASE_SMOKE_INTERVAL_MS` tune hosted smoke polling for slower providers or cold starts.
+- When `run_migrations=true` is used in `CD Deployment`, the target GitHub Environment must also provide `DATABASE_URL`.
+
 ## Optional CI Quality Keys
 
 - `SONAR_TOKEN` for SonarCloud authentication token in CI quality-gate workflows
@@ -186,6 +238,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
 - Diagnostics alias: `GET /api/health/database`
 - `GET /health`, `GET /healthz`, and `GET /startupz` stay dependency-free so process-start and edge-proxy probes do not flap on downstream outages.
 - `GET /readyz`, `GET /api/health/ready`, and `GET /api/health/database` are the dependency-aware readiness checks.
+- Dependency-aware health payloads now include `release.version`, which is used by the hosted release smoke gate.
 - Frontend health probes, when used for diagnostics, should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
 - Frontend `/login` must stay interactive and send auth requests directly; `/health` is advisory only and must not gate sign-in submission.
 - Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status (default wait timeout: `180000ms`)
