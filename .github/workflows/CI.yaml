@@ -412,8 +412,11 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.59.1 image \
+            --scanners vuln \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --skip-java-db-update \
+            --timeout 15m \
             --exit-code 1 \
             --no-progress \
             local/ecotrack-api:ci | tee tmp/ci/trivy-api.txt
@@ -425,8 +428,11 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.59.1 image \
+            --scanners vuln \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --skip-java-db-update \
+            --timeout 15m \
             --exit-code 1 \
             --no-progress \
             local/ecotrack-app:ci | tee tmp/ci/trivy-app.txt

@@ -270,7 +270,7 @@ export class CacheService implements OnApplicationShutdown {
   }
 
   private buildCacheKey(namespace: string, version: number, rawKey: string) {
-    const hash = createHash('sha1').update(rawKey).digest('hex');
+    const hash = createHash('sha256').update(rawKey).digest('hex');
     return `${this.prefix}:cache:${namespace}:v${version}:${hash}`;
   }
 

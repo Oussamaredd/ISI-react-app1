@@ -123,7 +123,7 @@ export class HttpResponseCacheInterceptor implements NestInterceptor {
         }
 
         const serialized = typeof data === 'string' ? data : JSON.stringify(data ?? null);
-        const etag = `W/"${createHash('sha1').update(serialized).digest('hex')}"`;
+        const etag = `W/"${createHash('sha256').update(serialized).digest('hex')}"`;
         const cacheControlDirectives = [
           options.scope ?? 'private',
           `max-age=${options.maxAgeSeconds}`,

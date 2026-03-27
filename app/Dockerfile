@@ -31,7 +31,7 @@ ENV VITE_RELEASE_VERSION=${APP_VERSION}
 RUN rm -f .env.local .env.*.local && npm run build
 
 # Step 2: Serve app with Nginx
-FROM nginx:alpine
+FROM nginx:stable-bookworm
 ARG APP_VERSION
 ARG VCS_REF
 ARG BUILD_DATE
@@ -39,10 +39,14 @@ LABEL org.opencontainers.image.title="EcoTrack App" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}"
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /workspace/app/dist /usr/share/nginx/html
 COPY app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1
+  CMD curl -fsS http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1
 CMD ["nginx", "-g", "daemon off;"]

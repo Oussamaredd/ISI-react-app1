@@ -101,7 +101,18 @@
     "infrastructure"
   ],
   "overrides": {
-    "lodash": "4.17.23"
+    "lodash": "4.17.23",
+    "rollup": "4.59.0",
+    "tar": "7.5.11",
+    "@nestjs/platform-express": {
+      "multer": "2.1.1"
+    },
+    "socket.io": {
+      "socket.io-parser": "4.2.6"
+    },
+    "socket.io-client": {
+      "socket.io-parser": "4.2.6"
+    }
   },
   "devDependencies": {
     "autocannon": "^8.0.0",

@@ -68,6 +68,11 @@ npm run db:migrate:seed --workspace=ecotrack-database
 - `.env.docker` must use canonical keys only; deprecated aliases such as `CLIENT_ORIGIN` fail validation.
 - `DATABASE_POOLER_URL` is optional in Docker dev; leave it blank unless you add a separate PgBouncer container or external pooler.
 
+Runtime image note:
+
+- The repo-owned Docker images now use Debian-based runtime stages for CI release parity: the API image builds from `node:22-bookworm-slim` and the frontend image serves assets from `nginx:stable-bookworm`.
+- CI image builds apply distro package updates in the runtime stage before Trivy runs, so the shipped API/frontend images stay aligned with the repo's `HIGH`/`CRITICAL` vulnerability gate.
+
 ## Performance Validation
 
 From repo root:

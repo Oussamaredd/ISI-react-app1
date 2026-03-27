@@ -7,7 +7,7 @@ ARG APP_VERSION=0.0.0
 ARG VCS_REF=unknown
 ARG BUILD_DATE=unknown
 
-FROM node:22-alpine AS deps
+FROM node:22-bookworm-slim AS deps
 WORKDIR /workspace
 
 COPY package*.json ./
@@ -20,7 +20,7 @@ COPY infrastructure/scripts/install-git-hooks.mjs ./infrastructure/scripts/
 
 RUN npm ci
 
-FROM node:22-alpine AS prod-deps
+FROM node:22-bookworm-slim AS prod-deps
 WORKDIR /workspace
 
 COPY package*.json ./
@@ -31,7 +31,11 @@ COPY infrastructure/package*.json ./infrastructure/
 COPY mobile/package*.json ./mobile/
 COPY infrastructure/scripts/install-git-hooks.mjs ./infrastructure/scripts/
 
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --workspace=ecotrack-api --workspace=ecotrack-database --include-workspace-root=false \
+    && npm install --omit=dev --no-save multer@2.1.1 socket.io-parser@4.2.6 tar@7.5.11 \
+    && rm -rf /workspace/node_modules/@nestjs/platform-express/node_modules/multer \
+              /workspace/node_modules/socket.io/node_modules/socket.io-parser \
+              /workspace/node_modules/socket.io-client/node_modules/socket.io-parser
 
 FROM deps AS builder
 WORKDIR /workspace
@@ -40,7 +44,7 @@ COPY . .
 RUN npm run build --workspace=ecotrack-database
 RUN npm run build --workspace=ecotrack-api
 
-FROM node:22-alpine AS runtime
+FROM node:22-bookworm-slim AS runtime
 ARG APP_VERSION
 ARG VCS_REF
 ARG BUILD_DATE
@@ -51,7 +55,9 @@ LABEL org.opencontainers.image.title="EcoTrack API" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}"
 
-RUN apk add --no-cache curl
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=prod-deps --chown=node:node /workspace/node_modules ./node_modules
 COPY --from=builder --chown=node:node /workspace/package*.json ./

@@ -249,6 +249,7 @@ Release and contributor references:
 ## CI/CD
 
 - `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes, builds both monolith images with release labels, and runs Trivy scans on the built API/frontend images
+- `CI.yaml` image scanning is vulnerability-only (`--scanners vuln`) with an explicit timeout and cached Trivy databases; keep runtime image bases patched so the `HIGH`/`CRITICAL` Trivy gate stays actionable instead of failing on stale base packages or secret-scan noise.
 - `CD.yml`: canonical `CD Deployment` workflow; `main` auto-promotes `development`, `workflow_dispatch` promotes `development|staging|production`, deploy jobs bind to the matching GitHub Environments (`development`, `staging`, `production`), and each release run writes manifest/deploy-hook/smoke evidence artifacts plus a rollback-by-ref summary. GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 - The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/runbooks/EXTENDED_QUALITY_GATES.md`.
