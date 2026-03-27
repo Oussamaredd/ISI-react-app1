@@ -375,6 +375,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Prepare Trivy cache metadata
+        id: trivy-cache
+        shell: bash
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Trivy cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/trivy
+          key: trivy-cache-${{ runner.os }}-0.59.1-${{ steps.trivy-cache.outputs.date }}
+          restore-keys: |
+            trivy-cache-${{ runner.os }}-0.59.1-
+
       - name: Build API image
         uses: docker/build-push-action@v5
         with:
@@ -405,16 +418,40 @@ jobs:
             VCS_REF=${{ github.sha }}
             BUILD_DATE=${{ steps.release.outputs.build_date }}
 
+      - name: Warm Trivy vulnerability DB
+        shell: bash
+        run: |
+          mkdir -p .cache/trivy tmp/ci
+          docker run --rm \
+            -v "${PWD}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.59.1 image \
+            --download-db-only \
+            --timeout 15m \
+            --no-progress
+
+      - name: Warm Trivy Java DB
+        shell: bash
+        run: |
+          mkdir -p .cache/trivy tmp/ci
+          docker run --rm \
+            -v "${PWD}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.59.1 image \
+            --download-java-db-only \
+            --timeout 15m \
+            --no-progress
+
       - name: Scan API image with Trivy
         shell: bash
         run: |
-          mkdir -p tmp/ci
+          mkdir -p .cache/trivy tmp/ci
           docker run --rm \
+            -v "${PWD}/.cache/trivy:/root/.cache/trivy" \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.59.1 image \
             --scanners vuln \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --skip-db-update \
             --skip-java-db-update \
             --timeout 15m \
             --exit-code 1 \
@@ -424,13 +461,15 @@ jobs:
       - name: Scan frontend image with Trivy
         shell: bash
         run: |
-          mkdir -p tmp/ci
+          mkdir -p .cache/trivy tmp/ci
           docker run --rm \
+            -v "${PWD}/.cache/trivy:/root/.cache/trivy" \
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.59.1 image \
             --scanners vuln \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --skip-db-update \
             --skip-java-db-update \
             --timeout 15m \
             --exit-code 1 \
