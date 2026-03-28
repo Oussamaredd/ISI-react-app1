@@ -1,3 +1,4 @@
+import React from "react";
 import { screen } from "@testing-library/dom";
 import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
 import { focusManager, onlineManager } from "@tanstack/react-query";

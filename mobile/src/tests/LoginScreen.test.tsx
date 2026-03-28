@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import React, { type PropsWithChildren } from "react";
 import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import { router } from "expo-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
