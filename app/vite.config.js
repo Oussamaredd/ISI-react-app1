@@ -231,6 +231,7 @@ export default defineConfig(({ mode }) => {
         exclude: ["src/tests/**", "**/*.d.ts", "**/node_modules/**", "**/*.config.*"],
         include: [
           "src/App.tsx",
+          "src/components/landing/sections/HeroSection.tsx",
           "src/components/landing/Navbar.tsx",
           "src/pages/Dashboard.tsx",
           "src/pages/ManagerPlanningPage.tsx",
@@ -242,6 +243,7 @@ export default defineConfig(({ mode }) => {
           "src/hooks/usePlanningRealtimeSocket.tsx",
           "src/hooks/usePlanningRealtimeStream.tsx",
           "src/hooks/useTickets.tsx",
+          "src/lib/apiBase.ts",
           "src/lib/registerMapServiceWorker.ts",
           "src/utils/authz.ts",
           "src/utils/errorHandlers.tsx",
