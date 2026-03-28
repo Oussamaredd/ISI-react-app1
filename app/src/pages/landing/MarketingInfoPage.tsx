@@ -4,6 +4,7 @@ import GradientGlow from "../../components/landing/background/GradientGlow";
 import GridOverlay from "../../components/landing/background/GridOverlay";
 import Vignette from "../../components/landing/background/Vignette";
 import FooterSection from "../../components/landing/sections/FooterSection";
+import DocumentMetadata from "../../components/DocumentMetadata";
 import {
   Accordion,
   AccordionContent,
@@ -216,9 +217,54 @@ function renderSection(section: MarketingPageSection, sectionIndex: number) {
 
 export default function MarketingInfoPage({ pageKey }: MarketingInfoPageProps) {
   const page = MARKETING_PAGES[pageKey];
+  const siteRoot =
+    typeof window === "undefined" ? "/" : new URL("/", window.location.origin).toString();
+  const pageUrl =
+    typeof window === "undefined"
+      ? page.href
+      : new URL(page.href, window.location.origin).toString();
+  const faqItems = page.sections.flatMap((section) =>
+    section.kind === "faq" ? section.items : [],
+  );
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: page.title,
+      description: page.description,
+      url: pageUrl,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "EcoTrack",
+        url: siteRoot,
+      },
+    },
+    ...(faqItems.length > 0
+      ? [
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqItems.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: item.answer,
+              },
+            })),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div className="landing-root">
+      <DocumentMetadata
+        title={`${page.title} | EcoTrack`}
+        description={page.description}
+        canonicalPath={page.href}
+        structuredData={structuredData}
+      />
       <GradientGlow />
       <GridOverlay />
       <Vignette />

@@ -1,15 +1,15 @@
 const steps = [
   {
-    title: "Capture",
-    copy: "Create or ingest tickets with consistent metadata and clean triage signals.",
+    title: "Detect",
+    copy: "Combine citizen reports, sensor measurements, and manual updates into one prioritized signal stream.",
   },
   {
-    title: "Route",
-    copy: "Assign ownership by priority and location while keeping SLA targets visible.",
+    title: "Plan",
+    copy: "Turn zone risk and operational context into collection tours, assignments, and next actions.",
   },
   {
-    title: "Resolve",
-    copy: "Close with verified completion and full audit history for postmortem analysis.",
+    title: "Collect",
+    copy: "Guide crews through stops, confirm field work, and feed verified completion back to managers.",
   },
 ];
 
@@ -18,7 +18,10 @@ export default function HowItWorksSection() {
     <section id="how-it-works" className="landing-section">
       <div className="landing-container py-20">
         <div className="landing-reveal mx-auto max-w-3xl text-center">
-          <h2 className="landing-h2">From intake to resolution in three reliable steps.</h2>
+          <h2 className="landing-h2">From live signals to verified collection in three steps.</h2>
+          <p className="mt-4 text-[var(--text-muted)]">
+            EcoTrack keeps the office, the field, and the public working from the same operational picture.
+          </p>
         </div>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">

@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
+import DocumentMetadata from '../../components/DocumentMetadata';
 import { authApi } from '../../services/authApi';
 
 export default function ForgotPasswordPage() {
@@ -31,6 +32,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <section className="auth-login-shell auth-compact-shell">
+      <DocumentMetadata
+        title="Reset Password | EcoTrack"
+        description="Request a secure EcoTrack password reset link."
+        canonicalPath="/forgot-password"
+        robots="noindex,nofollow"
+      />
       <Link to="/" className="auth-brand-link auth-login-brand-link" aria-label="EcoTrack home">
         <BrandLogo
           imageClassName="auth-brand-logo auth-login-brand-logo"

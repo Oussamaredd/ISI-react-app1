@@ -17,13 +17,52 @@ const FooterSection = lazy(() => import("../../components/landing/sections/Foote
 
 export default function LandingPage() {
   useLandingSectionScroll();
+  const description =
+    "Plan collection routes, monitor connected containers, turn citizen reports into action, and track field execution from one EcoTrack workspace.";
+  const siteRoot =
+    typeof window === "undefined" ? "/" : new URL("/", window.location.origin).toString();
+  const structuredData =
+    typeof window === "undefined"
+      ? undefined
+      : [
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "EcoTrack",
+            url: siteRoot,
+            logo: new URL("/branding/ecotrack-logo-192.png", window.location.origin).toString(),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "EcoTrack",
+            url: siteRoot,
+            description,
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "EcoTrack",
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            url: siteRoot,
+            description,
+            featureList: [
+              "Route planning and tour orchestration",
+              "Citizen reporting intake",
+              "Live container monitoring",
+              "Collection analytics and heatmaps",
+            ],
+          },
+        ];
 
   return (
     <div className="landing-root">
       <DocumentMetadata
-        title="EcoTrack | Smart Waste Operations"
-        description="Coordinate route planning, citizen reporting, live container monitoring, and operational dashboards from one EcoTrack workspace."
+        title="EcoTrack | Smart Waste Operations Platform"
+        description={description}
         canonicalPath="/"
+        structuredData={structuredData}
       />
       <GradientGlow />
       <GridOverlay />

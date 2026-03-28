@@ -138,8 +138,9 @@ export default function LoginPage() {
     <section className="auth-login-shell auth-compact-shell auth-login-spotlight-shell">
       <DocumentMetadata
         title="Sign In | EcoTrack"
-        description="Sign in to EcoTrack to manage planning, support queues, citizen workflows, and live operational monitoring."
+        description="Sign in to EcoTrack to plan routes, review citizen reports, monitor connected containers, and coordinate collection operations."
         canonicalPath="/login"
+        robots="noindex,nofollow"
       />
       <div className="auth-login-spotlight-overlay" ref={spotlightOverlayRef} aria-hidden="true" />
       <Link to="/" className="auth-brand-link auth-login-brand-link" aria-label="EcoTrack home">

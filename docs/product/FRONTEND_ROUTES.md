@@ -26,6 +26,8 @@ Special case:
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
 - Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
 - Direct-entry performance contract: `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first auth or dashboard paint.
+- Public marketing routes publish route-specific title, description, canonical, Open Graph, Twitter, and structured-data metadata aligned to EcoTrack smart waste operations.
+- Auth-entry routes (`/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`) publish `noindex` metadata so they are available to users but excluded from search indexing.
 
 ## Product routes (`/app/*`)
 

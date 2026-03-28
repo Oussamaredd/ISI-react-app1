@@ -2,12 +2,12 @@ import React from "react";
 import { cn } from "../../../lib/utils";
 
 const logos = [
-  "Atlas Hospitality",
-  "Northbound Suites",
-  "Compass Ops",
-  "Beacon Desk",
-  "Harbor Group",
-  "Fjord Facilities",
+  "Municipal sanitation",
+  "Private operators",
+  "Campus facilities",
+  "Residential communities",
+  "Industrial sites",
+  "Recycling networks",
 ];
 
 const useReducedMotion = () => {
@@ -31,7 +31,7 @@ export default function LogoMarqueeSection() {
     <section id="logos" className="landing-section">
       <div className="landing-container py-8">
         <p className="landing-reveal text-center text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">
-          Connected with teams that run round-the-clock support
+          Designed for teams running collections across cities, campuses, and private service areas
         </p>
         <div className="landing-reveal mt-6 overflow-hidden rounded-[var(--radius-md)] border border-[var(--border)] bg-white/5 py-4">
           <div

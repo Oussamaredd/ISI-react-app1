@@ -7,24 +7,24 @@ import {
 
 const faqs = [
   {
-    question: "Does this change the current OAuth callback flow?",
+    question: "Who is EcoTrack built for?",
     answer:
-      "No. The login trigger still points to the same backend Google route and callback contract.",
+      "EcoTrack is designed for municipalities, private waste operators, campuses, and facilities teams that manage collection activity across multiple zones or sites.",
   },
   {
-    question: "Can we still access old bookmarks like /dashboard?",
+    question: "Do we need sensors on every container to use EcoTrack?",
     answer:
-      "No. Legacy top-level routes have been removed. Use the current /app/* routes and update saved bookmarks.",
+      "No. Teams can start with citizen reports, manual operational updates, and planned routes, then layer in connected-container telemetry where it adds value.",
   },
   {
-    question: "How does section navigation work from non-root pages?",
+    question: "How do collection teams use EcoTrack day to day?",
     answer:
-      "Links target /#section-id and the landing page resolves hash anchors with sticky-header offset handling.",
+      "Managers prioritize zones and build tours, while field crews validate stops, record collection progress, and keep the workspace current during active rounds.",
   },
   {
-    question: "Is reduced motion respected?",
+    question: "What does rollout usually include?",
     answer:
-      "Yes. Animations and marquee behavior degrade automatically when prefers-reduced-motion is enabled.",
+      "Most rollouts start with zones, containers, citizen reporting channels, role setup, and one pilot service area before expanding to wider operations.",
   },
 ];
 

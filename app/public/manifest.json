@@ -1,7 +1,7 @@
 {
   "name": "EcoTrack",
   "short_name": "EcoTrack",
-  "description": "EcoTrack coordinates route planning, citizen reporting, live monitoring, and support operations from one workspace.",
+  "description": "EcoTrack unifies route planning, citizen reporting, live container monitoring, and collection analytics in one workspace.",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",

@@ -51,7 +51,7 @@ export default function FooterSection() {
               />
             </h3>
             <p className="mt-3 text-sm leading-7 text-[var(--text-muted)]">
-              Bridging support and operations with fewer handoff failures.
+              Coordinate routes, reports, and live container intelligence from one EcoTrack workspace.
             </p>
           </div>
           {footerColumns.map((column) => (

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
+import DocumentMetadata from '../../components/DocumentMetadata';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi, type AuthSuccess } from '../../services/authApi';
 import {
@@ -153,6 +154,12 @@ function AuthCallbackFlow({
 
   return (
     <section className="auth-login-shell auth-compact-shell auth-callback-shell">
+      <DocumentMetadata
+        title="Signing In | EcoTrack"
+        description="Completing secure EcoTrack sign-in."
+        canonicalPath="/auth/callback"
+        robots="noindex,nofollow"
+      />
       <Link to="/" className="auth-brand-link auth-login-brand-link" aria-label="EcoTrack home">
         <BrandLogo
           imageClassName="auth-brand-logo auth-login-brand-logo"

@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const HEADER_OFFSET = 104;
+const HEADER_OFFSET = 80;
 
 const getScrollBehavior = (): ScrollBehavior => {
   if (typeof window === "undefined") {

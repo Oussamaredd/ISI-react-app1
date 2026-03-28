@@ -47,7 +47,7 @@ export default function Navbar() {
         isScrolled && "landing-nav-scrolled",
       )}
     >
-      <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between gap-4 px-4 py-3">
+      <div className="mx-auto flex h-20 w-full max-w-[1200px] items-center justify-between gap-4 px-4">
         <Link
           to="/"
           className="inline-flex shrink-0 items-center"
@@ -55,7 +55,7 @@ export default function Navbar() {
           onClick={onHomeClick}
         >
           <BrandLogo
-            imageClassName="h-11 w-11"
+            imageClassName="h-8 w-8"
             textClassName="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
           />
         </Link>
@@ -82,12 +82,14 @@ export default function Navbar() {
         <div className="hidden shrink-0 items-center gap-2 md:flex">
           <Link
             to="/login"
-            className="inline-flex h-11 items-center justify-center rounded-[var(--radius-pill)] px-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+            className="inline-flex h-11 w-[120px] items-center justify-center rounded-[var(--radius-pill)] px-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
           >
             Log in
           </Link>
           <Link to="/login">
-            <Button size="md">Get Started</Button>
+            <Button size="md" className="w-[120px]">
+              Get Started
+            </Button>
           </Link>
         </div>
 
@@ -106,7 +108,7 @@ export default function Navbar() {
             <SheetContent side="right">
               <SheetHeader>
                 <SheetTitle>Navigate</SheetTitle>
-                <SheetDescription>Jump to any section or continue to sign-in.</SheetDescription>
+                <SheetDescription>Jump to any section or open the EcoTrack workspace.</SheetDescription>
               </SheetHeader>
               <nav className="grid gap-2">
                 {sectionLinks.map((section) => (

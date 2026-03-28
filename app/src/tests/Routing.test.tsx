@@ -72,10 +72,19 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /Bridge every ticket handoff/i },
+        { name: /Run cleaner, faster waste collection/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(document.title).toBe("EcoTrack | Smart Waste Operations Platform");
+      expect(
+        document
+          .querySelector('meta[name="description"]')
+          ?.getAttribute("content"),
+      ).toContain("Plan collection routes");
+    });
   });
 
   test("`/` redirects to `/app` when authenticated", async () => {
@@ -105,7 +114,7 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /Bridge every ticket handoff/i },
+        { name: /Run cleaner, faster waste collection/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
@@ -132,6 +141,12 @@ describe("Routing Matrix", () => {
   test("`/login` renders login page when unauthenticated", async () => {
     renderRoute("/login");
     expect(await screen.findByRole("heading", { name: /Welcome back/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('meta[name="robots"]')?.getAttribute("content"),
+      ).toBe("noindex,nofollow");
+    });
   });
 
   test("`/login` renders immediately while auth status is unresolved", async () => {
@@ -363,7 +378,7 @@ describe("Routing Matrix", () => {
       expect(getLocation()?.pathname).toBe("/privacy");
     });
 
-    expect(await screen.findByRole("heading", { name: /Privacy notice overview/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Privacy overview for EcoTrack operational data/i })).toBeInTheDocument();
     expect(
       screen.getByText(/Data categories processed/i),
     ).toBeInTheDocument();
@@ -376,7 +391,7 @@ describe("Routing Matrix", () => {
       expect(getLocation()?.pathname).toBe("/support");
     });
 
-    expect(await screen.findByRole("heading", { name: /Support operations playbook/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Support coverage for rollout and live operations/i })).toBeInTheDocument();
   });
 
   test("removed legacy routes fall back to landing when unauthenticated", async () => {
@@ -388,7 +403,7 @@ describe("Routing Matrix", () => {
       expect(
         await screen.findByRole(
           "heading",
-          { name: /Bridge every ticket handoff/i },
+          { name: /Run cleaner, faster waste collection/i },
           { timeout: 5000 },
         ),
       ).toBeInTheDocument();

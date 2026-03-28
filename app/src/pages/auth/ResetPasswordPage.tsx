@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
+import DocumentMetadata from '../../components/DocumentMetadata';
 import { authApi } from '../../services/authApi';
 
 export default function ResetPasswordPage() {
@@ -50,6 +51,12 @@ export default function ResetPasswordPage() {
 
   return (
     <section className="auth-authmode-shell">
+      <DocumentMetadata
+        title="Choose a New Password | EcoTrack"
+        description="Set a new EcoTrack password to regain secure workspace access."
+        canonicalPath="/reset-password"
+        robots="noindex,nofollow"
+      />
       <div className="auth-authmode-brand">
         <Link to="/" className="auth-brand-link" aria-label="EcoTrack home">
           <BrandLogo imageClassName="auth-brand-logo" textClassName="auth-brand-text" />

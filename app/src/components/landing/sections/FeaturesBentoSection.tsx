@@ -9,34 +9,34 @@ import {
 
 const cards = [
   {
-    title: "Live dispatch board",
-    copy: "Route tickets to the right team, zone owner, or specialist with one deterministic workflow.",
+    title: "Route planning and tour orchestration",
+    copy: "Build collection tours from zone risk, fill-level signals, and service priorities before overflow spreads.",
     icon: Route,
     featured: true,
   },
   {
-    title: "Audit-ready timeline",
-    copy: "Capture every comment, assignment, and state change in a single immutable activity stream.",
+    title: "Citizen reporting intake",
+    copy: "Turn overflow, missed collection, and damaged container reports into structured operational work.",
     icon: Clock4,
   },
   {
-    title: "Role-safe access",
-    copy: "Apply admin-level controls only where needed while keeping daily work frictionless.",
+    title: "Live container monitoring",
+    copy: "Stream fill levels, battery health, and anomaly signals from connected containers into one live view.",
     icon: ShieldCheck,
   },
   {
-    title: "Portfolio visibility",
-    copy: "Track load across zones and rebalance before bottlenecks impact service quality.",
+    title: "Zone risk heatmaps",
+    copy: "See hotspots across zones and containers so managers can prioritize response before service quality drops.",
     icon: Building2,
   },
   {
-    title: "Signal-driven alerts",
-    copy: "Escalate stale or high-priority tickets quickly with clear owner accountability.",
+    title: "Crew execution",
+    copy: "Guide field teams through assigned stops, collection validation, and completion updates during active rounds.",
     icon: BellRing,
   },
   {
     title: "Performance analytics",
-    copy: "Understand first response and completion trends by site, assignee, and queue.",
+    copy: "Track service reliability, collection throughput, and operational trends across sites and service areas.",
     icon: ChartSpline,
   },
 ];
@@ -46,9 +46,9 @@ export default function FeaturesBentoSection() {
     <section id="features" className="landing-section">
       <div className="landing-container py-20">
         <div className="landing-reveal mx-auto max-w-3xl text-center">
-          <h2 className="landing-h2">Built for operational clarity, not just ticket storage.</h2>
+          <h2 className="landing-h2">Everything your waste operations team needs in one platform.</h2>
           <p className="mt-4 text-[var(--text-muted)]">
-            Every card below represents a real workflow shortcut teams use during busy shifts.
+            EcoTrack replaces fragmented spreadsheets, inboxes, and disconnected tools with one shared operating system.
           </p>
         </div>
 
