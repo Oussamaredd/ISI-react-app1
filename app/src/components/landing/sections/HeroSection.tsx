@@ -16,8 +16,8 @@ export default function HeroSection() {
             Smart waste operations platform
           </Badge>
           <h1 className="landing-h1">
-            Run cleaner, faster waste collection with{" "}
-            <span className="landing-gradient-text">one EcoTrack control center.</span>
+            Faster waste collection with{" "}
+            <span className="landing-gradient-text">one control center.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[var(--text-muted)] sm:text-lg">
             Plan collection routes, monitor connected containers, turn citizen reports into action,

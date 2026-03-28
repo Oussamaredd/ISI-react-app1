@@ -1,5 +1,7 @@
 const defaultApiPort = Number.parseInt(process.env.API_PORT ?? '', 10);
-const DEFAULT_URL = `http://127.0.0.1:${Number.isInteger(defaultApiPort) && defaultApiPort > 0 ? defaultApiPort : 3001}/health`;
+const DEFAULT_URL = `http://127.0.0.1:${
+  Number.isInteger(defaultApiPort) && defaultApiPort > 0 ? defaultApiPort : 3001
+}/health`;
 const DEFAULT_INTERVAL_MS = 1200;
 const DEFAULT_REQUEST_TIMEOUT_MS = 2000;
 const DEFAULT_TIMEOUT_MS = 180000;
@@ -49,12 +51,12 @@ const resolveProbeErrorReason = (error) => {
   return error.name;
 };
 
-const probe = async (requestUrl = probeUrl) => {
+const probe = async () => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
 
   try {
-    const response = await fetch(requestUrl, {
+    const response = await fetch(probeUrl, {
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal,
@@ -87,38 +89,15 @@ const formatProbeResult = (result) => {
   return result.reason ? `error ${result.reason}` : 'unreachable';
 };
 
-const buildProbeCandidates = (rawUrl) => {
-  const candidates = [rawUrl];
-
-  try {
-    const parsed = new URL(rawUrl);
-    if (parsed.hostname === 'localhost') {
-      parsed.hostname = '127.0.0.1';
-      candidates.push(parsed.toString());
-    }
-  } catch {
-    return candidates;
-  }
-
-  return [...new Set(candidates)];
-};
-
 const run = async () => {
   let lastProbeResult = null;
-  const probeCandidates = buildProbeCandidates(probeUrl);
 
   while (Date.now() - startedAt < timeoutMs) {
-    for (const candidateUrl of probeCandidates) {
-      lastProbeResult = await probe(candidateUrl);
-      if (lastProbeResult.isReady) {
-        const elapsedMs = Date.now() - startedAt;
-        console.log(`[wait-for-api-ready] API is ready at ${candidateUrl} (${elapsedMs}ms)`);
-        process.exit(0);
-      }
-
-      if (lastProbeResult.status !== null) {
-        break;
-      }
+    lastProbeResult = await probe();
+    if (lastProbeResult.isReady) {
+      const elapsedMs = Date.now() - startedAt;
+      console.log(`[wait-for-api-ready] API is ready at ${probeUrl} (${elapsedMs}ms)`);
+      process.exit(0);
     }
 
     console.log(

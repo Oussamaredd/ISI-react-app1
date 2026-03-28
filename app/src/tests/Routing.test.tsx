@@ -72,7 +72,7 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /Run cleaner, faster waste collection/i },
+        { name: /faster waste collection/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /Run cleaner, faster waste collection/i },
+        { name: /faster waste collection/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
@@ -405,7 +405,7 @@ describe("Routing Matrix", () => {
       expect(
         await screen.findByRole(
           "heading",
-          { name: /Run cleaner, faster waste collection/i },
+          { name: /faster waste collection/i },
           { timeout: 5000 },
         ),
       ).toBeInTheDocument();

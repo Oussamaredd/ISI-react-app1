@@ -47,7 +47,7 @@ cp mobile/.env.example mobile/.env.local
 npm run dev
 ```
 
-`npm run dev` now blocks frontend startup until the local direct API liveness URL from the Port Contract returns `200`, so Vite waits for the API process to be listening before it starts. The default liveness wait timeout is `180000ms`; deeper dependency checks remain available through the readiness endpoints and `npm run dev:doctor`.
+`npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts. The default readiness wait timeout is `180000ms`.
 
 The API workspace dev server now runs directly from TypeScript sources in watch mode, which removes the old full-build-before-listen step during local development.
 
@@ -78,6 +78,7 @@ Install contract:
 - Use the committed root lockfile with repo-root installs only.
 - Do not recover the monorepo with `npm install --prefix <workspace>` or ad-hoc workspace-local installs.
 - If the local toolchain drifts, stop active Node/Vite/Expo processes and rerun `npm ci --include=dev` from the repo root.
+- On Windows shells where Vite cannot spawn `esbuild` helper processes, the app dev server now falls back to spawn-restricted mode and fully disables Vite dep pre-bundling instead of crashing at startup.
 
 ## Port Contract
 
@@ -108,7 +109,7 @@ curl -f http://localhost:3001/api/health/ready
 curl -f http://localhost:3001/api/metrics
 ```
 
-If the liveness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the API issue is fixed. Use `curl -f http://localhost:3001/api/health/ready` or `npm run dev:doctor` when you need dependency-aware diagnostics.
+If the readiness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the database or API issue is fixed.
 
 ## Auth Routes (Local/Docker)
 

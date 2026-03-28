@@ -317,6 +317,7 @@ Removed runtime aliases (no longer read by API runtime):
 - API/database/infrastructure secrets must never appear in app or mobile env files.
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_RELEASE` are private build/deploy inputs; expose only the public DSNs (`VITE_SENTRY_DSN`, `EXPO_PUBLIC_SENTRY_DSN`) to clients.
 - In local and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
+- During loopback browser runs, if `VITE_API_BASE_URL` still points at a different loopback origin than the active page, the web client falls back to `window.location.origin` so dev/preview sessions stay same-origin and avoid credentialed CORS preflights.
 - In native mobile runtimes, `EXPO_PUBLIC_API_BASE_URL` should target the public API origin directly because Expo clients do not inherit the Vite edge proxy.
 - For Cloudflare Pages deploys, set `VITE_USE_EDGE_API_PROXY=true` and `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` at build time so Vite emits a `_redirects` file that proxies `/api/*` and `/health` through the frontend edge.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.

@@ -71,6 +71,15 @@ const createCloudflarePagesRedirectsPlugin = ({
   },
 });
 
+const createSpawnRestrictedDepOptimizerPlugin = () => ({
+  name: "ecotrack-spawn-restricted-dep-optimizer",
+  apply: "serve",
+  configResolved(resolvedConfig) {
+    resolvedConfig.optimizeDeps.noDiscovery = true;
+    resolvedConfig.optimizeDeps.include = [];
+  },
+});
+
 const resolveManualChunkName = (id) => {
   const normalizedId = id.split(path.sep).join("/");
 
@@ -131,6 +140,10 @@ export default defineConfig(({ mode }) => {
       edgeProxyTargetOrigin,
     }),
   ];
+
+  if (spawnRestricted) {
+    plugins.push(createSpawnRestrictedDepOptimizerPlugin());
+  }
 
   if (sentrySourceMapsEnabled) {
     plugins.push(
@@ -218,6 +231,7 @@ export default defineConfig(({ mode }) => {
         exclude: ["src/tests/**", "**/*.d.ts", "**/node_modules/**", "**/*.config.*"],
         include: [
           "src/App.tsx",
+          "src/components/landing/Navbar.tsx",
           "src/pages/Dashboard.tsx",
           "src/pages/ManagerPlanningPage.tsx",
           "src/pages/ManagerReportsPage.tsx",

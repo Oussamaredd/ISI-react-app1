@@ -1,54 +1,18 @@
 // API client with centralized configuration and error handling
 import { clearAccessToken, withAuthHeader } from './authToken';
+import { resolveApiBase } from '../lib/apiBase';
 
-const FALLBACK_API_BASE = 'http://localhost:3001';
 const EDGE_PROXY_ENABLED = import.meta.env.VITE_USE_EDGE_API_PROXY === 'true';
-
-const trimTrailingSlashes = (value: string) => {
-  let endIndex = value.length;
-
-  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 47) {
-    endIndex -= 1;
-  }
-
-  return endIndex === value.length ? value : value.slice(0, endIndex);
-};
-
-const resolveDefaultApiBase = () => {
-  if (typeof window !== 'undefined' && typeof window.location?.origin === 'string') {
-    const origin = window.location.origin.trim();
-    if (origin.length > 0) {
-      return origin;
-    }
-  }
-
-  return FALLBACK_API_BASE;
-};
 
 const configuredApiBase =
   import.meta.env.VITE_API_BASE_URL ??
   // Temporary alias support during migration to VITE_API_BASE_URL.
   import.meta.env.VITE_API_URL;
 
-const resolveApiBaseFromRuntime = () => {
-  if (EDGE_PROXY_ENABLED) {
-    return resolveDefaultApiBase();
-  }
-
-  if (typeof configuredApiBase === 'string' && configuredApiBase.trim().length > 0) {
-    return configuredApiBase;
-  }
-
-  return resolveDefaultApiBase();
-};
-
-const rawApiBase =
-  resolveApiBaseFromRuntime();
-
-const trimmedApiBase = trimTrailingSlashes(rawApiBase);
-export const API_BASE = trimmedApiBase.endsWith('/api')
-  ? trimmedApiBase.slice(0, -4)
-  : trimmedApiBase;
+export const API_BASE = resolveApiBase({
+  configuredApiBase,
+  edgeProxyEnabled: EDGE_PROXY_ENABLED,
+});
 
 const normalizeOrigin = (value: string) => {
   try {

@@ -22,6 +22,7 @@ describe('useApiReady', () => {
   test('returns ready state when /health responds successfully', async () => {
     const fetchMock = vi.fn().mockResolvedValue(createResponse(true));
     vi.stubGlobal('fetch', fetchMock);
+    const currentOrigin = window.location.origin;
 
     const { result } = renderHook(() => useApiReady('http://localhost:3001'));
 
@@ -31,7 +32,7 @@ describe('useApiReady', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3001/health',
+      `${currentOrigin}/health`,
       expect.objectContaining({
         method: 'GET',
         cache: 'no-store',

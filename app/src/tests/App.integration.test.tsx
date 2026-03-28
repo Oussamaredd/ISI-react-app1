@@ -74,7 +74,7 @@ describe("App Integration", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /Run cleaner, faster waste collection/i },
+        { name: /faster waste collection/i },
         { timeout: 8000 },
       ),
     ).toBeInTheDocument();
