@@ -5,17 +5,55 @@
     <link rel="icon" type="image/png" href="/ecotrack-icon-192.png" />
     <link rel="apple-touch-icon" href="/ecotrack-icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      />
+    </noscript>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#081626" />
+    <meta name="application-name" content="EcoTrack" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="robots" content="index,follow" />
     <meta
       name="description"
-      content="EcoTrack coordinates route planning, citizen reporting, live monitoring, and support operations from one workspace."
+      content="EcoTrack is a smart waste operations platform for route planning, citizen reporting, live container monitoring, and field execution."
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="EcoTrack" />
+    <meta property="og:title" content="EcoTrack | Smart Waste Operations Platform" />
+    <meta
+      property="og:description"
+      content="Plan collection routes, monitor connected containers, turn citizen reports into action, and track field execution from one EcoTrack workspace."
+    />
+    <meta property="og:image" content="/ecotrack-icon-512.png" />
+    <meta property="og:image:alt" content="EcoTrack logo" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="EcoTrack | Smart Waste Operations Platform" />
+    <meta
+      name="twitter:description"
+      content="Plan collection routes, monitor connected containers, turn citizen reports into action, and track field execution from one EcoTrack workspace."
+    />
+    <meta name="twitter:image" content="/ecotrack-icon-512.png" />
+    <link rel="canonical" href="/" />
     <meta name="ecotrack-release-version" content="%VITE_RELEASE_VERSION%" />
     <meta name="ecotrack-api-base-url" content="%VITE_API_BASE_URL%" />
-    <title>EcoTrack</title>
+    <title>EcoTrack | Smart Waste Operations Platform</title>
   </head>
   <body>
     <div id="root"></div>

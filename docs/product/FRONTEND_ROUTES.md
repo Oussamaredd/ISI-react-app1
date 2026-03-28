@@ -6,9 +6,9 @@ This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/mai
 
 | Path | Auth state | Result |
 | --- | --- | --- |
-| `/` | Unauthenticated | Marketing landing page |
+| `/` | Unauthenticated | Marketing landing page for EcoTrack smart waste operations |
 | `/` | Authenticated | Redirect to `/app` |
-| `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages |
+| `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages aligned to route planning, citizen reporting, container monitoring, and platform policy |
 | `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices and assertive inline auth error announcements |
 | `/signup` | Unauthenticated | Local account registration page |
 | `/forgot-password` | Unauthenticated | Password reset request page |
@@ -25,6 +25,7 @@ Special case:
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
 - Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
+- Direct-entry performance contract: `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first auth or dashboard paint.
 
 ## Product routes (`/app/*`)
 
@@ -112,20 +113,21 @@ Landing section IDs:
 Landing in-page navigation still uses `/#<section-id>` for section jump behavior.
 Footer links now use dedicated content pages (for example `/pricing`, `/terms`, `/privacy`) instead of hash anchors.
 Hash navigation is resolved on landing mount with sticky header offset support (`useLandingSectionScroll` + `scroll-margin-top`).
+Public landing copy now describes EcoTrack as a smart waste operations platform, with route planning, citizen reporting, live container monitoring, field execution, and collection analytics as the core story.
 
 ## Marketing/legal info pages
 
 | Path | Primary intent |
 | --- | --- |
-| `/about` | Company overview |
+| `/about` | Company overview for waste operations teams |
 | `/contact` | Contact and request routing |
 | `/security` | Security practices summary |
-| `/features` | Product capabilities summary |
-| `/how-it-works` | Workflow overview |
+| `/features` | Product capabilities summary across reporting, monitoring, planning, and execution |
+| `/how-it-works` | Workflow overview from signal capture to verified collection |
 | `/pricing` | Commercial model summary |
 | `/support` | Support model and escalation guidance |
 | `/terms` | Terms summary |
-| `/privacy` | Privacy commitments |
+| `/privacy` | Privacy commitments for account, report, and telemetry data |
 | `/cookies` | Cookie usage summary |
 
 ## Removed legacy paths
