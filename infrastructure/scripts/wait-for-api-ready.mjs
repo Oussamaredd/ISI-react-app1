@@ -1,4 +1,7 @@
-const DEFAULT_URL = 'http://localhost:3001/api/health/ready';
+const defaultApiPort = Number.parseInt(process.env.API_PORT ?? '', 10);
+const DEFAULT_URL = `http://127.0.0.1:${
+  Number.isInteger(defaultApiPort) && defaultApiPort > 0 ? defaultApiPort : 3001
+}/health`;
 const DEFAULT_INTERVAL_MS = 1200;
 const DEFAULT_REQUEST_TIMEOUT_MS = 2000;
 const DEFAULT_TIMEOUT_MS = 180000;

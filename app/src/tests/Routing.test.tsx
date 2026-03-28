@@ -143,9 +143,11 @@ describe("Routing Matrix", () => {
     expect(await screen.findByRole("heading", { name: /Welcome back/i })).toBeInTheDocument();
 
     await waitFor(() => {
+      expect(document.title).toBe("Sign In | EcoTrack");
       expect(
-        document.querySelector('meta[name="robots"]')?.getAttribute("content"),
-      ).toBe("noindex,nofollow");
+        document.querySelector('meta[name="description"]')?.getAttribute("content"),
+      ).toContain("Sign in to EcoTrack");
+      expect(document.querySelector('meta[name="robots"]')).toBeNull();
     });
   });
 

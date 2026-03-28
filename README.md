@@ -78,6 +78,7 @@ Install contract:
 - Use the committed root lockfile with repo-root installs only.
 - Do not recover the monorepo with `npm install --prefix <workspace>` or ad-hoc workspace-local installs.
 - If the local toolchain drifts, stop active Node/Vite/Expo processes and rerun `npm ci --include=dev` from the repo root.
+- On Windows shells where Vite cannot spawn `esbuild` helper processes, the app dev server now falls back to spawn-restricted mode and fully disables Vite dep pre-bundling instead of crashing at startup.
 
 ## Port Contract
 
@@ -87,7 +88,7 @@ Local/native dev:
 - Public edge API: `http://localhost:5173/api`
 - Public edge health: `http://localhost:5173/health`
 - API process listen port (direct local diagnostics only): `http://localhost:3001`
-- Root `npm run dev` waits on `http://localhost:3001/api/health/ready` before Vite starts
+- Root `npm run dev` waits on `http://127.0.0.1:3001/health` before Vite starts
 
 Docker dev:
 

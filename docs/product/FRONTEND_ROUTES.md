@@ -27,7 +27,8 @@ Special case:
 - Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
 - Direct-entry performance contract: `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first auth or dashboard paint.
 - Public marketing routes publish route-specific title, description, canonical, Open Graph, Twitter, and structured-data metadata aligned to EcoTrack smart waste operations.
-- Auth-entry routes (`/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`) publish `noindex` metadata so they are available to users but excluded from search indexing.
+- The public sign-in route (`/login`) publishes standard indexable metadata because it is part of the audited public entry surface.
+- Sensitive auth routes (`/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`) keep `noindex` metadata so recovery and callback flows stay available to users without becoming search landing pages.
 
 ## Product routes (`/app/*`)
 

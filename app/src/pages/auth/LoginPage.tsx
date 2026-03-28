@@ -140,7 +140,6 @@ export default function LoginPage() {
         title="Sign In | EcoTrack"
         description="Sign in to EcoTrack to plan routes, review citizen reports, monitor connected containers, and coordinate collection operations."
         canonicalPath="/login"
-        robots="noindex,nofollow"
       />
       <div className="auth-login-spotlight-overlay" ref={spotlightOverlayRef} aria-hidden="true" />
       <Link to="/" className="auth-brand-link auth-login-brand-link" aria-label="EcoTrack home">
