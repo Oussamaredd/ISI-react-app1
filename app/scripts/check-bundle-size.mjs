@@ -117,7 +117,9 @@ const collectManifestFiles = (key, visitedKeys = new Set()) => {
 };
 
 const collectRouteDeltaFiles = (key) => {
-  if (isBundledIntoInitialShell(key)) {
+  // Eager routes do not always receive their own manifest entry. When that
+  // happens, the route has no standalone transfer delta to budget.
+  if (!manifest[key] || isBundledIntoInitialShell(key)) {
     return new Set();
   }
 
