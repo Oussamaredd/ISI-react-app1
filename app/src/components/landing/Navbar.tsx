@@ -24,6 +24,9 @@ const sectionLinks = [
   { id: "faq", label: "FAQ" },
 ];
 
+const desktopActionClassName =
+  "inline-flex h-11 w-[132px] items-center justify-center whitespace-nowrap rounded-[var(--radius-pill)] px-4 text-sm font-semibold";
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
   const location = useLocation();
@@ -47,7 +50,7 @@ export default function Navbar() {
         isScrolled && "landing-nav-scrolled",
       )}
     >
-      <div className="mx-auto flex h-20 w-full max-w-[1200px] items-center justify-between gap-4 px-4">
+      <div className="mx-auto flex h-full w-full max-w-[1200px] items-center justify-between gap-4 px-4">
         <Link
           to="/"
           className="inline-flex shrink-0 items-center"
@@ -55,7 +58,8 @@ export default function Navbar() {
           onClick={onHomeClick}
         >
           <BrandLogo
-            imageClassName="h-8 w-8"
+            className="gap-2.5"
+            imageClassName="h-7 w-7"
             textClassName="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
           />
         </Link>
@@ -82,12 +86,15 @@ export default function Navbar() {
         <div className="hidden shrink-0 items-center gap-2 md:flex">
           <Link
             to="/login"
-            className="inline-flex h-11 w-[120px] items-center justify-center rounded-[var(--radius-pill)] px-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+            className={cn(
+              desktopActionClassName,
+              "text-[var(--text-muted)] transition hover:text-[var(--text)]",
+            )}
           >
             Log in
           </Link>
-          <Link to="/login">
-            <Button size="md" className="w-[120px]">
+          <Link to="/login" className="inline-flex shrink-0">
+            <Button size="md" className="w-[132px] whitespace-nowrap px-4">
               Get Started
             </Button>
           </Link>
