@@ -4,7 +4,6 @@ import AppStatusScreen from "../components/AppStatusScreen";
 import RouteScrollToTop from "../components/RouteScrollToTop";
 import { useCurrentUser } from "../hooks/useAuth";
 import PublicLayout from "../layouts/PublicLayout";
-import LandingPage from "../pages/landing/LandingPage";
 import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
 import {
   hasAdminAccess,
@@ -16,6 +15,7 @@ import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
 
 const AuthLayout = lazy(() => import("../layouts/AuthLayout"));
+const LandingPage = lazy(() => import("../pages/landing/LandingPage"));
 const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
 const AppLayout = lazy(() => import("../layouts/AppLayout"));
 const AppHomePage = lazy(() => import("../pages/AppHomePage"));
@@ -63,7 +63,7 @@ function RootLandingRoute() {
     return <Navigate to="/app" replace />;
   }
 
-  return <LandingPage />;
+  return withRouteSuspense(<LandingPage />);
 }
 
 function AdminRoute() {

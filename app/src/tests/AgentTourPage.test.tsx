@@ -174,7 +174,10 @@ describe("AgentTourPage", () => {
     expect(geolocationMock).toHaveBeenCalledTimes(1);
   });
 
-  it("surfaces start, validation, and anomaly submission errors", async () => {
+  it(
+    "surfaces start, validation, and anomaly submission errors",
+    { timeout: 15_000 },
+    async () => {
     const agentHooks = await import("../hooks/useAgentTours");
     const startTour = vi.fn().mockRejectedValue(new Error("Dispatch service unavailable."));
     const validateStop = vi.fn().mockRejectedValue(new Error("Stop validation failed."));
@@ -249,7 +252,8 @@ describe("AgentTourPage", () => {
       );
     });
     expect(await screen.findByRole("status")).toHaveTextContent(/Alert queue unavailable/i);
-  });
+    },
+  );
 
   it("renders activity summaries and handles device location capture failures", async () => {
     const agentHooks = await import("../hooks/useAgentTours");

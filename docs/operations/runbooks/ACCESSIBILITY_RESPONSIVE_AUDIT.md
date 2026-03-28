@@ -1,38 +1,57 @@
-# Accessibility and Responsive Audit (Sprint 6)
+# Accessibility And Responsive Audit
 
-Last update: 2026-02-20
+Last updated: 2026-03-28
 
-## Scope
+Scope: Development-only release-critical flows across web and mobile.
 
-Critical EcoTrack flows audited in Sprint 6:
-- Citizen overflow reporting (`/app/citizen/report`)
-- Agent tour execution (`/app/agent/tour`)
-- Manager planning wizard (`/app/manager/planning`)
+## Automated Evidence
 
-## Keyboard and Screen-Reader Validation
+Web:
 
-Validation is automated in `app/src/tests/e2e.key-journeys.test.tsx` and enforced by CI.
+- `app/src/tests/e2e.key-journeys.test.tsx`
+- `app/src/tests/LoginPage.test.tsx`
+- `app/src/tests/Dashboard.test.tsx`
+- `app/src/tests/ManagerReportsPage.test.tsx`
+- `app/src/tests/SettingsPage.test.tsx`
+- `app/src/tests/SystemSettings.test.tsx`
 
-Checklist status:
-- [x] Keyboard tab order reaches primary fields and actions for citizen report flow.
-- [x] Form controls expose accessible names via explicit `label` + `htmlFor` + `id` bindings.
-- [x] Status/confirmation updates are announced using `role="status"` with polite live regions.
+Mobile:
 
-## Responsive Validation
+- `mobile/src/tests/LoginScreen.test.tsx`
+- `mobile/src/tests/ReportScreen.test.tsx`
+- `mobile/src/tests/ManagerHomeScreen.test.tsx`
+- `mobile/src/tests/AgentHomeScreen.test.tsx`
+- `mobile/src/tests/SessionProvider.test.tsx`
+- `mobile/src/tests/ReactQueryLifecycleProvider.test.tsx`
 
-Responsive behavior checks are included in journey tests by asserting mobile-first layouts keep breakpoint classes for multi-column sections.
+## Checklist Status
 
-Checklist status:
-- [x] Citizen report location fields keep `sm:grid-cols-2` split for larger screens.
-- [x] Manager planning form keeps `sm:grid-cols-2` layout for tablet/desktop.
-- [x] Agent/manager/citizen pages remain single-column usable on base mobile layout.
+- [x] Keyboard-only flows reach the primary actions on landing, login, planning, reports, and role home screens.
+- [x] Critical forms expose stable visible labels rather than placeholder-only identification.
+- [x] Validation and async failure messages are surfaced through explicit `role="alert"` or equivalent mobile helper text.
+- [x] Dashboard and report screens expose loading, empty, retry, and degraded states instead of silent failures.
+- [x] Admin settings now announce save, reset, dispatch, and failure outcomes through explicit live-region messaging.
+- [x] Mobile login, reporting, manager, and agent flows expose actionable labels and status copy in workflow context.
 
-## WCAG 2.1 AA Fixes Applied
+## Manual Release Spot Checks
 
-- [x] Added explicit label association for inputs/selects/textareas across citizen, agent, and manager forms.
-- [x] Added live status announcements on async actions where feedback was previously visual-only.
+Run these checks before closing a release candidate:
 
-## Operational Notes
+- Landing: tab from top navigation into the primary CTA and verify escape paths back to `/`.
+- Login: submit an invalid credential pair and verify the failure is announced without relying on color alone.
+- Dashboard: confirm loading, degraded, and realtime state chips are visible and readable at narrow and desktop widths.
+- Planning: confirm optimization status and skipped-container explanations remain readable on tablet and desktop widths.
+- Reports: confirm history loading, empty, error, retry, generate, and download states all remain reachable by keyboard.
+- Admin settings: confirm save, reset, and test-dispatch actions announce success or failure without relying on toast visuals only.
+- Mobile login: validate field labels, validation copy, password toggle, forgot-password action, and sign-up navigation.
+- Mobile reporting: validate search, selection, submission, success copy, and point-award messaging.
+- Mobile manager: validate loading, report generation, download/share feedback, and history visibility.
+- Mobile agent: validate start, GPS attach, stop validation, anomaly submission, and manager-alert confirmation messaging.
 
-- PR reviewers must complete the accessibility checklist in `.github/pull_request_template.md`.
-- If new UI flows are added, extend `app/src/tests/e2e.key-journeys.test.tsx` (or add a focused journey test file) before merge.
+## Notable Contracts
+
+- Web login uses explicit alert banners for auth failures.
+- Web dashboard keeps a polite live status chip for realtime transport state.
+- Manager reports preserve loading, empty, and retry states in the history panel.
+- Admin settings preserve both visible toast feedback and non-visual live-region feedback.
+- Mobile release checks are paired with `docs/operations/runbooks/MOBILE_PRODUCT_READINESS.md`.

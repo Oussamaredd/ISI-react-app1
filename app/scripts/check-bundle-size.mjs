@@ -1,86 +1,280 @@
-import { readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distAssetsDir = path.resolve(__dirname, "..", "dist", "assets");
+const appRoot = path.resolve(__dirname, "..");
+const distDir = path.join(appRoot, "dist");
+const distAssetsDir = path.join(distDir, "assets");
+const manifestPath = path.join(distDir, ".vite", "manifest.json");
+
+const resolveQualityOutputRoot = () => {
+  const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
+
+  if (configuredRoot) {
+    return path.isAbsolute(configuredRoot)
+      ? configuredRoot
+      : path.resolve(appRoot, "..", configuredRoot);
+  }
+
+  return path.resolve(appRoot, "..", process.env.CI ? "tmp/ci/quality" : "tmp/quality");
+};
 
 const parseBudgetKb = (value, fallback, label) => {
   const parsed = Number.parseInt(value ?? String(fallback), 10);
+
   if (!Number.isFinite(parsed) || parsed <= 0) {
     throw new Error(`[bundle-check] Invalid ${label} value: "${value}"`);
   }
+
   return parsed;
 };
 
-const ENTRY_CHUNK_BUDGET_KB = parseBudgetKb(
-  process.env.ECOTRACK_ENTRY_CHUNK_BUDGET_KB,
-  300,
-  "ECOTRACK_ENTRY_CHUNK_BUDGET_KB",
-);
-const BRAND_LOGO_BUDGET_KB = parseBudgetKb(
-  process.env.ECOTRACK_LOGO_BUDGET_KB,
-  120,
-  "ECOTRACK_LOGO_BUDGET_KB",
-);
+const BUDGETS = {
+  initialShellGzipKb: parseBudgetKb(
+    process.env.ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB,
+    450,
+    "ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB",
+  ),
+  landingRouteGzipKb: parseBudgetKb(
+    process.env.ECOTRACK_LANDING_ROUTE_GZIP_BUDGET_KB,
+    10,
+    "ECOTRACK_LANDING_ROUTE_GZIP_BUDGET_KB",
+  ),
+  loginRouteGzipKb: parseBudgetKb(
+    process.env.ECOTRACK_LOGIN_ROUTE_GZIP_BUDGET_KB,
+    10,
+    "ECOTRACK_LOGIN_ROUTE_GZIP_BUDGET_KB",
+  ),
+  dashboardRouteGzipKb: parseBudgetKb(
+    process.env.ECOTRACK_DASHBOARD_ROUTE_GZIP_BUDGET_KB,
+    50,
+    "ECOTRACK_DASHBOARD_ROUTE_GZIP_BUDGET_KB",
+  ),
+  adminRouteGzipKb: parseBudgetKb(
+    process.env.ECOTRACK_ADMIN_ROUTE_GZIP_BUDGET_KB,
+    30,
+    "ECOTRACK_ADMIN_ROUTE_GZIP_BUDGET_KB",
+  ),
+  mappingVendorGzipKb: parseBudgetKb(
+    process.env.ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB,
+    125,
+    "ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB",
+  ),
+  brandLogoRawKb: parseBudgetKb(
+    process.env.ECOTRACK_LOGO_BUDGET_KB,
+    120,
+    "ECOTRACK_LOGO_BUDGET_KB",
+  ),
+};
 
-const toBudgetBytes = (sizeInKb) => sizeInKb * 1024;
 const toDisplayKb = (sizeInBytes) => (sizeInBytes / 1024).toFixed(2);
 
-const assets = await readdir(distAssetsDir);
+const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const fileSizeCache = new Map();
 
-const findLargestByPattern = async (pattern) => {
-  const matchingFiles = assets.filter((file) => pattern.test(file));
-  if (matchingFiles.length === 0) {
-    return null;
+const resolveManifestEntry = (key) => {
+  const entry = manifest[key];
+
+  if (!entry) {
+    throw new Error(`[bundle-check] Missing manifest entry for ${key}`);
   }
 
-  let largestFile = null;
-  let largestSize = -1;
+  return entry;
+};
 
-  for (const fileName of matchingFiles) {
-    const filePath = path.resolve(distAssetsDir, fileName);
-    const fileStats = await stat(filePath);
+const collectManifestFiles = (key, visitedKeys = new Set()) => {
+  if (visitedKeys.has(key)) {
+    return new Set();
+  }
 
-    if (fileStats.size > largestSize) {
-      largestFile = fileName;
-      largestSize = fileStats.size;
+  visitedKeys.add(key);
+
+  const entry = resolveManifestEntry(key);
+  const files = new Set();
+
+  if (entry.file) {
+    files.add(entry.file);
+  }
+
+  for (const cssFile of entry.css ?? []) {
+    files.add(cssFile);
+  }
+
+  for (const importKey of entry.imports ?? []) {
+    for (const importedFile of collectManifestFiles(importKey, visitedKeys)) {
+      files.add(importedFile);
     }
   }
 
+  return files;
+};
+
+const readFileMetrics = async (repoRelativeFile) => {
+  if (fileSizeCache.has(repoRelativeFile)) {
+    return fileSizeCache.get(repoRelativeFile);
+  }
+
+  const absolutePath = path.join(distDir, repoRelativeFile.replace(/^assets\//, "assets/"));
+  const rawBuffer = await readFile(absolutePath);
+  const metrics = {
+    file: repoRelativeFile,
+    gzipBytes: gzipSync(rawBuffer).length,
+    rawBytes: rawBuffer.length,
+  };
+
+  fileSizeCache.set(repoRelativeFile, metrics);
+  return metrics;
+};
+
+const summarizeFiles = async (label, files, budgetKb, metric = "gzipBytes") => {
+  const uniqueFiles = [...new Set(files)].sort();
+
+  if (uniqueFiles.length === 0) {
+    throw new Error(`[bundle-check] ${label} did not resolve to any files.`);
+  }
+
+  const fileMetrics = await Promise.all(uniqueFiles.map((file) => readFileMetrics(file)));
+  const totalBytes = fileMetrics.reduce((sum, fileMetric) => sum + fileMetric[metric], 0);
+  const budgetBytes = budgetKb * 1024;
+
+  console.log(
+    `[bundle-check] ${label}: ${toDisplayKb(totalBytes)} kB (${metric === "gzipBytes" ? "gzip" : "raw"}) (budget ${budgetKb} kB)`,
+  );
+
   return {
-    fileName: largestFile,
-    sizeInBytes: largestSize,
+    budgetKb,
+    files: fileMetrics,
+    label,
+    metric,
+    passed: totalBytes <= budgetBytes,
+    totalBytes,
   };
 };
 
-const entryChunk = await findLargestByPattern(/^index-.*\.js$/);
-if (!entryChunk) {
-  throw new Error(`[bundle-check] No entry chunk matching /^index-.*\\.js$/ found in ${distAssetsDir}`);
-}
-
-const entryChunkBudgetBytes = toBudgetBytes(ENTRY_CHUNK_BUDGET_KB);
-console.log(
-  `[bundle-check] Entry chunk ${entryChunk.fileName}: ${toDisplayKb(entryChunk.sizeInBytes)} kB (budget ${ENTRY_CHUNK_BUDGET_KB} kB)`,
+const shellFiles = collectManifestFiles("index.html");
+const landingRouteFiles = [...collectManifestFiles("src/pages/landing/LandingPage.tsx")].filter(
+  (file) => !shellFiles.has(file),
 );
+const loginRouteFiles = [...collectManifestFiles("src/pages/auth/LoginPage.tsx")].filter(
+  (file) => !shellFiles.has(file),
+);
+const dashboardRouteFiles = [...collectManifestFiles("src/pages/Dashboard.tsx")].filter(
+  (file) => !shellFiles.has(file),
+);
+const adminRouteFiles = [...collectManifestFiles("src/pages/AdminDashboard.tsx")].filter(
+  (file) => !shellFiles.has(file),
+);
+const mappingVendorFiles = [...new Set(
+  Object.values(manifest)
+    .map((entry) => entry.file)
+    .filter((file) => /^assets\/mapping-vendor-.*\.js$/.test(file ?? "")),
+)];
 
-if (entryChunk.sizeInBytes > entryChunkBudgetBytes) {
-  throw new Error(
-    `[bundle-check] Entry chunk ${entryChunk.fileName} is ${toDisplayKb(entryChunk.sizeInBytes)} kB, above ${ENTRY_CHUNK_BUDGET_KB} kB.`,
-  );
+const results = [
+  await summarizeFiles("Initial route shell transfer", [...shellFiles], BUDGETS.initialShellGzipKb),
+  await summarizeFiles("Landing route delta", landingRouteFiles, BUDGETS.landingRouteGzipKb),
+  await summarizeFiles("Login route delta", loginRouteFiles, BUDGETS.loginRouteGzipKb),
+  await summarizeFiles("Dashboard route delta", dashboardRouteFiles, BUDGETS.dashboardRouteGzipKb),
+  await summarizeFiles("Admin route delta", adminRouteFiles, BUDGETS.adminRouteGzipKb),
+  await summarizeFiles("Mapping vendor chunk", mappingVendorFiles, BUDGETS.mappingVendorGzipKb),
+];
+
+const assetNames = await readdir(distAssetsDir);
+const brandLogoAssetNames = assetNames.filter((file) => /^ecotrack-logo-.*\.(png|webp|avif)$/.test(file));
+
+if (brandLogoAssetNames.length > 0) {
+  let largestLogo = null;
+
+  for (const fileName of brandLogoAssetNames) {
+    const fileStats = await stat(path.join(distAssetsDir, fileName));
+
+    if (!largestLogo || fileStats.size > largestLogo.rawBytes) {
+      largestLogo = {
+        file: `assets/${fileName}`,
+        gzipBytes: gzipSync(await readFile(path.join(distAssetsDir, fileName))).length,
+        rawBytes: fileStats.size,
+      };
+    }
+  }
+
+  if (largestLogo) {
+    const budgetBytes = BUDGETS.brandLogoRawKb * 1024;
+    console.log(
+      `[bundle-check] Brand logo ${largestLogo.file}: ${toDisplayKb(largestLogo.rawBytes)} kB raw (budget ${BUDGETS.brandLogoRawKb} kB)`,
+    );
+
+    results.push({
+      budgetKb: BUDGETS.brandLogoRawKb,
+      files: [largestLogo],
+      label: "Brand logo asset",
+      metric: "rawBytes",
+      passed: largestLogo.rawBytes <= budgetBytes,
+      totalBytes: largestLogo.rawBytes,
+    });
+  }
 }
 
-const brandLogoAsset = await findLargestByPattern(/^ecotrack-logo-.*\.(png|webp|avif)$/);
-if (brandLogoAsset) {
-  const brandLogoBudgetBytes = toBudgetBytes(BRAND_LOGO_BUDGET_KB);
-  console.log(
-    `[bundle-check] Brand logo ${brandLogoAsset.fileName}: ${toDisplayKb(brandLogoAsset.sizeInBytes)} kB (budget ${BRAND_LOGO_BUDGET_KB} kB)`,
-  );
+const qualityOutputDir = path.join(resolveQualityOutputRoot(), "bundle-budgets");
+await mkdir(qualityOutputDir, { recursive: true });
 
-  if (brandLogoAsset.sizeInBytes > brandLogoBudgetBytes) {
-    throw new Error(
-      `[bundle-check] Brand logo asset ${brandLogoAsset.fileName} is ${toDisplayKb(brandLogoAsset.sizeInBytes)} kB, above ${BRAND_LOGO_BUDGET_KB} kB.`,
+const summaryPayload = {
+  generatedAt: new Date().toISOString(),
+  results: results.map((result) => ({
+    budgetKb: result.budgetKb,
+    files: result.files.map((file) => ({
+      file: file.file,
+      gzipKb: Number(toDisplayKb(file.gzipBytes)),
+      rawKb: Number(toDisplayKb(file.rawBytes)),
+    })),
+    label: result.label,
+    metric: result.metric,
+    passed: result.passed,
+    totalKb: Number(toDisplayKb(result.totalBytes)),
+  })),
+};
+
+const markdownLines = [
+  "# Bundle Budget Summary",
+  "",
+  `- Generated at: \`${summaryPayload.generatedAt}\``,
+  "",
+];
+
+for (const result of results) {
+  markdownLines.push(`## ${result.label}`);
+  markdownLines.push("");
+  markdownLines.push(
+    `- Total: \`${toDisplayKb(result.totalBytes)} kB\` (${result.metric === "gzipBytes" ? "gzip" : "raw"})`,
+  );
+  markdownLines.push(`- Budget: \`${result.budgetKb} kB\``);
+  markdownLines.push(`- Status: \`${result.passed ? "pass" : "fail"}\``);
+  markdownLines.push("- Files:");
+
+  for (const file of result.files) {
+    markdownLines.push(
+      `  - \`${file.file}\` raw \`${toDisplayKb(file.rawBytes)} kB\`, gzip \`${toDisplayKb(file.gzipBytes)} kB\``,
     );
   }
+
+  markdownLines.push("");
+}
+
+await writeFile(
+  path.join(qualityOutputDir, "summary.json"),
+  `${JSON.stringify(summaryPayload, null, 2)}\n`,
+  "utf8",
+);
+await writeFile(path.join(qualityOutputDir, "summary.md"), `${markdownLines.join("\n")}\n`, "utf8");
+
+const failures = results.filter((result) => !result.passed);
+
+if (failures.length > 0) {
+  throw new Error(
+    `[bundle-check] Budget failures: ${failures
+      .map((result) => `${result.label} ${toDisplayKb(result.totalBytes)} kB > ${result.budgetKb} kB`)
+      .join("; ")}`,
+  );
 }

@@ -225,5 +225,23 @@ describe('Admin and citizen endpoint smoke', () => {
       2,
     );
   });
+
+  it('surfaces degraded admin and citizen reads, then recovers on the next request', async () => {
+    auditServiceMock.getStats
+      .mockRejectedValueOnce(new Error('audit projection offline'))
+      .mockResolvedValueOnce([]);
+    citizenServiceMock.getProfile
+      .mockRejectedValueOnce(new Error('profile snapshot unavailable'))
+      .mockResolvedValueOnce({ points: 42 });
+
+    await request(app.getHttpServer()).get('/api/admin/audit-logs/stats').expect(500);
+    await request(app.getHttpServer()).get('/api/admin/audit-logs/stats').expect(200);
+
+    await request(app.getHttpServer()).get('/api/citizen/profile').expect(500);
+    await request(app.getHttpServer()).get('/api/citizen/profile').expect(200);
+
+    expect(auditServiceMock.getStats).toHaveBeenCalledTimes(2);
+    expect(citizenServiceMock.getProfile).toHaveBeenCalledTimes(2);
+  });
 });
 

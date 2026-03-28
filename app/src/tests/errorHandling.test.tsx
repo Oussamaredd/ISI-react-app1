@@ -1,19 +1,51 @@
-import { render, renderHook, fireEvent } from '@testing-library/react';
-import { useErrorHandler, ERROR_TYPES, ErrorFallback } from '../utils/errorHandlers';
+import { act, fireEvent, render, renderHook, waitFor } from '@testing-library/react';
 import { vi, beforeEach, afterEach, describe, test, expect } from 'vitest';
+
+import {
+  ErrorBoundary,
+  ErrorFallback,
+  ERROR_RECOVERY,
+  ERROR_TYPES,
+  formatErrorMessage,
+  retryWithBackoff,
+  suggestRecovery,
+  useErrorHandler,
+  useNetworkStatus,
+} from '../utils/errorHandlers';
+
+const {
+  captureWebExceptionSpy,
+  reportFrontendErrorSpy,
+  toastErrorSpy,
+} = vi.hoisted(() => ({
+  captureWebExceptionSpy: vi.fn(),
+  reportFrontendErrorSpy: vi.fn(),
+  toastErrorSpy: vi.fn(),
+}));
 
 vi.mock('../context/ToastContext', () => ({
   useToast: () => ({
-    error: vi.fn(),
+    error: toastErrorSpy,
     warning: vi.fn(),
     success: vi.fn(),
     info: vi.fn(),
   }),
 }));
 
+vi.mock('../services/api', () => ({
+  reportFrontendError: reportFrontendErrorSpy,
+}));
+
+vi.mock('../monitoring/sentry', () => ({
+  captureWebException: captureWebExceptionSpy,
+}));
+
 const originalLocation = window.location;
 
 beforeEach(() => {
+  toastErrorSpy.mockReset();
+  reportFrontendErrorSpy.mockReset();
+  captureWebExceptionSpy.mockReset();
   Object.defineProperty(window, 'location', {
     configurable: true,
     value: {
@@ -95,6 +127,21 @@ describe('Error Handling', () => {
 
       expect(asyncFunction).toHaveBeenCalled();
     });
+
+    test('surfaces handled errors through toast and telemetry', () => {
+      const { result } = renderHook(() => useErrorHandler());
+
+      const errorInfo = result.current.handleError({ response: { status: 503 } }, 'tickets.load');
+
+      expect(errorInfo.type).toBe(ERROR_TYPES.SERVER);
+      expect(toastErrorSpy).toHaveBeenCalledWith('Server error. Please try again later.');
+      expect(reportFrontendErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: 'tickets.load',
+          type: ERROR_TYPES.SERVER,
+        }),
+      );
+    });
   });
 
   describe('Error Boundary Fallback', () => {
@@ -125,6 +172,145 @@ describe('Error Handling', () => {
 
       fireEvent.click(getByText('Try Again'));
       expect(mockReset).toHaveBeenCalled();
+    });
+
+    test('resets the error boundary and renders recovered content', async () => {
+      let shouldThrow = true;
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const swallowJsdomBoundaryError = (event: ErrorEvent) => {
+        if (event.error instanceof Error && event.error.message === 'Recovered later') {
+          event.preventDefault();
+        }
+      };
+
+      const ProblemChild = () => {
+        if (shouldThrow) {
+          throw new Error('Recovered later');
+        }
+
+        return <div>Recovered view</div>;
+      };
+
+      try {
+        window.addEventListener('error', swallowJsdomBoundaryError);
+
+        const { getByText } = render(
+          <ErrorBoundary>
+            <ProblemChild />
+          </ErrorBoundary>,
+        );
+
+        shouldThrow = false;
+        fireEvent.click(getByText('Try Again'));
+
+        await waitFor(() => {
+          expect(getByText('Recovered view')).toBeTruthy();
+        });
+      } finally {
+        window.removeEventListener('error', swallowJsdomBoundaryError);
+        consoleErrorSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('utility helpers', () => {
+    test('formats API payload and status text errors consistently', () => {
+      expect(
+        formatErrorMessage({
+          response: {
+            data: {
+              message: 'Detailed backend error',
+            },
+          },
+        }),
+      ).toBe('Detailed backend error');
+      expect(
+        formatErrorMessage({
+          response: {
+            statusText: 'Service unavailable',
+          },
+        }),
+      ).toBe('Service unavailable');
+      expect(formatErrorMessage(null)).toBe('Unknown error occurred');
+      expect(formatErrorMessage('direct message')).toBe('direct message');
+    });
+
+    test('suggests recovery actions for auth, session expiry, and unknown failures', () => {
+      expect(suggestRecovery(ERROR_TYPES.AUTH)).toEqual(
+        expect.objectContaining({
+          strategy: ERROR_RECOVERY.REDIRECT,
+          action: 'Login',
+        }),
+      );
+
+      expect(
+        suggestRecovery(ERROR_TYPES.SERVER, {
+          response: {
+            status: 401,
+          },
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          strategy: ERROR_RECOVERY.REDIRECT,
+          message: 'Session expired. Please log in again',
+        }),
+      );
+
+      expect(suggestRecovery('unexpected')).toEqual(
+        expect.objectContaining({
+          strategy: ERROR_RECOVERY.REFRESH,
+          action: 'Refresh',
+        }),
+      );
+    });
+
+    test('retries recoverable operations with exponential backoff', async () => {
+      vi.useFakeTimers();
+      const operation = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('temporary'))
+        .mockRejectedValueOnce(new Error('temporary'))
+        .mockResolvedValueOnce('ok');
+
+      const promise = retryWithBackoff(operation, 2, 10);
+
+      await vi.advanceTimersByTimeAsync(30);
+      await expect(promise).resolves.toBe('ok');
+      expect(operation).toHaveBeenCalledTimes(3);
+      vi.useRealTimers();
+    });
+
+    test('stops retrying client errors immediately', async () => {
+      const clientError = {
+        response: {
+          status: 400,
+        },
+      };
+
+      const operation = vi.fn().mockRejectedValue(clientError);
+
+      await expect(retryWithBackoff(operation, 3, 10)).rejects.toEqual(clientError);
+      expect(operation).toHaveBeenCalledTimes(1);
+    });
+
+    test('tracks browser online and offline events', async () => {
+      const { result } = renderHook(() => useNetworkStatus());
+
+      act(() => {
+        window.dispatchEvent(new Event('offline'));
+      });
+
+      await waitFor(() => {
+        expect(result.current.isOnline).toBe(false);
+      });
+
+      act(() => {
+        window.dispatchEvent(new Event('online'));
+      });
+
+      await waitFor(() => {
+        expect(result.current.isOnline).toBe(true);
+      });
     });
   });
 });

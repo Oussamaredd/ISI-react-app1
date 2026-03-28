@@ -9,7 +9,7 @@ This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/mai
 | `/` | Unauthenticated | Marketing landing page |
 | `/` | Authenticated | Redirect to `/app` |
 | `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages |
-| `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices |
+| `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices and assertive inline auth error announcements |
 | `/signup` | Unauthenticated | Local account registration page |
 | `/forgot-password` | Unauthenticated | Password reset request page |
 | `/reset-password` | Unauthenticated | Local password reset page |
@@ -24,6 +24,7 @@ Special case:
 - `/#<section-id>` remains accessible for authenticated users to support route+scroll links back to marketing sections.
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
+- Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
 
 ## Product routes (`/app/*`)
 
@@ -73,6 +74,9 @@ Authenticated shell behavior:
   - Profile photos accept PNG, JPEG, or WEBP uploads up to 1 MB and are stored as profile/avatar URLs or data URLs.
   - Removing a profile photo clears the stored avatar preview and returns the shell/header avatar to its fallback state.
   - Password changes are available only for `local` accounts; Google SSO accounts are shown provider guidance instead.
+- Login/auth error messaging:
+  - OAuth and credential failures are announced through assertive `role="alert"` banners.
+  - Email and password inputs reference the active auth error banner via `aria-describedby` so screen readers keep the failure context attached to the form controls.
 
 PWA install behavior:
 

@@ -25,6 +25,8 @@ export function SystemSettings() {
   const { mutateAsync: updateSettings, isPending: isUpdating } = useUpdateSystemSettings();
   const { mutateAsync: dispatchTestNotification, isPending: isDispatching } = useDispatchTestNotification();
   const { addToast } = useToast();
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     user_registration: true,
@@ -74,6 +76,24 @@ export function SystemSettings() {
 
   const [hasChanges, setHasChanges] = useState(false);
 
+  const announceStatus = (message: string) => {
+    setStatusMessage(message);
+    setErrorMessage(null);
+  };
+
+  const announceError = (message: string) => {
+    setErrorMessage(message);
+    setStatusMessage(null);
+  };
+
+  const clearFeedback = () => {
+    setStatusMessage(null);
+    setErrorMessage(null);
+  };
+
+  const resolveErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error && error.message ? `${fallback}: ${error.message}` : fallback;
+
   useEffect(() => {
     if (settingsData) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync fetched settings into editable form state
@@ -94,6 +114,7 @@ export function SystemSettings() {
   };
 
   const handleInputChange = (field, value) => {
+    clearFeedback();
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -103,6 +124,7 @@ export function SystemSettings() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearFeedback();
     
     try {
       await updateSettings({
@@ -113,10 +135,11 @@ export function SystemSettings() {
         severity_channel_routing: parseJson(routingJson, formData.severity_channel_routing),
       });
       setHasChanges(false);
+      announceStatus('System settings saved successfully.');
       
       addToast('System settings have been saved successfully.', 'success');
     } catch (error) {
-      console.error('Error updating settings:', error);
+      announceError(resolveErrorMessage(error, 'Unable to save system settings'));
     }
   };
 
@@ -166,20 +189,25 @@ export function SystemSettings() {
       setTemplatesJson(JSON.stringify(defaultSettings.notification_templates, null, 2));
       setRoutingJson(JSON.stringify(defaultSettings.severity_channel_routing, null, 2));
       setHasChanges(true);
+      announceStatus('Settings reset to default values. Save changes to apply them.');
       
       addToast('Settings have been reset to default values. Save to apply changes.', 'info');
     }
   };
 
   const handleDispatchTestNotification = async () => {
+    clearFeedback();
     try {
       await dispatchTestNotification({
         severity: testSeverity,
         recipient: testRecipient || undefined,
         message: testMessage,
       });
+      announceStatus(
+        `Test ${testSeverity} notification dispatched${testRecipient ? ` for ${testRecipient}` : ''}.`,
+      );
     } catch (error) {
-      console.error('Error dispatching test notification:', error);
+      announceError(resolveErrorMessage(error, 'Unable to dispatch the test notification'));
     }
   };
 
@@ -230,6 +258,25 @@ export function SystemSettings() {
           </Button>
         </div>
       </div>
+
+      {statusMessage ? (
+        <div
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          role="status"
+          aria-live="polite"
+        >
+          {statusMessage}
+        </div>
+      ) : null}
+
+      {errorMessage ? (
+        <div
+          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+          role="alert"
+        >
+          {errorMessage}
+        </div>
+      ) : null}
 
       <form id="system-settings-form" onSubmit={handleSubmit} className="space-y-8">
         {/* General Settings */}
@@ -533,6 +580,7 @@ export function SystemSettings() {
                 rows={6}
                 value={thresholdsJson}
                 onChange={(e) => {
+                  clearFeedback();
                   setThresholdsJson(e.target.value);
                   setHasChanges(true);
                 }}
@@ -548,6 +596,7 @@ export function SystemSettings() {
                 rows={5}
                 value={channelsJson}
                 onChange={(e) => {
+                  clearFeedback();
                   setChannelsJson(e.target.value);
                   setHasChanges(true);
                 }}
@@ -561,6 +610,7 @@ export function SystemSettings() {
                 rows={5}
                 value={templatesJson}
                 onChange={(e) => {
+                  clearFeedback();
                   setTemplatesJson(e.target.value);
                   setHasChanges(true);
                 }}
@@ -574,6 +624,7 @@ export function SystemSettings() {
                 rows={4}
                 value={routingJson}
                 onChange={(e) => {
+                  clearFeedback();
                   setRoutingJson(e.target.value);
                   setHasChanges(true);
                 }}

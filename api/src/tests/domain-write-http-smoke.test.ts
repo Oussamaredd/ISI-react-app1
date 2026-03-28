@@ -246,5 +246,16 @@ describe('Domain write endpoint smoke', () => {
       expect.objectContaining({ status: 'in_progress' }),
     );
   });
+
+  it('shows degraded agent activity reads and cleanly recovers after the dependency comes back', async () => {
+    toursServiceMock.getTourActivity
+      .mockRejectedValueOnce(new Error('tour activity feed offline'))
+      .mockResolvedValueOnce([]);
+
+    await request(app.getHttpServer()).get(`/api/tours/${tourId}/activity`).expect(500);
+    await request(app.getHttpServer()).get(`/api/tours/${tourId}/activity`).expect(200);
+
+    expect(toursServiceMock.getTourActivity).toHaveBeenCalledTimes(2);
+  });
 });
 

@@ -6,6 +6,17 @@ import { fileURLToPath } from "node:url";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const spawnRestricted = process.env.ECOTRACK_VITE_SPAWN_RESTRICTED === "1";
+const resolveQualityOutputRoot = () => {
+  const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
+
+  if (configuredRoot) {
+    return path.isAbsolute(configuredRoot)
+      ? configuredRoot
+      : path.resolve(currentDir, "..", configuredRoot);
+  }
+
+  return path.resolve(currentDir, "..", process.env.CI ? "tmp/ci/quality" : "tmp/quality");
+};
 
 const normalizeProxyTargetOrigin = (value, key) => {
   let parsed;
@@ -60,6 +71,48 @@ const createCloudflarePagesRedirectsPlugin = ({
   },
 });
 
+const resolveManualChunkName = (id) => {
+  const normalizedId = id.split(path.sep).join("/");
+
+  if (normalizedId.includes("/leaflet/")) {
+    return "mapping-vendor";
+  }
+
+  if (normalizedId.includes("/node_modules/")) {
+    if (normalizedId.includes("/react-dom/") || normalizedId.includes("/scheduler/")) {
+      return "react-dom-vendor";
+    }
+
+    if (normalizedId.includes("react-router")) {
+      return "router-vendor";
+    }
+
+    if (normalizedId.includes("@tanstack/react-query")) {
+      return "query-vendor";
+    }
+
+    if (normalizedId.includes("@sentry/")) {
+      return "observability-vendor";
+    }
+
+    if (normalizedId.includes("lucide-react")) {
+      return "icons-vendor";
+    }
+
+    if (
+      normalizedId.includes("class-variance-authority") ||
+      normalizedId.includes("clsx") ||
+      normalizedId.includes("tailwind-merge")
+    ) {
+      return "ui-vendor";
+    }
+
+    return undefined;
+  }
+
+  return undefined;
+};
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const base = env.VITE_BASE || "/";
@@ -100,6 +153,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    define: {
+      __SENTRY_DEBUG__: false,
+      __SENTRY_TRACING__: false,
+    },
     plugins,
     root: ".",
     optimizeDeps: spawnRestricted
@@ -114,24 +171,11 @@ export default defineConfig(({ mode }) => {
             minify: false,
           }
         : {}),
+      manifest: true,
       sourcemap: sentrySourceMapsEnabled,
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            if (!id.includes("node_modules")) {
-              return undefined;
-            }
-
-            if (id.includes("react-router")) {
-              return "router-vendor";
-            }
-
-            if (id.includes("@tanstack/react-query")) {
-              return "query-vendor";
-            }
-
-            return undefined;
-          },
+          manualChunks: resolveManualChunkName,
         },
       },
     },
@@ -169,7 +213,8 @@ export default defineConfig(({ mode }) => {
       fileParallelism: false,
       coverage: {
         provider: "v8",
-        reporter: ["text", "json", "html", "lcov"],
+        reporter: ["text", "json", "json-summary", "html", "lcov"],
+        reportsDirectory: path.join(resolveQualityOutputRoot(), "coverage", "app"),
         exclude: ["src/tests/**", "**/*.d.ts", "**/node_modules/**", "**/*.config.*"],
         include: [
           "src/App.tsx",
@@ -193,10 +238,10 @@ export default defineConfig(({ mode }) => {
           "src/state/queryKeys.ts",
         ],
         thresholds: {
-          statements: 60,
-          branches: 55,
-          functions: 60,
-          lines: 60,
+          statements: 80,
+          branches: 70,
+          functions: 80,
+          lines: 80,
         },
       },
     },

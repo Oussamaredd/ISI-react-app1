@@ -1,250 +1,71 @@
-# Definition of Done Checklist - Portfolio Ready Project
+# Definition of Done - Development Scope
 
-## Security Checklist ✅
+Last updated: 2026-03-28
 
-### Authentication & Authorization
-- [ ] **Secret Management**: All secrets moved to secure vault (AWS Secrets Manager, Azure Key Vault, etc.)
-- [ ] **OAuth Security**: Google OAuth credentials regenerated and properly secured
-- [ ] **Session Security**: Session timeout implemented (15-30 minutes)
-- [ ] **Session Hardening**: Secure, httpOnly, and sameSite flags configured
-- [ ] **Account Lockout**: Failed login attempt lockout mechanism
-- [ ] **Multi-Factor Auth**: MFA implemented for sensitive operations
-- [ ] **Role-Based Access**: RBAC properly implemented and tested
+This checklist is the release-grade Definition of Done for the current `Development` specialty scope only.
 
-### Input Validation & Sanitization
-- [ ] **Server Validation**: Comprehensive input validation using Joi/Yup/Zod
-- [ ] **XSS Protection**: Input sanitization and output encoding
-- [ ] **SQL Injection**: Parameterized queries verified throughout
-- [ ] **File Upload**: Secure file handling with type/size validation
-- [ ] **API Validation**: Request/response validation schemas
-- [ ] **Data Types**: Proper type checking and conversion
+Out of scope for this checklist:
 
-### Infrastructure Security
-- [ ] **CORS Configuration**: Properly restricted origins and methods
-- [ ] **Security Headers**: HSTS, CSP, X-Frame-Options implemented
-- [ ] **Rate Limiting**: API rate limiting configured
-- [ ] **HTTPS Only**: SSL/TLS enforced in production
-- [ ] **Database Security**: Least privilege database access
-- [ ] **Docker Security**: Container security best practices
+- Cyber-Security specialty deliverables
+- Data-Science or MLOps deliverables
+- deferred platform migration work
 
-## Correctness Checklist ✅
+## Blocking Repo Gates
 
-### Testing Coverage
-- [ ] **Unit Tests**: >80% code coverage for critical paths
-- [ ] **Integration Tests**: API endpoint integration tests
-- [ ] **Smoke Tests**: Critical user journey checks
-- [ ] **Database Tests**: Transaction and constraint tests
-- [ ] **Security Tests**: Authentication and authorization tests
-- [ ] **Performance Tests**: Load and stress tests
+- [ ] `npm run validate-env:all`
+- [ ] `npm run validate-doc-sync`
+- [ ] `npm run validate-specs`
+- [ ] `npm run lint`
+- [ ] `npm run typecheck`
+- [ ] `npm run validate-sonar-coverage-alignment`
+- [ ] `npm run test:e2e`
+- [ ] `npm run test:realtime`
+- [ ] `npm run test:coverage`
+- [ ] `npm run quality:mobile-readiness`
+- [ ] `npm run deploy:render:verify-local`
+- [ ] `npm run build --workspace=ecotrack-app`
+- [ ] `npm run ci:quality:lighthouse`
 
-### Data Integrity
-- [ ] **Schema Consistency**: Single source of truth for database schema
-- [ ] **Foreign Keys**: All referential integrity constraints enforced
-- [ ] **Check Constraints**: Data validation rules at database level
-- [ ] **Transaction Safety**: ACID properties verified
-- [ ] **Backup Strategy**: Automated backup and restore procedures
-- [ ] **Data Migration**: Proper migration system with rollback
+## Coverage And Regression Bar
 
-### Error Handling
-- [ ] **Graceful Degradation**: Fallback behaviors for failures
-- [ ] **Error Logging**: Comprehensive error tracking
-- [ ] **User-Friendly Errors**: Sanitized error messages
-- [ ] **Recovery Mechanisms**: Automatic retry where appropriate
-- [ ] **Timeout Handling**: Proper timeout configurations
-- [ ] **Circuit Breakers**: Fault tolerance patterns implemented
+- [ ] Web app coverage is at least `80/70/80/80` for statements, branches, functions, and lines.
+- [ ] Mobile coverage is at least `80/70/80/80` for statements, branches, functions, and lines.
+- [ ] API coverage is at least `85/70/85/85` for statements, branches, functions, and lines.
+- [ ] Web critical journeys remain covered by `app/src/tests/e2e.key-journeys.test.tsx`.
+- [ ] Web realtime fallback and reconnect remain covered by `npm run test:realtime`.
+- [ ] Mobile citizen, agent, manager, login, session, and lifecycle regressions remain covered by the mobile readiness lane.
+- [ ] API degraded and recovery paths remain covered by the HTTP smoke and branch-focused tests.
 
-## Developer Experience Checklist ✅
+## Accessibility And UX Bar
 
-### Development Environment
-- [ ] **Local Setup**: One-command local development setup
-- [ ] **Environment Configuration**: Automated env file generation
-- [ ] **Hot Reload**: Live reload working for frontend and backend
-- [ ] **Debugging**: Debug configurations provided
-- [ ] **Type Safety**: Full TypeScript coverage with no errors
-- [ ] **Code Quality**: ESLint, Prettier, and pre-commit hooks
+- [ ] Landing, login, dashboard, planning, reports, and admin settings pass the checklist in `docs/operations/runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md`.
+- [ ] Mobile login, reporting, agent, manager, and session flows pass the same runbook checklist.
+- [ ] Critical forms expose stable labels, validation copy, and non-visual success or failure messaging.
+- [ ] Loading, empty, retry, offline, reconnect, and error states are deliberate and tested rather than incidental.
 
-### Tooling & Automation
-- [ ] **Code Formatting**: Automated formatting (Prettier)
-- [ ] **Linting**: Comprehensive linting rules enforced
-- [ ] **Env Policy Validation**: `infrastructure/scripts/validate-env.mjs` validates required keys, frontend `VITE_*` policy, and `ticketdb` DB-name policy
-- [ ] **CI Env Gates**: CI/CD workflows run env validation before build/test/deploy
-- [ ] **Pre-commit Hooks**: Quality gates on commit
-- [ ] **IDE Configuration**: VS Code settings and extensions
-- [ ] **Documentation**: In-code documentation complete
-- [ ] **API Documentation**: OpenAPI/Swagger specs available
+## Performance Bar
 
-### Build & Deployment
-- [ ] **Build Process**: Reliable and reproducible builds
-- [ ] **Docker Images**: Optimized multi-stage builds
-- [ ] **CI/CD Pipeline**: Automated testing and deployment
-- [ ] **Environment Promotion**: Dev/Staging/Prod pipeline
-- [ ] **Rollback Capability**: One-click rollback procedures
-- [ ] **Health Checks**: Comprehensive health check endpoints
+- [ ] Lighthouse passes on `/`, `/login`, and `/app/dashboard` with repo-owned dependencies.
+- [ ] Route-aware bundle budgets pass for the initial shell, landing, login, dashboard, admin, and mapping chunks.
+- [ ] Mapping code stays isolated from the default route shell.
 
-## Documentation Checklist ✅
+## Mobile Release Bar
 
-### Project Documentation
-- [ ] **README**: Comprehensive project overview and quick start
-- [ ] **Architecture**: System architecture and design decisions
-- [ ] **API Documentation**: Complete API reference with examples
-- [ ] **Database Schema**: Visual schema documentation
-- [ ] **Deployment Guide**: Step-by-step deployment instructions
-- [ ] **Troubleshooting**: Common issues and solutions
+- [ ] `npm run quality:mobile-readiness` passes and writes evidence under `tmp/quality/mobile-readiness` or `tmp/ci/quality/mobile-readiness`.
+- [ ] `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_SENTRY_DSN`, `EXPO_PUBLIC_SENTRY_ENVIRONMENT`, and `EXPO_PUBLIC_RELEASE_VERSION` remain documented in `mobile/.env.example`.
+- [ ] Mobile release tagging, aggregate telemetry, and Sentry session tagging stay aligned with the web release identifier model.
 
-### Development Documentation
-- [ ] **Setup Guide**: Local development setup instructions
-- [ ] **Coding Standards**: Style guide and conventions
-- [ ] **Testing Guide**: How to write and run tests
-- [ ] **Contributing Guidelines**: Pull request process
-- [ ] **Release Process**: Versioning and release procedures
-- [ ] **Environment Variables**: Complete env var documentation
+## Release Evidence
 
-### User Documentation
-- [ ] **User Guide**: How to use the application
-- [ ] **Feature Documentation**: Detailed feature explanations
-- [ ] **FAQ**: Common questions and answers
-- [ ] **Screenshots/Demos**: Visual documentation
-- [ ] **Video Tutorial**: Screen recording of key features
-- [ ] **Support Contact**: How to get help
+- [ ] `npm run ci:release:manifest` produces the release manifest artifact.
+- [ ] `npm run ci:release:quality-scorecard` produces the Development-only quality scorecard artifact.
+- [ ] Hosted release smoke evidence exists for the target environment.
+- [ ] Hosted synthetic monitoring evidence exists for the target environment.
+- [ ] CD summaries reference the release scorecard artifact for the current release candidate.
 
-## Demo & Deployment Checklist ✅
+## Docs And Traceability
 
-### Production Readiness
-- [ ] **Docker Compose**: Full stack starts successfully
-- [ ] **Service Health**: All services pass health checks
-- [ ] **Database Migrations**: Automated schema migrations
-- [ ] **Environment Variables**: Production env properly configured
-- [ ] **SSL Certificates**: HTTPS properly configured
-- [ ] **Domain Configuration**: DNS and routing configured
-
-### Monitoring & Observability
-- [ ] **Metrics Collection**: Prometheus metrics exposed
-- [ ] **Visualization**: Grafana dashboards configured
-- [ ] **Log Aggregation**: ELK stack operational
-- [ ] **Alerting**: Critical alerts configured
-- [ ] **Health Monitoring**: Service health monitoring
-- [ ] **Performance Monitoring**: APM tools integrated
-
-### Demo Data
-- [ ] **Sample Data**: Realistic demo data available
-- [ ] **User Accounts**: Test user accounts configured
-- [ ] **Demo Scripts**: Automated demo scenarios
-- [ ] **Reset Capability**: Easy demo data reset
-- [ ] **Data Privacy**: No real user data in demo
-- [ ] **Performance Baseline**: Demo performance metrics
-
-## Performance Checklist ✅
-
-### Database Performance
-- [ ] **Index Optimization**: All queries use appropriate indexes
-- [ ] **Query Performance**: All queries under 100ms
-- [ ] **Connection Pooling**: Database connection pooling configured
-- [ ] **Query Caching**: Frequently accessed data cached
-- [ ] **Database Monitoring**: Query performance monitoring
-- [ ] **Backup Performance**: Backup/restore within SLA
-
-### Application Performance
-- [ ] **API Response Times**: <200ms for 95th percentile
-- [ ] **Frontend Bundle**: Optimized bundle size (<1MB)
-- [ ] **Image Optimization**: WebP format and lazy loading
-- [ ] **Caching Strategy**: Browser and CDN caching configured
-- [ ] **CDN Integration**: Static assets served via CDN
-- [ ] **Memory Usage**: Application memory optimized
-
-### Scalability
-- [ ] **Horizontal Scaling**: Multi-instance deployment tested
-- [ ] **Load Balancing**: Proper load distribution
-- [ ] **Resource Limits**: Container resource limits set
-- [ ] **Auto-scaling**: Scaling policies configured
-- [ ] **Database Scaling**: Read replicas configured
-- [ ] **Caching Layer**: Redis/Memcached integration
-
-## Security Verification Commands
-
-```bash
-# Check for exposed secrets
-git log --all --full-history -- **/.env*
-git grep -i "password\|secret\|key" -- *.env* *.js *.ts *.jsx *.tsx
-
-# Verify SSL configuration
-curl -I https://your-domain.com
-openssl s_client -connect your-domain.com:443
-
-# Test security headers
-curl -I https://your-domain.com
-nmap --script ssl-enum-ciphers -p 443 your-domain.com
-
-# Check for common vulnerabilities
-npm audit
-docker scan your-image
-```
-
-## Quality Gates
-
-### Must Pass (Blocking)
-- All security tests pass
-- No critical vulnerabilities
-- >80% test coverage
-- All services start successfully
-- Authentication flow works
-
-### Should Pass (Warning)
-- Performance benchmarks met
-- Documentation complete
-- No console errors in production
-- All monitoring dashboards operational
-
-### Could Pass (Nice to have)
-- Accessibility compliance
-- Internationalization support
-- Advanced caching strategies
-- Multi-region deployment
-
-## Final Verification Script
-
-```bash
-#!/bin/bash
-# Portfolio Readiness Verification
-
-echo "🔍 Running portfolio readiness checks..."
-
-# Security checks
-echo "🔒 Checking security..."
-npm audit --audit-level high
-docker compose exec backend npm run test:security
-
-# Quality checks
-echo "📊 Checking quality..."
-npm run lint
-npm run typecheck
-npm run test -- --coverage
-
-# Infrastructure checks
-echo "🏗️ Checking infrastructure..."
-docker compose up -d
-sleep 30
-docker compose ps
-npm run infra:health
-
-# Smoke checks
-echo "🏥 Checking health..."
-npm run smoke-test
-
-# Demo verification
-echo "🎮 Verifying demo..."
-curl -f http://localhost:3000/api/tickets
-curl -f http://localhost:9090/targets
-
-echo "✅ Portfolio ready!"
-```
-
-## Success Metrics
-
-- **Security Score**: 9/10 (no critical vulnerabilities)
-- **Test Coverage**: >80% for critical code paths
-- **Performance**: <200ms API response times
-- **Availability**: >99% uptime in production
-- **Documentation**: 100% API coverage
-- **User Experience**: No console errors, smooth interactions
-
-This checklist ensures the project meets professional standards for security, quality, documentation, and deployment readiness.
+- [ ] Runtime, env, command-surface, and workflow changes are reflected in `docs/`.
+- [ ] The quality policy remains aligned with `docs/governance/QUALITY_SCORECARD.md`.
+- [ ] Accessibility and mobile readiness guidance remain aligned with their runbooks.
+- [ ] Task trackers only mark work complete when the code, docs, and validation evidence all exist.

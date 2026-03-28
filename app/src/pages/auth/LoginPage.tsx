@@ -29,6 +29,7 @@ export default function LoginPage() {
   const redirectTarget = useMemo(() => resolveRequestedAuthRedirect(location.search), [location.search]);
   const oauthError = useMemo(() => new URLSearchParams(location.search).get('error'), [location.search]);
   const isAuthDisabled = isSigningIn;
+  const authErrorId = oauthError ? 'login-oauth-error' : error ? 'login-form-error' : undefined;
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -152,8 +153,16 @@ export default function LoginPage() {
         <h1 className="auth-login-title">Welcome back</h1>
         <p className="auth-login-subtitle">Sign in to continue.</p>
 
-        {oauthError ? <p className="auth-error-banner">{oauthError}</p> : null}
-        {error ? <p className="auth-error-banner">{error}</p> : null}
+        {oauthError ? (
+          <p id="login-oauth-error" className="auth-error-banner" role="alert" aria-live="assertive">
+            {oauthError}
+          </p>
+        ) : null}
+        {error ? (
+          <p id="login-form-error" className="auth-error-banner" role="alert" aria-live="assertive">
+            {error}
+          </p>
+        ) : null}
 
         <LoginButton
           className="auth-google-btn auth-login-google-btn"
@@ -172,14 +181,15 @@ export default function LoginPage() {
           <label htmlFor="login-email">
             <span>Email</span>
             <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={isAuthDisabled}
-              required
-            />
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={isAuthDisabled}
+            aria-describedby={authErrorId}
+            required
+          />
           </label>
 
           <div className="auth-login-password-header">
@@ -193,6 +203,7 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             disabled={isAuthDisabled}
+            aria-describedby={authErrorId}
             minLength={8}
             required
           />

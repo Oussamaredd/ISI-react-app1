@@ -7,6 +7,14 @@ import { setAccessToken } from '../services/authToken';
 import { buildApiUrl } from '../services/api';
 import { usePlanningRealtimeStream } from '../hooks/usePlanningRealtimeStream';
 
+const { reportRealtimeTransportErrorSpy } = vi.hoisted(() => ({
+  reportRealtimeTransportErrorSpy: vi.fn(),
+}));
+
+vi.mock('../utils/errorHandlers', () => ({
+  reportRealtimeTransportError: reportRealtimeTransportErrorSpy,
+}));
+
 type EventHandler = (event: Event) => void;
 
 class MockEventSource {
@@ -46,14 +54,20 @@ class MockEventSource {
   }
 }
 
+const jsonHeaders = new Headers({
+  'content-type': 'application/json',
+});
+
 const createWrapper = (queryClient: QueryClient) =>
   ({ children }: { children: ReactNode }) =>
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 
 describe('usePlanningRealtimeStream', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     MockEventSource.instances = [];
     localStorage.clear();
+    reportRealtimeTransportErrorSpy.mockReset();
     vi.stubGlobal('EventSource', MockEventSource as unknown as typeof EventSource);
     vi.stubGlobal(
       'fetch',
@@ -66,6 +80,7 @@ describe('usePlanningRealtimeStream', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -122,5 +137,142 @@ describe('usePlanningRealtimeStream', () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-tour'] });
+  });
+
+  it('falls back to the secondary stream-session endpoint after a 404', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          headers: jsonHeaders,
+          json: async () => ({}),
+        } satisfies Partial<Response>)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: jsonHeaders,
+          json: async () => ({ streamSessionToken: 'fallback-session' }),
+        } satisfies Partial<Response>),
+    );
+
+    renderHook(() => usePlanningRealtimeStream(true), {
+      wrapper: createWrapper(new QueryClient()),
+    });
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      buildApiUrl('/api/planning/stream/session'),
+      expect.any(Object),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      buildApiUrl('/api/planning/stream-session'),
+      expect.any(Object),
+    );
+    expect(MockEventSource.instances[0]?.url).toContain('stream_session=fallback-session');
+  });
+
+  it('switches to fallback mode when session issuance is unauthorized', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        url: buildApiUrl('/api/planning/stream/session'),
+        headers: jsonHeaders,
+        json: async () => ({ message: 'UNAUTHORIZED' }),
+      } satisfies Partial<Response>),
+    );
+
+    const { result } = renderHook(() => usePlanningRealtimeStream(true), {
+      wrapper: createWrapper(new QueryClient()),
+    });
+
+    await waitFor(() => {
+      expect(result.current.connectionState).toBe('fallback');
+    });
+
+    expect(MockEventSource.instances).toHaveLength(0);
+    expect(reportRealtimeTransportErrorSpy).toHaveBeenCalledWith(
+      expect.any(Error),
+      'planning.realtime.stream.session',
+    );
+  });
+
+  it('reconnects after connection errors and reuses the last event id', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: jsonHeaders,
+          json: async () => ({ sessionToken: 'stream-session-1' }),
+        } satisfies Partial<Response>)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: jsonHeaders,
+          json: async () => ({ sessionToken: 'stream-session-2' }),
+        } satisfies Partial<Response>),
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    const { result } = renderHook(() => usePlanningRealtimeStream(true), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(1);
+    });
+
+    const firstStream = MockEventSource.instances[0];
+    await act(async () => {
+      firstStream.onopen?.(new Event('open'));
+      firstStream.emit('system.keepalive', 'event-99');
+      firstStream.onerror?.(new Event('error'));
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    await waitFor(() => {
+      expect(MockEventSource.instances).toHaveLength(2);
+    });
+
+    expect(result.current.connectionState).toBe('reconnecting');
+    expect(MockEventSource.instances[1]?.url).toContain('last_event_id=event-99');
+    expect(reportRealtimeTransportErrorSpy).toHaveBeenCalledWith(
+      expect.any(Error),
+      'planning.realtime.stream.connection',
+    );
+  });
+
+  it('reports disabled and unsupported transports without opening a stream', () => {
+    const disabledResult = renderHook(() => usePlanningRealtimeStream(false), {
+      wrapper: createWrapper(new QueryClient()),
+    }).result;
+
+    expect(disabledResult.current.connectionState).toBe('disabled');
+
+    vi.stubGlobal('EventSource', undefined as unknown as typeof EventSource);
+
+    const fallbackResult = renderHook(() => usePlanningRealtimeStream(true), {
+      wrapper: createWrapper(new QueryClient()),
+    }).result;
+
+    expect(fallbackResult.current.connectionState).toBe('fallback');
   });
 });

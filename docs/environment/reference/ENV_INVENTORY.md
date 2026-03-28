@@ -1,6 +1,6 @@
 # Environment Variable Inventory
 
-Last updated: 2026-03-26
+Last updated: 2026-03-28
 
 This inventory is a reference snapshot, not the day-to-day policy document. For the active runtime contract, use `docs/environment/reference/ENV.md`.
 
@@ -98,9 +98,19 @@ Visibility legend:
 | DB_PORT | database | private | local-dev, docker-dev | deprecated alias (normalize to `DATABASE_URL`) |
 | DB_USER | database | private | local-dev, docker-dev | deprecated alias (normalize to `DATABASE_URL`) |
 | ELASTIC_URL | infrastructure | private | local-dev, docker-dev | canonical (optional observability) |
+| ECOTRACK_ADMIN_ROUTE_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional route-aware admin bundle budget override |
+| ECOTRACK_DASHBOARD_ROUTE_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional route-aware dashboard bundle budget override |
+| ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional route-aware initial route shell budget override |
+| ECOTRACK_LANDING_ROUTE_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional route-aware landing bundle budget override |
+| ECOTRACK_LOGIN_ROUTE_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional route-aware login bundle budget override |
+| ECOTRACK_LOGO_BUDGET_KB | infrastructure | private | local-dev, ci | optional brand-logo asset budget override |
+| ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional mapping vendor gzip budget override |
+| ECOTRACK_QUALITY_OUTPUT_ROOT | infrastructure | private | local-dev, ci | optional override for the hardening artifact root |
+| ECOTRACK_SKIP_LIGHTHOUSE_GATE | infrastructure | private | local-dev, ci | optional local fallback skip for the repo-owned Lighthouse gate |
 | EMAIL_FROM | api | private | deploy-prod | canonical |
 | ENABLE_2FA | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | ENABLE_EMAIL_VERIFICATION | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| ENABLE_LIGHTHOUSE_GATE | infrastructure | private | local-dev, ci | optional compatibility toggle; `0` disables the repo-owned Lighthouse gate |
 | ENABLE_LOGSTASH | infrastructure | private | local-dev, docker-dev | canonical (optional) |
 | ENABLE_METRICS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | ENABLE_REGISTRATION | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -125,6 +135,8 @@ Visibility legend:
 | LOG_LEVEL | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | LOGSTASH_HOST | infrastructure | private | local-dev, docker-dev | canonical (optional) |
 | LOGSTASH_PORT | infrastructure | private | local-dev, docker-dev | canonical (optional) |
+| LIGHTHOUSE_BASE_URL | infrastructure | private | local-dev, ci | optional base URL override for the repo-owned Lighthouse gate |
+| LIGHTHOUSE_PREVIEW_PORT | infrastructure | private | local-dev, ci | optional preview-port override for the repo-owned Lighthouse gate |
 | MAX_FILE_SIZE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | METRICS_PORT | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | NODE_ENV | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |

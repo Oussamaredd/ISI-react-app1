@@ -109,4 +109,22 @@ describe('LoginPage', () => {
       expect(getLocation()?.pathname).toBe('/app');
     });
   });
+
+  test('surfaces auth failures through an accessible alert banner', async () => {
+    mockAuthApiLogin.mockRejectedValue(new Error('Invalid credentials'));
+
+    renderWithRouter(<LoginPage />, { route: '/login' });
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'a@admin.fr' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/invalid credentials/i);
+    });
+  });
 });

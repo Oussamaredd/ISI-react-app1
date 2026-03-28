@@ -45,6 +45,7 @@ Documentation is organized by document type and responsibility so architecture, 
 - `governance/RELEASE_VERSIONING.md` - release bookkeeping and versioning policy
 - `governance/CODE_ANNOTATION_CONVENTIONS.md` - TSDoc and JSDoc expectations for shared and exported code
 - `governance/SECURITY.md` - secret-management and leakage safeguards
+- `governance/QUALITY_SCORECARD.md` - Development-only release quality thresholds and evidence contract
 - `governance/checklists/DOD_CHECKLIST.md` - definition-of-done and quality checklist
 
 ## Data And Operations
@@ -53,6 +54,8 @@ Documentation is organized by document type and responsibility so architecture, 
 - `operations/observability/ELK.md` - observability stack notes
 - `operations/runbooks/` - incident, rollout, quality, and platform runbooks
 - `operations/runbooks/EXTENDED_QUALITY_GATES.md` - K6, Stryker, Percy, and Lighthouse execution paths
+- `operations/runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - explicit accessibility and responsive release checklist
+- `operations/runbooks/MOBILE_PRODUCT_READINESS.md` - mobile release-readiness lane and evidence map
 - `operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased Cloudflare Pages, Render, and Neon rollout plan
 - `operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current managed Postgres baseline
 
@@ -100,16 +103,19 @@ npm run typecheck --workspace=ecotrack-mobile
 npm run test
 npm run test --workspace=ecotrack-mobile
 npm run validate-doc-sync
+npm run validate-sonar-coverage-alignment
 npm run test:api
 npm run test:e2e
 npm run test:coverage
 npm run test:coverage:api
+npm run quality:mobile-readiness
+npm run quality:product-hardening
 npm run validate-env:all
 npm run validate:workspace-toolchain
-node infrastructure/scripts/validate-sonar-coverage-alignment.mjs
 npm run validate-specs
 node infrastructure/scripts/ci/generate-cdc-summary.mjs
 npm run ci:release:manifest
+npm run ci:release:quality-scorecard
 npm run ci:release:deploy-hooks
 npm run ci:release:smoke
 npm run ci:quality:k6
@@ -126,7 +132,7 @@ npm run build --workspace=ecotrack-app
 ```
 
 Frontend bundle budgets are enforced during `ecotrack-app` builds via `app/scripts/check-bundle-size.mjs`.
-Use `ECOTRACK_ENTRY_CHUNK_BUDGET_KB` and `ECOTRACK_LOGO_BUDGET_KB` to override default limits in CI or local runs.
+Use the route-aware budget overrides `ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB`, `ECOTRACK_LANDING_ROUTE_GZIP_BUDGET_KB`, `ECOTRACK_LOGIN_ROUTE_GZIP_BUDGET_KB`, `ECOTRACK_DASHBOARD_ROUTE_GZIP_BUDGET_KB`, `ECOTRACK_ADMIN_ROUTE_GZIP_BUDGET_KB`, `ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB`, and `ECOTRACK_LOGO_BUDGET_KB` when CI or local runs need non-default caps.
 UI theme contract checks are enforced during `ecotrack-app` lint via `app/scripts/validate-theme-contract.mjs`.
 Doc-sync checks are enforced via `npm run validate-doc-sync` and the managed local `pre-commit` hook that repo-root installs generate under `.githooks/` through the root `prepare` script. `.githooks/` is ignored and remains local-only.
 

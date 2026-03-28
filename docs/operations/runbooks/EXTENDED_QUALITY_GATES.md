@@ -1,73 +1,97 @@
-# Extended Quality Gates
+# Quality Gates And Extended Lanes
 
-This runbook covers the non-default quality lanes that are available through the manual `run_extended_quality=true` GitHub Actions dispatch and through repo-local commands.
+Last updated: 2026-03-28
 
-## Scope
+This runbook describes the repo-owned Development quality bar plus the optional extended lanes available through manual CI dispatch.
 
-The current extended pack covers:
+## Default Blocking Quality Bar
 
-- K6 load and endurance scenarios (`M10.2`)
-- focused Stryker mutation testing (`M10.4`)
-- Percy visual regression snapshots (`M10.5`)
-- Lighthouse CI / Web Vitals auditing (`M10.8`)
+The canonical Development hardening command is:
 
-These lanes are still non-blocking in `CI.yaml` while thresholds and artifacts stabilize, but they now run real repo-owned scripts instead of placeholder hooks.
+```bash
+npm run quality:product-hardening
+```
+
+It runs, in order:
+
+- env policy validation
+- doc-sync validation
+- spec and CDC validation
+- lint
+- typecheck
+- Sonar coverage alignment validation
+- web critical-journey tests
+- web realtime fallback tests
+- app/mobile/api coverage lanes
+- mobile readiness verification
+- frontend production build
+- repo-owned Lighthouse gate
+
+The dedicated mobile release lane is:
+
+```bash
+npm run quality:mobile-readiness
+```
+
+## Output Paths
+
+- Local default: `tmp/quality`
+- CI/CD default: `tmp/ci/quality`
+- Key artifacts:
+  - coverage: `coverage/app`, `coverage/mobile`, `coverage/api`
+  - Lighthouse: `lighthouse`
+  - bundle budgets: `bundle-budgets`
+  - mobile readiness: `mobile-readiness`
+
+## Lighthouse
+
+- Config: `app/lighthouserc.cjs`
+- Runner: `infrastructure/scripts/ci/run-lighthouse-gate.mjs`
+- Canonical URLs:
+  - `/`
+  - `/login`
+  - `/app/dashboard`
+- Local fallback skip only:
+  - `ECOTRACK_SKIP_LIGHTHOUSE_GATE=1`
+  - `ENABLE_LIGHTHOUSE_GATE=0`
+- Optional preview overrides:
+  - `LIGHTHOUSE_PREVIEW_PORT`
+  - `LIGHTHOUSE_BASE_URL`
+
+## Bundle Budgets
+
+The bundle budget gate is route-aware and writes markdown and JSON summaries to `bundle-budgets`.
+
+Supported overrides:
+
+- `ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB`
+- `ECOTRACK_LANDING_ROUTE_GZIP_BUDGET_KB`
+- `ECOTRACK_LOGIN_ROUTE_GZIP_BUDGET_KB`
+- `ECOTRACK_DASHBOARD_ROUTE_GZIP_BUDGET_KB`
+- `ECOTRACK_ADMIN_ROUTE_GZIP_BUDGET_KB`
+- `ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB`
+- `ECOTRACK_LOGO_BUDGET_KB`
+
+## Extended Manual Lanes
+
+Manual dispatch in `.github/workflows/CI.yaml` still exposes the extended pack:
+
+- K6 load smoke
+- ZAP baseline
+- focused mutation gate
+- visual regression hook
+- Lighthouse CI
+
+Lane status in the manual extended workflow:
+
+- blocking: K6, Lighthouse
+- advisory while thresholds stabilize: ZAP, mutation, visual regression
 
 ## Local Commands
 
 ```bash
 npm run ci:quality:k6
-ENABLE_MUTATION_GATE=1 node infrastructure/scripts/ci/run-mutation-gate.mjs
-ENABLE_VISUAL_GATE=1 PERCY_TOKEN=<token> node infrastructure/scripts/ci/run-visual-gate.mjs
-ENABLE_LIGHTHOUSE_GATE=1 node infrastructure/scripts/ci/run-lighthouse-gate.mjs
+node infrastructure/scripts/ci/run-mutation-gate.mjs
+node infrastructure/scripts/ci/run-visual-gate.mjs
+npm run ci:quality:lighthouse
 ```
-
-Useful overrides:
-
-- K6 profiles: `node infrastructure/scripts/ci/run-k6-scenarios.mjs --profile ramping|spike|stress|soak|all`
-- Percy route overrides: `PERCY_URLS=<comma-separated absolute URLs>`
-- Percy preview overrides: `PERCY_BASE_URL`, `PERCY_PREVIEW_PORT`
-- Mutation dry run: `CI_MUTATION_DRY_RUN=1`
-
-## K6
-
-- Scenario sources live in `infrastructure/performance/k6/`
-- The CI runner is `infrastructure/scripts/ci/run-k6-scenarios.mjs`
-- Smoke uses readiness only; the business-flow scenario also exercises local auth plus planning dashboard when `K6_LOGIN_EMAIL` and `K6_LOGIN_PASSWORD` are provided
-- Summaries are exported to `tmp/ci/k6/*.summary.json`
-
-## Mutation Testing
-
-- Config lives in `infrastructure/tooling/quality/stryker.config.mjs`
-- Current mutation scope is intentionally focused on request correlation, trace context, health, monitoring, and auth token handling
-- Reports are written under `tmp/ci/stryker`
-- The gate respects `CI_QUALITY_STRICT=1` when it should fail hard
-
-## Visual Regression
-
-- Percy config lives in `.percy.yml`
-- Default snapshot flow is `infrastructure/scripts/ci/run-visual-snapshots.mjs`
-- The default route set is `/`, `/login`, `/app/dashboard`, and `/app/agent/tour`
-- The snapshot runner builds the frontend, starts `vite preview`, waits for readiness, and then calls Percy
-- `CI_PERCY_COMMAND` remains available for CI overrides, but it is no longer required for the default lane
-
-## Lighthouse
-
-- Config lives in `app/lighthouserc.json`
-- The gate runner is `infrastructure/scripts/ci/run-lighthouse-gate.mjs`
-- The runner builds the frontend, starts `vite preview`, waits for readiness, and executes LHCI
-- Reports are written to `tmp/ci/lighthouse`
-- The current audit set covers `/`, `/login`, and `/app/dashboard`
-
-## CI Notes
-
-- Manual workflow dispatch: `.github/workflows/CI.yaml`
-- Required secrets/variables:
-  - `PERCY_TOKEN`
-  - `CI_ENABLE_MUTATION_GATE`
-  - `CI_ENABLE_VISUAL_GATE`
-  - `CI_ENABLE_LIGHTHOUSE_GATE`
-  - optional `CI_PERCY_COMMAND`
-- K6 artifacts upload from `tmp/ci/k6`
-- Mutation artifacts upload from `tmp/ci/stryker`
-- Lighthouse artifacts upload from `tmp/ci/lighthouse`

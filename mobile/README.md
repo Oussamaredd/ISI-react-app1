@@ -38,6 +38,10 @@ Commands:
 - `npm run lint --workspace=ecotrack-mobile`
 - `npm run typecheck --workspace=ecotrack-mobile`
 - `npm run test --workspace=ecotrack-mobile`
+- `npm run test:coverage --workspace=ecotrack-mobile`
+- `npm run quality:mobile-readiness`
+
+Release-readiness evidence for the mobile lane is written under `tmp/quality/mobile-readiness` locally and `tmp/ci/quality/mobile-readiness` in CI/CD.
 
 Local API base setup:
 

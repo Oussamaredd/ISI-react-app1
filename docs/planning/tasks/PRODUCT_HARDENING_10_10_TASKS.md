@@ -65,11 +65,11 @@ Description:
 
 Make every required quality gate repo-owned, deterministic, and runnable in local and CI contexts without hidden network dependency or optional manual toggles.
 
-- [ ] Add `@lhci/cli` as a repo-owned dependency and stop using dynamic `npx -y` install in `infrastructure/scripts/ci/run-lighthouse-gate.mjs`.
-- [ ] Add a mobile `test:coverage` command and a matching Vitest coverage configuration.
-- [ ] Add a single repo-root product hardening command that runs the full Development quality bar in a stable order.
-- [ ] Write all hardening artifacts to stable `tmp/ci/quality` or `tmp/quality` paths for later review.
-- [ ] Make the Lighthouse gate opt-out only for local fallback scenarios, not opt-in by default.
+- [x] Add `@lhci/cli` as a repo-owned dependency and stop using dynamic `npx -y` install in `infrastructure/scripts/ci/run-lighthouse-gate.mjs`.
+- [x] Add a mobile `test:coverage` command and a matching Vitest coverage configuration.
+- [x] Add a single repo-root product hardening command that runs the full Development quality bar in a stable order.
+- [x] Write all hardening artifacts to stable `tmp/ci/quality` or `tmp/quality` paths for later review.
+- [x] Make the Lighthouse gate opt-out only for local fallback scenarios, not opt-in by default.
 
 Exit criteria:
 
@@ -83,12 +83,12 @@ Description:
 
 Increase test and coverage strictness to match a release-grade product instead of a merely passing baseline.
 
-- [ ] Raise app coverage thresholds from `60/55/60/60` to at least `80/70/80/80`.
-- [ ] Raise api coverage thresholds from `75/60/75/75` to at least `85/70/85/85`.
-- [ ] Add mobile coverage thresholds with a minimum target of `80/70/80/80`.
-- [ ] Close the measured app hotspots in `errorHandlers`, `ManagerReportsPage`, `useTickets`, and `usePlanningRealtimeStream`.
-- [ ] Close the measured api hotspots in `admin.settings.repository`, `planning.service`, `monitoring.service`, and `config/validation`.
-- [ ] Expand mobile from logic-heavy tests into screen-flow tests for citizen, agent, and manager journeys.
+- [x] Raise app coverage thresholds from `60/55/60/60` to at least `80/70/80/80`.
+- [x] Raise api coverage thresholds from `75/60/75/75` to at least `85/70/85/85`.
+- [x] Add mobile coverage thresholds with a minimum target of `80/70/80/80`.
+- [x] Close the measured app hotspots in `errorHandlers`, `ManagerReportsPage`, `useTickets`, and `usePlanningRealtimeStream`.
+- [x] Close the measured api hotspots in `admin.settings.repository`, `planning.service`, `monitoring.service`, and `config/validation`.
+- [x] Expand mobile from logic-heavy tests into screen-flow tests for citizen, agent, and manager journeys.
 
 Exit criteria:
 
@@ -101,12 +101,12 @@ Description:
 
 Reduce unnecessary frontend weight and make Core Web Vitals a dependable release signal.
 
-- [ ] Split the current mega-chunks so route shell code, dashboard code, admin code, and mapping code do not travel together.
-- [ ] Keep Leaflet and map-heavy logic isolated to the routes that need it.
-- [ ] Review vendor chunking so router/query/common app shell dependencies are sized for a hosted SPA, not just for build success.
-- [ ] Tighten Lighthouse thresholds to at least `performance 0.90`, `accessibility 0.95`, `best-practices 0.95`, `seo 0.90`.
-- [ ] Add a documented target for initial route shell transfer size and hold the build to it.
-- [ ] Keep the existing bundle-budget gate but evolve it from "entry chunk exists under broad cap" to route-aware product budgets.
+- [x] Split the current mega-chunks so route shell code, dashboard code, admin code, and mapping code do not travel together.
+- [x] Keep Leaflet and map-heavy logic isolated to the routes that need it.
+- [x] Review vendor chunking so router/query/common app shell dependencies are sized for a hosted SPA, not just for build success.
+- [x] Tighten Lighthouse thresholds to at least `performance 0.90`, `accessibility 0.95`, `best-practices 0.95`, `seo 0.90`.
+- [x] Add a documented target for initial route shell transfer size and hold the build to it.
+- [x] Keep the existing bundle-budget gate but evolve it from "entry chunk exists under broad cap" to route-aware product budgets.
 
 Exit criteria:
 
@@ -120,11 +120,11 @@ Description:
 
 Move from "mostly works" to deliberate accessible product behavior across both web and mobile.
 
-- [ ] Audit keyboard-only navigation, focus order, and escape paths on landing, login, dashboard, planning, reports, and admin settings.
-- [ ] Standardize async loading, empty, error, retry, and success-state patterns across app screens and mobile screens.
-- [ ] Ensure every critical form has stable labels, actionable validation copy, and non-visual error/status communication.
-- [ ] Expand mobile accessibility beyond shell components into workflow screens, action buttons, alerts, and map-adjacent actions.
-- [ ] Add automated checks where feasible and preserve a short manual audit checklist for role-critical flows.
+- [x] Audit keyboard-only navigation, focus order, and escape paths on landing, login, dashboard, planning, reports, and admin settings.
+- [x] Standardize async loading, empty, error, retry, and success-state patterns across app screens and mobile screens.
+- [x] Ensure every critical form has stable labels, actionable validation copy, and non-visual error/status communication.
+- [x] Expand mobile accessibility beyond shell components into workflow screens, action buttons, alerts, and map-adjacent actions.
+- [x] Add automated checks where feasible and preserve a short manual audit checklist for role-critical flows.
 
 Exit criteria:
 
@@ -137,10 +137,10 @@ Description:
 
 Bring the mobile app closer to the same maturity bar as the web app rather than treating it as a secondary client.
 
-- [ ] Add mobile screen-level tests for reporting, role routing, manager status visibility, and core account/session behavior.
-- [ ] Add a documented production-readiness lane for mobile, including dependency, env, and crash-capture validation.
-- [ ] Verify offline, reconnect, and degraded-network behaviors for the highest-value mobile workflows.
-- [ ] Confirm Sentry/session tagging and aggregate telemetry are consistent with the web release identifier model.
+- [x] Add mobile screen-level tests for reporting, role routing, manager status visibility, and core account/session behavior.
+- [x] Add a documented production-readiness lane for mobile, including dependency, env, and crash-capture validation.
+- [x] Verify offline, reconnect, and degraded-network behaviors for the highest-value mobile workflows.
+- [x] Confirm Sentry/session tagging and aggregate telemetry are consistent with the web release identifier model.
 
 Exit criteria:
 
@@ -153,10 +153,10 @@ Description:
 
 The API already tests well, but the remaining weak areas should be hardened to protect the whole product.
 
-- [ ] Add deeper tests around admin settings parsing, planning edge cases, monitoring metric rendering branches, and env validation behavior.
-- [ ] Expand role-critical API smoke coverage to explicitly exercise degraded and recovery paths, not only success paths.
-- [ ] Reduce noisy expected-error logging in tests where it obscures real failures and CI readability.
-- [ ] Keep API docs and runtime behavior aligned when adding stronger edge-case coverage.
+- [x] Add deeper tests around admin settings parsing, planning edge cases, monitoring metric rendering branches, and env validation behavior.
+- [x] Expand role-critical API smoke coverage to explicitly exercise degraded and recovery paths, not only success paths.
+- [x] Reduce noisy expected-error logging in tests where it obscures real failures and CI readability.
+- [x] Keep API docs and runtime behavior aligned when adding stronger edge-case coverage.
 
 Exit criteria:
 
@@ -169,10 +169,10 @@ Description:
 
 A 10/10 product needs one visible scorecard so release quality is not based on memory or opinion.
 
-- [ ] Add a repo-owned quality scorecard doc that records the target thresholds for coverage, Lighthouse, smoke, synthetic, and critical flow evidence.
-- [ ] Update the definition-of-done checklist to include the hardened quality bar.
-- [ ] Ensure CD summaries attach or reference the quality scorecard artifacts for each release candidate.
-- [ ] Keep the scorecard explicitly Development-only so it does not pull in Security or Data work.
+- [x] Add a repo-owned quality scorecard doc that records the target thresholds for coverage, Lighthouse, smoke, synthetic, and critical flow evidence.
+- [x] Update the definition-of-done checklist to include the hardened quality bar.
+- [x] Ensure CD summaries attach or reference the quality scorecard artifacts for each release candidate.
+- [x] Keep the scorecard explicitly Development-only so it does not pull in Security or Data work.
 
 Exit criteria:
 

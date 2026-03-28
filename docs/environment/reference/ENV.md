@@ -178,6 +178,22 @@ Agent tour mapping note:
 - `CLOUDFLARE_ZONE_ID` identifies the Cloudflare zone used by purge automation
 - `CLOUDFLARE_API_TOKEN` authorizes `npm run perf:cloudflare:purge`; keep it in shell, CI, or secret-manager injection only
 
+## Optional Quality Gate Keys
+
+- `ECOTRACK_QUALITY_OUTPUT_ROOT` overrides the default hardening artifact root (`tmp/quality` locally, `tmp/ci/quality` in CI/CD)
+- `ECOTRACK_SKIP_LIGHTHOUSE_GATE=1` skips the repo-owned Lighthouse gate for local fallback scenarios only
+- `ENABLE_LIGHTHOUSE_GATE=0` is the compatibility opt-out toggle for the same local fallback scenario
+- `LIGHTHOUSE_PREVIEW_PORT` overrides the local preview port used by the Lighthouse gate (default `4173`)
+- `LIGHTHOUSE_BASE_URL` overrides the base URL used by the Lighthouse gate when a non-default preview origin is required
+- `ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB` overrides the initial route shell budget (default `450`)
+- `ECOTRACK_LANDING_ROUTE_GZIP_BUDGET_KB` overrides the landing-route delta budget (default `10`)
+- `ECOTRACK_LOGIN_ROUTE_GZIP_BUDGET_KB` overrides the login-route delta budget (default `10`)
+- `ECOTRACK_DASHBOARD_ROUTE_GZIP_BUDGET_KB` overrides the dashboard-route delta budget (default `50`)
+- `ECOTRACK_ADMIN_ROUTE_GZIP_BUDGET_KB` overrides the admin-route delta budget (default `30`)
+- `ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB` overrides the mapping-vendor gzip budget (default `125`)
+- `ECOTRACK_LOGO_BUDGET_KB` overrides the raw brand-logo asset budget (default `120`)
+- The Lighthouse gate is opt-out only; default Development and CD flows should run it unless the local fallback escape hatch is being used intentionally.
+
 ## Optional CD Release Keys
 
 - GitHub Actions deploy jobs target the GitHub Environments `development`, `staging`, and `production`.
@@ -210,7 +226,7 @@ Agent tour mapping note:
 - `CI_PERCY_COMMAND` as an optional repository variable to override the default Percy snapshot command executed by the visual-regression lane
 - `CI_ENABLE_MUTATION_GATE` as repository variable (`0` or `1`) to enable mutation gate execution
 - `CI_ENABLE_VISUAL_GATE` as repository variable (`0` or `1`) to enable Percy hook execution
-- `CI_ENABLE_LIGHTHOUSE_GATE` as repository variable (`0` or `1`) to enable Lighthouse lane execution
+- `CI_ENABLE_LIGHTHOUSE_GATE` as repository variable (`0` or `1`) to enable the manual extended Lighthouse lane in `CI.yaml`
 
 ## CORS Origin Policy
 

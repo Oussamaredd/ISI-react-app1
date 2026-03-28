@@ -1,4 +1,19 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const resolveQualityOutputRoot = () => {
+  const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
+
+  if (configuredRoot) {
+    return path.isAbsolute(configuredRoot)
+      ? configuredRoot
+      : path.resolve(currentDir, '..', configuredRoot);
+  }
+
+  return path.resolve(currentDir, '..', process.env.CI ? 'tmp/ci/quality' : 'tmp/quality');
+};
 
 export default defineConfig({
   esbuild: {
@@ -14,6 +29,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/tests/**/*.test.ts'],
+    setupFiles: ['src/tests/setup.ts'],
     pool: 'threads',
     // Reusing the worker context avoids repeated Nest/bootstrap imports across files.
     isolate: false,
@@ -23,8 +39,8 @@ export default defineConfig({
     testTimeout: 30000,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
-      reportsDirectory: './coverage',
+      reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],
+      reportsDirectory: path.join(resolveQualityOutputRoot(), 'coverage', 'api'),
       all: true,
       include: [
         'src/common/trace-context.ts',
@@ -81,10 +97,10 @@ export default defineConfig({
       ],
       exclude: ['src/tests/**'],
       thresholds: {
-        statements: 75,
-        branches: 60,
-        functions: 75,
-        lines: 75,
+        statements: 85,
+        branches: 70,
+        functions: 85,
+        lines: 85,
       },
     },
   },
