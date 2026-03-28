@@ -16,6 +16,10 @@ const resolveQualityOutputRoot = () => {
 };
 
 export default defineConfig({
+  esbuild: {
+    jsx: "automatic",
+    jsxImportSource: "react"
+  },
   resolve: {
     alias: {
       react: path.resolve(rootDirectory, "node_modules/react"),
