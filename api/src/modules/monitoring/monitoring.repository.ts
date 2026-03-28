@@ -3,9 +3,14 @@ import { and, desc, eq, max, or, sql } from 'drizzle-orm';
 import {
   alertEvents,
   auditLogs,
+  challengeParticipations,
+  challenges,
   containers,
+  citizenReports,
   eventConnectorExports,
+  gamificationProfiles,
   ingestionEvents,
+  tours,
   type DatabaseClient,
   validatedEventDeliveries,
 } from 'ecotrack-database';
@@ -15,6 +20,10 @@ import { DRIZZLE } from '../../database/database.constants.js';
 type QueueStatus = 'pending' | 'retry' | 'processing' | 'failed' | 'rejected' | 'validated';
 type DeliveryStatus = 'pending' | 'retry' | 'processing' | 'failed' | 'completed';
 type EventConnectorStatus = 'pending' | 'retry' | 'processing' | 'failed' | 'completed';
+type StatusCountRow = {
+  status: string;
+  count: number;
+};
 
 const coerceTimestamp = (value: Date | string | null | undefined) => {
   if (!value) {
@@ -37,6 +46,15 @@ export class MonitoringRepository {
       deliveryOldestPending,
       validatedLastHour,
       completedLastHour,
+      citizenReportsByStatus,
+      citizenReportsCreatedLastHour,
+      toursByStatus,
+      toursCompletedLastHour,
+      challengesByStatus,
+      challengeParticipationsByStatus,
+      challengeCompletionsLastHour,
+      gamificationProfilesTotal,
+      gamificationPointsTotal,
       criticalContainers,
       attentionContainers,
       maxContainerFillLevel,
@@ -55,6 +73,15 @@ export class MonitoringRepository {
       this.getOldestDeliveryPendingAt(),
       this.countValidatedLastHour(),
       this.countCompletedDeliveriesLastHour(),
+      this.countCitizenReportsByStatus(),
+      this.countCitizenReportsCreatedLastHour(),
+      this.countToursByStatus(),
+      this.countToursCompletedLastHour(),
+      this.countChallengesByStatus(),
+      this.countChallengeParticipationsByStatus(),
+      this.countChallengeCompletionsLastHour(),
+      this.countGamificationProfiles(),
+      this.sumGamificationPoints(),
       this.countContainersByStatus('critical'),
       this.countContainersByStatus('attention_required'),
       this.getMaxContainerFillLevel(),
@@ -81,6 +108,15 @@ export class MonitoringRepository {
       })(),
       validatedLastHour,
       completedLastHour,
+      citizenReportsByStatus,
+      citizenReportsCreatedLastHour,
+      toursByStatus,
+      toursCompletedLastHour,
+      challengesByStatus,
+      challengeParticipationsByStatus,
+      challengeCompletionsLastHour,
+      gamificationProfilesTotal,
+      gamificationPointsTotal,
       connectorExportsByStatus,
       connectorOldestPendingAgeMs: (() => {
         const timestamp = coerceTimestamp(connectorOldestPending);
@@ -189,6 +225,125 @@ export class MonitoringRepository {
           sql`${validatedEventDeliveries.processedAt} > NOW() - INTERVAL '1 hour'`,
         ),
       );
+
+    return row?.value ?? 0;
+  }
+
+  private async countCitizenReportsByStatus(): Promise<StatusCountRow[]> {
+    const rows = await this.db
+      .select({
+        status: citizenReports.status,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(citizenReports)
+      .groupBy(citizenReports.status)
+      .orderBy(citizenReports.status);
+
+    return rows.map((row) => ({
+      status: row.status,
+      count: row.count ?? 0,
+    }));
+  }
+
+  private async countCitizenReportsCreatedLastHour() {
+    const [row] = await this.db
+      .select({ value: sql<number>`count(*)`.mapWith(Number) })
+      .from(citizenReports)
+      .where(sql`${citizenReports.reportedAt} > NOW() - INTERVAL '1 hour'`);
+
+    return row?.value ?? 0;
+  }
+
+  private async countToursByStatus(): Promise<StatusCountRow[]> {
+    const rows = await this.db
+      .select({
+        status: tours.status,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(tours)
+      .groupBy(tours.status)
+      .orderBy(tours.status);
+
+    return rows.map((row) => ({
+      status: row.status,
+      count: row.count ?? 0,
+    }));
+  }
+
+  private async countToursCompletedLastHour() {
+    const [row] = await this.db
+      .select({ value: sql<number>`count(*)`.mapWith(Number) })
+      .from(tours)
+      .where(
+        and(
+          or(eq(tours.status, 'completed'), eq(tours.status, 'closed')),
+          sql`${tours.completedAt} > NOW() - INTERVAL '1 hour'`,
+        ),
+      );
+
+    return row?.value ?? 0;
+  }
+
+  private async countChallengesByStatus(): Promise<StatusCountRow[]> {
+    const rows = await this.db
+      .select({
+        status: challenges.status,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(challenges)
+      .groupBy(challenges.status)
+      .orderBy(challenges.status);
+
+    return rows.map((row) => ({
+      status: row.status,
+      count: row.count ?? 0,
+    }));
+  }
+
+  private async countChallengeParticipationsByStatus(): Promise<StatusCountRow[]> {
+    const rows = await this.db
+      .select({
+        status: challengeParticipations.status,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(challengeParticipations)
+      .groupBy(challengeParticipations.status)
+      .orderBy(challengeParticipations.status);
+
+    return rows.map((row) => ({
+      status: row.status,
+      count: row.count ?? 0,
+    }));
+  }
+
+  private async countChallengeCompletionsLastHour() {
+    const [row] = await this.db
+      .select({ value: sql<number>`count(*)`.mapWith(Number) })
+      .from(challengeParticipations)
+      .where(
+        and(
+          eq(challengeParticipations.status, 'completed'),
+          sql`${challengeParticipations.rewardGrantedAt} > NOW() - INTERVAL '1 hour'`,
+        ),
+      );
+
+    return row?.value ?? 0;
+  }
+
+  private async countGamificationProfiles() {
+    const [row] = await this.db
+      .select({ value: sql<number>`count(*)`.mapWith(Number) })
+      .from(gamificationProfiles);
+
+    return row?.value ?? 0;
+  }
+
+  private async sumGamificationPoints() {
+    const [row] = await this.db
+      .select({
+        value: sql<number>`coalesce(sum(${gamificationProfiles.points}), 0)`.mapWith(Number),
+      })
+      .from(gamificationProfiles);
 
     return row?.value ?? 0;
   }

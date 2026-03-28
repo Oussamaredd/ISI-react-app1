@@ -1,0 +1,78 @@
+name: Hosted Synthetic Monitoring
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Environment to probe
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - development
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-monitor:
+    name: Synthetic Monitor (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [development, staging, production]
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event.inputs.target_environment == 'all' ||
+      github.event.inputs.target_environment == matrix.target
+    environment: ${{ matrix.target }}
+    env:
+      CD_TARGET_ENV: ${{ matrix.target }}
+      CD_DEPLOY_APP_URL: ${{ vars.CD_DEPLOY_APP_URL }}
+      CD_DEPLOY_API_HEALTH_URL: ${{ vars.CD_DEPLOY_API_HEALTH_URL }}
+      CD_DEPLOY_FRONTEND_HEALTH_URL: ${{ vars.CD_DEPLOY_FRONTEND_HEALTH_URL }}
+      CD_DEPLOY_OAUTH_ENTRY_URL: ${{ vars.CD_DEPLOY_OAUTH_ENTRY_URL }}
+      CD_DEPLOY_EXPECTED_OAUTH_CALLBACK_URL: ${{ vars.CD_DEPLOY_EXPECTED_OAUTH_CALLBACK_URL }}
+      CD_SYNTHETIC_USER_EMAIL: ${{ secrets.CD_SYNTHETIC_USER_EMAIL }}
+      CD_SYNTHETIC_USER_PASSWORD: ${{ secrets.CD_SYNTHETIC_USER_PASSWORD }}
+      CD_SYNTHETIC_EXPECTED_USER_ROLE: ${{ vars.CD_SYNTHETIC_EXPECTED_USER_ROLE }}
+      CD_SYNTHETIC_CONFIRM_RETRIES: ${{ vars.CD_SYNTHETIC_CONFIRM_RETRIES }}
+      CD_SYNTHETIC_RETRY_INTERVAL_MS: ${{ vars.CD_SYNTHETIC_RETRY_INTERVAL_MS }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run hosted synthetic monitoring
+        run: npm run ci:synthetic
+
+      - name: Upload synthetic monitoring evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-${{ matrix.target }}
+          path: tmp/ci/synthetic
+
+      - name: Publish synthetic monitoring summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f tmp/ci/synthetic/synthetic-monitoring.${{ matrix.target }}.md ]; then
+            cat tmp/ci/synthetic/synthetic-monitoring.${{ matrix.target }}.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Synthetic Monitoring"
+              echo ""
+              echo "- No synthetic-monitoring artifact was produced."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

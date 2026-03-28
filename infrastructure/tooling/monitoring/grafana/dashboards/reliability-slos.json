@@ -1,0 +1,169 @@
+{
+  "id": null,
+  "title": "EcoTrack Reliability SLOs",
+  "tags": ["ecotrack", "reliability", "slo"],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "hideControls": false,
+  "links": [],
+  "refresh": "30s",
+  "rows": [
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "API Success SLI (30m)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "100 * job:ecotrack_api:http_success_ratio:rate30m",
+              "legendFormat": "success percent"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1
+        },
+        {
+          "title": "API 5xx Ratio",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "100 * job:ecotrack_api:http_5xx_ratio:rate5m",
+              "legendFormat": "5m"
+            },
+            {
+              "expr": "100 * job:ecotrack_api:http_5xx_ratio:rate1h",
+              "legendFormat": "1h"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2
+        }
+      ],
+      "title": "SLI Ratios"
+    },
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Error Budget Burn Rate",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "job:ecotrack_api:http_5xx_burn_rate:5m",
+              "legendFormat": "5m burn"
+            },
+            {
+              "expr": "job:ecotrack_api:http_5xx_burn_rate:1h",
+              "legendFormat": "1h burn"
+            },
+            {
+              "expr": "job:ecotrack_api:http_5xx_burn_rate:30m",
+              "legendFormat": "30m burn"
+            },
+            {
+              "expr": "job:ecotrack_api:http_5xx_burn_rate:6h",
+              "legendFormat": "6h burn"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3
+        },
+        {
+          "title": "API p95 Latency",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "job:ecotrack_api:http_p95_latency_ms:5m",
+              "legendFormat": "p95 ms"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4
+        }
+      ],
+      "title": "Error Budget and Latency"
+    },
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Frontend Error Ingestion",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(frontend_errors_total[5m])",
+              "legendFormat": "errors per second"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5
+        },
+        {
+          "title": "Observability Snapshot Health",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_observability_snapshot_up",
+              "legendFormat": "snapshot up"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 6
+        }
+      ],
+      "title": "Supporting Signals"
+    }
+  ],
+  "schemaVersion": 14,
+  "version": 1,
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+  },
+  "annotations": {
+    "list": []
+  }
+}

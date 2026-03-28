@@ -93,6 +93,15 @@ describe('Monitoring endpoints', () => {
               deliveryOldestPendingAgeMs: null,
               validatedLastHour: 1,
               completedLastHour: 1,
+              citizenReportsByStatus: [{ status: 'submitted', count: 2 }],
+              citizenReportsCreatedLastHour: 2,
+              toursByStatus: [{ status: 'planned', count: 3 }],
+              toursCompletedLastHour: 1,
+              challengesByStatus: [{ status: 'active', count: 4 }],
+              challengeParticipationsByStatus: [{ status: 'completed', count: 5 }],
+              challengeCompletionsLastHour: 2,
+              gamificationProfilesTotal: 6,
+              gamificationPointsTotal: 700,
               connectorExportsByStatus: {
                 pending: 0,
                 retry: 0,
@@ -228,6 +237,18 @@ describe('Monitoring endpoints', () => {
     );
     expect(response.text).toContain(
       'ecotrack_event_connector_exports{status="completed"} 1',
+    );
+    expect(response.text).toContain(
+      'ecotrack_citizen_reports_total{status="submitted"} 2',
+    );
+    expect(response.text).toContain(
+      'ecotrack_tours_total{status="planned"} 3',
+    );
+    expect(response.text).toContain(
+      'ecotrack_challenge_participations_total{status="completed"} 5',
+    );
+    expect(response.text).toContain(
+      'ecotrack_gamification_points_total 700',
     );
     expect(response.text).toContain(
       'ecotrack_event_connector_backlog_total 0',

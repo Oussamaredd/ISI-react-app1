@@ -1,0 +1,173 @@
+{
+  "id": null,
+  "title": "EcoTrack Business KPIs",
+  "tags": ["ecotrack", "business", "kpi"],
+  "style": "dark",
+  "timezone": "browser",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "hideControls": false,
+  "links": [],
+  "refresh": "30s",
+  "rows": [
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Citizen Reports by Status",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_citizen_reports_total",
+              "legendFormat": "{{status}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1
+        },
+        {
+          "title": "Tours by Status",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_tours_total",
+              "legendFormat": "{{status}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2
+        }
+      ],
+      "title": "Operational State"
+    },
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Last Hour Activity",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_citizen_reports_created_last_hour",
+              "legendFormat": "citizen reports"
+            },
+            {
+              "expr": "ecotrack_tours_completed_last_hour",
+              "legendFormat": "tours completed"
+            },
+            {
+              "expr": "ecotrack_challenge_completions_last_hour",
+              "legendFormat": "challenge completions"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3
+        },
+        {
+          "title": "Challenges and Participations",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_challenges_total",
+              "legendFormat": "challenge {{status}}"
+            },
+            {
+              "expr": "ecotrack_challenge_participations_total",
+              "legendFormat": "participation {{status}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4
+        }
+      ],
+      "title": "Engagement Flow"
+    },
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "title": "Gamification Footprint",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_gamification_profiles_total",
+              "legendFormat": "profiles"
+            },
+            {
+              "expr": "ecotrack_gamification_points_total",
+              "legendFormat": "points"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5
+        },
+        {
+          "title": "Operational Alerts and Fill State",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "ecotrack_containers_fill_total",
+              "legendFormat": "fill {{status}}"
+            },
+            {
+              "expr": "ecotrack_alert_events_open_total",
+              "legendFormat": "alerts {{severity}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 6
+        }
+      ],
+      "title": "Gamification and Risk"
+    }
+  ],
+  "schemaVersion": 14,
+  "version": 1,
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+  },
+  "annotations": {
+    "list": []
+  }
+}

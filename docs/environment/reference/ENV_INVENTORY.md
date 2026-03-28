@@ -80,6 +80,11 @@ Visibility legend:
 | CD_FRONTEND_DEPLOY_HOOK_URL | infrastructure | private | ci | optional GitHub Actions environment secret for frontend deploy hook |
 | CD_RELEASE_SMOKE_INTERVAL_MS | infrastructure | private | ci | optional hosted release-smoke polling interval override |
 | CD_RELEASE_SMOKE_TIMEOUT_MS | infrastructure | private | ci | optional hosted release-smoke timeout override |
+| CD_SYNTHETIC_CONFIRM_RETRIES | infrastructure | private | ci | optional synthetic-monitor confirmation retry count |
+| CD_SYNTHETIC_EXPECTED_USER_ROLE | infrastructure | private | ci | optional expected role for the synthetic local-auth account |
+| CD_SYNTHETIC_RETRY_INTERVAL_MS | infrastructure | private | ci | optional synthetic-monitor retry interval override |
+| CD_SYNTHETIC_USER_EMAIL | infrastructure | private | ci | optional synthetic local-auth account email |
+| CD_SYNTHETIC_USER_PASSWORD | infrastructure | private | ci | optional synthetic local-auth account password |
 | CLIENT_ORIGIN | api | private | local-dev, docker-dev | transitional alias (prefer `CORS_ORIGINS`) |
 | CLOUDFLARE_API_TOKEN | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod, ci | canonical (optional purge automation token) |
 | CLOUDFLARE_ZONE_ID | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod, ci | canonical (optional purge automation zone id) |

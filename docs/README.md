@@ -39,6 +39,7 @@ Documentation is organized by document type and responsibility so architecture, 
 - `planning/roadmaps/PLATFORM_MICRO_ROADMAP.md` - platform lane roadmap
 - `planning/plans/landing-plan.md` - scoped landing-page execution plan
 - `planning/tasks/PR_TASKS.md` - active deployment rollout task tracker
+- `planning/tasks/PRODUCT_HARDENING_10_10_TASKS.md` - Development-only product hardening and quality task tracker
 
 ## Governance And Standards
 - `governance/RELEASE_VERSIONING.md` - release bookkeeping and versioning policy

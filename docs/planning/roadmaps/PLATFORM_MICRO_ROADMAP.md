@@ -954,32 +954,29 @@ Do not absorb into platform scope now:
 
 ## M13 - Observability Stack
 
-Platform scope status: `PARTIAL`
+Platform scope status: `DONE`, with continuous operational maintenance required
 
-This is the biggest remaining platform-heavy module after M9 because the baseline exists, but the full hosted operational maturity model is not closed yet.
+The repo-owned hosted observability model is now closed at the platform-code layer. External provider-account ownership for APM tenants, synthetic-monitor SaaS, PagerDuty, Slack, and Sentry administration still stays outside committed code.
 
 ### M13.1 - Tracing Maturity
 
 Current state:
 
-- baseline tracing exists
+- closed with OTLP export, documented environment-level sampling defaults, and a runbook-owned trace backend contract
 
-Next platform focus:
+Continuous platform focus:
 
-- standardize environment-level sampling policy
-- define the authoritative trace backend for hosted environments
-- keep trace retention and search guidance documented
+- keep trace retention, search guidance, and provider-specific collector details aligned with the active hosting path
 
 ### M13.2 - APM Layer
 
 Current state:
 
-- partial via OpenTelemetry-style instrumentation and dashboards
+- closed at the repo layer through OTLP-compatible tracing, dashboard coverage, and documented mandatory monolith coverage areas
 
-Next platform focus:
+Continuous platform focus:
 
-- choose whether APM stays self-managed through OTLP-compatible tooling or moves to a managed vendor
-- define what counts as mandatory APM coverage for the monolith
+- keep the OTLP export contract stable even if the hosted backend vendor changes
 
 Platform-external focus:
 
@@ -989,23 +986,21 @@ Platform-external focus:
 
 Current state:
 
-- technical metrics are present, but the business KPI layer is still incomplete as a formal milestone
+- closed with first-class Prometheus KPI families for citizen reports, tours, challenges, participation, and gamification
 
-Next platform focus:
+Continuous platform focus:
 
-- define the business metrics that should be first-class in Prometheus and Grafana
 - keep labels low-cardinality and operator-friendly
 
 ### M13.4 - Alerting Maturity
 
 Current state:
 
-- Alertmanager baseline exists
+- closed with tuned alert rules, SLO burn-rate alerts, and runbook-backed routing for non-IoT platform alerts
 
-Next platform focus:
+Continuous platform focus:
 
-- tune thresholds and routing from "implemented" to "operationally trusted"
-- tie every critical alert to a real runbook and escalation path
+- keep runbook links, thresholds, and receiver expectations aligned with the current platform behavior
 
 Platform-external focus:
 
@@ -1015,23 +1010,21 @@ Platform-external focus:
 
 Current state:
 
-- health endpoints exist, but formal probe ownership across environments is still not fully closed in this module
+- closed with explicit ownership across provider checks, CD smoke, synthetic monitoring, and operator use
 
-Next platform focus:
+Continuous platform focus:
 
-- map every probe to its actual consumer: provider health check, smoke gate, uptime monitor, or operator check
 - keep startup, liveness, and readiness semantics documented without inventing Kubernetes dependencies where none exist
 
 ### M13.6 - Synthetic Monitoring
 
 Current state:
 
-- still open
+- closed with repo-owned synthetic checks for frontend root, `/login`, `/app/dashboard`, API readiness, optional OAuth redirect, and optional local-auth journeys
 
-Next platform focus:
+Continuous platform focus:
 
-- define the minimum synthetic checks for frontend root, API readiness, auth entry path, and critical journeys
-- define alert routing and false-positive suppression rules
+- keep the scheduled GitHub Actions workflow and CD validation aligned with the supported hosting model
 
 Platform-external focus:
 
@@ -1041,12 +1034,11 @@ Platform-external focus:
 
 Current state:
 
-- optional Sentry-style hooks exist, but the production operational model remains open
+- closed at the repo layer with release-tagging guidance, sourcemap rules, and a documented minimum triage workflow
 
-Next platform focus:
+Continuous platform focus:
 
-- standardize release tagging, environment tagging, and triage ownership
-- define the minimum issue-routing and regression workflow
+- keep release and environment tags aligned across smoke, synthetic monitoring, and Sentry
 
 Platform-external focus:
 
@@ -1056,13 +1048,11 @@ Platform-external focus:
 
 Current state:
 
-- still open
+- closed with a small repo-owned SLI set, SLO targets, Grafana burn-rate views, and release-freeze guidance
 
-Next platform focus:
+Continuous platform focus:
 
-- define a small set of credible SLIs first
-- set availability, latency, and error-rate SLOs that match the hosted monolith reality
-- add burn-rate views and release-freeze guidance
+- keep SLO thresholds and burn alerts calibrated against the hosted monolith behavior
 
 Platform-external focus:
 

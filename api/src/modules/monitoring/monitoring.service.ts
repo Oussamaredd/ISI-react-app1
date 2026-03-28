@@ -701,6 +701,58 @@ export class MonitoringService {
       lines.push(`ecotrack_containers_fill_total{status="critical"} ${snapshot.criticalContainers}`);
       lines.push(`ecotrack_containers_fill_total{status="attention_required"} ${snapshot.attentionContainers}`);
 
+      lines.push('# HELP ecotrack_citizen_reports_total Total citizen reports grouped by status.');
+      lines.push('# TYPE ecotrack_citizen_reports_total gauge');
+      for (const report of snapshot.citizenReportsByStatus) {
+        lines.push(
+          `ecotrack_citizen_reports_total{status="${sanitizeLabelValue(report.status)}"} ${report.count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_citizen_reports_created_last_hour Total citizen reports created in the last hour.');
+      lines.push('# TYPE ecotrack_citizen_reports_created_last_hour gauge');
+      lines.push(`ecotrack_citizen_reports_created_last_hour ${snapshot.citizenReportsCreatedLastHour}`);
+
+      lines.push('# HELP ecotrack_tours_total Total tours grouped by status.');
+      lines.push('# TYPE ecotrack_tours_total gauge');
+      for (const tour of snapshot.toursByStatus) {
+        lines.push(
+          `ecotrack_tours_total{status="${sanitizeLabelValue(tour.status)}"} ${tour.count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_tours_completed_last_hour Total tours completed in the last hour.');
+      lines.push('# TYPE ecotrack_tours_completed_last_hour gauge');
+      lines.push(`ecotrack_tours_completed_last_hour ${snapshot.toursCompletedLastHour}`);
+
+      lines.push('# HELP ecotrack_challenges_total Total citizen challenges grouped by status.');
+      lines.push('# TYPE ecotrack_challenges_total gauge');
+      for (const challenge of snapshot.challengesByStatus) {
+        lines.push(
+          `ecotrack_challenges_total{status="${sanitizeLabelValue(challenge.status)}"} ${challenge.count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_challenge_participations_total Total challenge participations grouped by status.');
+      lines.push('# TYPE ecotrack_challenge_participations_total gauge');
+      for (const participation of snapshot.challengeParticipationsByStatus) {
+        lines.push(
+          `ecotrack_challenge_participations_total{status="${sanitizeLabelValue(participation.status)}"} ${participation.count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_challenge_completions_last_hour Total completed challenge participations in the last hour.');
+      lines.push('# TYPE ecotrack_challenge_completions_last_hour gauge');
+      lines.push(`ecotrack_challenge_completions_last_hour ${snapshot.challengeCompletionsLastHour}`);
+
+      lines.push('# HELP ecotrack_gamification_profiles_total Total gamification profiles.');
+      lines.push('# TYPE ecotrack_gamification_profiles_total gauge');
+      lines.push(`ecotrack_gamification_profiles_total ${snapshot.gamificationProfilesTotal}`);
+
+      lines.push('# HELP ecotrack_gamification_points_total Current total citizen gamification points.');
+      lines.push('# TYPE ecotrack_gamification_points_total gauge');
+      lines.push(`ecotrack_gamification_points_total ${snapshot.gamificationPointsTotal}`);
+
       lines.push('# HELP ecotrack_containers_max_fill_percent Maximum observed container fill percentage.');
       lines.push('# TYPE ecotrack_containers_max_fill_percent gauge');
       lines.push(`ecotrack_containers_max_fill_percent ${snapshot.maxContainerFillLevel}`);

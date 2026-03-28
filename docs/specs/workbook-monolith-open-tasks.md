@@ -1,6 +1,6 @@
 ﻿# Workbook Open Tasks - Monolith Adaptation (Detailed)
 
-Last updated: 2026-03-20
+Last updated: 2026-03-28
 
 Source workbook: `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 
@@ -1119,7 +1119,8 @@ Status legend:
 ## Module M13
 
 - Lane default: `Dev Observability`
-- Status default: `TODO_MONOLITH`
+- Status default: `DONE`
+- Current module outcome: the observability lane is closed in Development scope through repo-owned tracing, KPI metrics, alerting, probes, synthetic monitoring, error-tracking guidance, and SLO reporting.
 
 ### M13.1 - Distributed Tracing OpenTelemetry Jaeger Traces Microservices
 
@@ -1127,7 +1128,8 @@ Status legend:
 - Workbook expected outcome: OpenTelemetry SDK: @opentelemetry/auto-instrumentations-node automatic spans HTTP DB Kafka; Context propagation: W3C Trace Context traceparent inject extract headers; Manual instrumentation: custom spans tracer.startSpan attributes events; Jaeger: backend collector storage UI search timeline span details dependencies; Sampling: probabilistic 1% rate-based adaptive tail-based errors slow; Troubleshooting: trace errors N+1 queries external APIs latency cascading failures; Performance: overhead 5-10% sampling async export batched
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through OpenTelemetry bootstrap, OTLP export configuration, W3C `traceparent` propagation, worker-trace continuity, and documented Jaeger/Tempo operating guidance for auth, citizen report, planning, tour execution, and IoT processing flows.
 
 ### M13.2 - Application Performance Monitoring APM New Relic DataDog Elastic
 
@@ -1135,7 +1137,8 @@ Status legend:
 - Workbook expected outcome: New Relic: agent transactions traces errors databases external metrics custom KPIs; DataDog: dd-trace-js APM profiling logs metrics dashboards monitors synthetics RUM; Elastic APM: transactions service map Kibana correlation ML anomaly alerting; Transaction monitoring: web background slow >1s throughput apdex score; Error tracking: exceptions rate details grouping notifications trends resolved; Database: slow queries explain plans connection pooling ORM; Custom metrics: business KPIs dimensions tags
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a vendor-neutral APM-ready baseline with structured logs, trace-linked request telemetry, runtime and business metrics, frontend and mobile telemetry ingestion, and runbook guidance for operating Jaeger plus optional Sentry-backed issue analysis without binding the repo to a single SaaS vendor.
 
 ### M13.3 - Métriques Métiers Custom Business KPIs Prometheus
 
@@ -1143,7 +1146,8 @@ Status legend:
 - Workbook expected outcome: Métriques custom: signalements_created_total tournees_completed_duration containers_fill_level gamification_points; Types: Counter Gauge Histogram Summary labels dimensions; Endpoint /metrics: exposition Prometheus format text; Prometheus: scraping ServiceMonitor annotations interval 30s; PromQL queries: rate histogram_quantile sum aggregations; Grafana: dashboards panels business KPIs variables alerts
 - Monolith adaptation: Implement centralized observability and reliability objectives for monolith runtime.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through expanded Prometheus business KPI families for citizen reports, tours, challenges, participations, gamification, and alert state, plus the repo-owned `business-kpis` Grafana dashboard and Prometheus-compatible `/api/metrics` output.
 
 ### M13.4 - Alerting Intelligent Prometheus Alertmanager PagerDuty
 
@@ -1151,7 +1155,8 @@ Status legend:
 - Workbook expected outcome: PrometheusRule: expressions PromQL conditions seuils for duration severity; Alertmanager routing: receivers PagerDuty Slack email grouping inhibition silences; Escalation: critical immediate high 15min delay warning notifications; Runbooks: annotations links documentation troubleshooting steps; Testing: amtool chaos engineering validation postmortem; Tuning: baseline anomaly detection ML thresholds optimization
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with Alertmanager-ready Prometheus rules for availability, latency, backlog, failed deliveries, container fill levels, open critical alerts, and SLO burn rates, with runbook annotations and documented receiver ownership for webhook, Slack, PagerDuty, and operator escalation paths.
 
 ### M13.5 - Health Checks Readiness Liveness Kubernetes Probes
 
@@ -1159,7 +1164,8 @@ Status legend:
 - Workbook expected outcome: Liveness Probe: GET /health/live détecte blocage deadlock restart automatique; Readiness Probe: GET /health/ready vérifie dépendances database Redis Kafka retire traffic; Startup Probe: applications lentes initialDelaySeconds periodSeconds failureThreshold; Implémentation: Express endpoints db.ping redis.ping kafka checks timeouts; Monitoring: metrics events kubectl describe alerting restarts >3/h
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered via dependency-free root probe aliases (`/health`, `/healthz`, `/startupz`), dependency-aware readiness aliases (`/readyz`, `/api/health/ready`, `/api/health/database`), direct tests, and runbook documentation covering provider, operator, and deployment probe ownership.
 
 ### M13.6 - Synthetic Monitoring Uptime Robot Checks API Endpoints
 
@@ -1167,7 +1173,8 @@ Status legend:
 - Workbook expected outcome: Uptime Robot: HTTP monitors 5min interval multiple locations response time; API endpoints: GET /health POST /login validation authentication flow; Page web: https://app.ecotrack.com load time <3s frontend monitoring; Multi-step: Selenium scenarios login dashboard assertions JSON schema; SLA: uptime 99.9% MTBF MTTR incidents tracking reports; Alerting: email Slack PagerDuty escalation false positives validation; CI/CD: smoke tests post-deployment validation rollback
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the repo-owned `npm run ci:synthetic` monitor, environment-scoped deployment variables, CD post-release checks, and the scheduled `synthetic-monitoring.yml` workflow that validates frontend, auth entry, API readiness, optional OAuth redirect behavior, and the optional synthetic-user confirmation flow.
 
 ### M13.7 - Error Tracking Sentry Exceptions Stack Traces Production
 
@@ -1175,7 +1182,8 @@ Status legend:
 - Workbook expected outcome: Sentry SDK: @sentry/node init automatic capture exceptions unhandled; Contexte: user ID email IP breadcrumbs actions trail navigation; Source maps: JavaScript minified désobfuscation stack traces original code; Dashboard: issues grouping frequency users affected releases resolve ignore; Performance: transactions traces spans slow queries external APIs; Workflow: triage assign JIRA GitHub resolve regression; Quota: sampling 10% filters beforeSend data scrubbing PII
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through optional Sentry wiring for web and mobile, release and environment tagging, sourcemap-upload support in the web build, aggregate client telemetry fallback through `/api/errors` and `/api/metrics/frontend`, and runbook guidance for issue ownership, triage, and sampling defaults.
 
 ### M13.8 - Service Level Objectives SLOs SLIs Monitoring Compliance
 
@@ -1183,7 +1191,8 @@ Status legend:
 - Workbook expected outcome: SLI: availability latency throughput error_rate métriques techniques; SLO: targets 99.9% availability P95 <200ms error_rate <1%; SLA: contracts clients penalties financières; Error budget: 0.1% tolérance 43.2min downtime/month consommation; Monitoring: Grafana dashboards SLO tracking burn rate historical trends; Alerting: budget <10% freeze deployments burn rate >5% critical; Reports: monthly achievements incidents improvements MTTR
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Observability`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through Prometheus SLI recording rules, multi-window burn-rate alerts, the `reliability-slos` Grafana dashboard, documented 99.9% availability and error-budget policy, and release/runbook guidance tying reliability review to deployment decisions.
 
 ## Module M14
 

@@ -136,9 +136,9 @@ Checklist:
 
 ### Health and Metrics Endpoints
 
-Status: `PARTIAL`
+Status: `DONE`
 
-The service already exposes technical health and monitoring endpoints, but the broader observability backlog remains open.
+The service exposes technical health and monitoring endpoints, and the monolith observability hardening backlog is now closed through repo-owned metrics, runbooks, synthetic checks, and SLO instrumentation.
 
 Evidence:
 - `api/src/modules/health/health.controller.ts`
@@ -147,7 +147,7 @@ Evidence:
 Checklist:
 - [x] Health endpoints exist.
 - [x] Monitoring endpoints exist.
-- [ ] Full monolith observability hardening is still open.
+- [x] Full monolith observability hardening is complete.
 
 ### CI/CD and Quality Gates
 
@@ -1175,19 +1175,19 @@ Checklist:
 
 ### M13 - Observability Stack
 
-Status: `PARTIAL`
+Status: `DONE`
 Lane: `Dev Observability`
-Open task IDs: `M13.1` to `M13.8`
+Completed task IDs: `M13.1` to `M13.8`
 
 Description: Implement the remaining observability stack for the monolith runtime, including tracing, APM, KPIs, alerting, probes, synthetic checks, error tracking, and SLO or SLI reporting.
 
-Progress: Tracing, APM-style telemetry, Prometheus and Grafana dashboards, Alertmanager rules, client telemetry ingestion, and optional Sentry capture are in place, while synthetic monitoring and formal SLO or SLI reporting remain open.
+Progress: The monolith observability lane now includes environment-level OTEL sampling guidance, Prometheus KPI and SLO recording rules, Grafana KPI and reliability dashboards, runbook-backed alert routing, explicit probe ownership, repo-owned hosted synthetic monitoring in CD plus a scheduled workflow, and release-tagged error-tracking guidance for web and mobile Sentry usage.
 
 Checklist:
 - [x] Add tracing and APM coverage.
 - [x] Add business KPI and alerting visibility.
 - [x] Add error tracking.
-- [ ] Add synthetic checks and SLO or SLI reporting.
+- [x] Add synthetic checks and SLO or SLI reporting.
 
 ### M14 - Documentation Operations Completion
 
@@ -1206,8 +1206,7 @@ Checklist:
 
 ### Recommended Execution Order for the Remaining Backlog
 
-1. Start with `M2`, `M5`, `M10`, and `M13` to strengthen the runtime, UX, quality, and observability foundations.
-2. Continue with `M3`, `M8`, and `M11` to harden event workflows and performance.
-3. Move to `M4` and `M9` after the core monolith is stable enough for deeper platform hardening.
-4. Keep `M6`, `M7`, and `M12` as formal handoff tracks until the Development-only scope freeze is lifted.
+1. No active Development delivery module remains open in the roadmap after the `M13` closure.
+2. Keep `M9.2`, `M9.3`, `M9.5`, `M9.6`, and `M9.7` as intentional deferred-platform items until the deployment target changes.
+3. Keep `M6`, `M7`, and `M12` as formal handoff tracks until the Development-only scope freeze is lifted.
 

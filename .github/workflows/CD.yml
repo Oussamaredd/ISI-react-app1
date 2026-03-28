@@ -130,6 +130,11 @@ jobs:
       CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION: ${{ vars.CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION }}
       CD_RELEASE_SMOKE_TIMEOUT_MS: ${{ vars.CD_RELEASE_SMOKE_TIMEOUT_MS }}
       CD_RELEASE_SMOKE_INTERVAL_MS: ${{ vars.CD_RELEASE_SMOKE_INTERVAL_MS }}
+      CD_SYNTHETIC_USER_EMAIL: ${{ secrets.CD_SYNTHETIC_USER_EMAIL }}
+      CD_SYNTHETIC_USER_PASSWORD: ${{ secrets.CD_SYNTHETIC_USER_PASSWORD }}
+      CD_SYNTHETIC_EXPECTED_USER_ROLE: ${{ vars.CD_SYNTHETIC_EXPECTED_USER_ROLE }}
+      CD_SYNTHETIC_CONFIRM_RETRIES: ${{ vars.CD_SYNTHETIC_CONFIRM_RETRIES }}
+      CD_SYNTHETIC_RETRY_INTERVAL_MS: ${{ vars.CD_SYNTHETIC_RETRY_INTERVAL_MS }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Checkout code
@@ -157,12 +162,18 @@ jobs:
         if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.skip_hosted_smoke == 'true') }}
         run: npm run ci:release:smoke
 
+      - name: Run hosted synthetic monitoring checks
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.skip_hosted_smoke == 'true') }}
+        run: npm run ci:synthetic
+
       - name: Upload deployment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: release-development
-          path: tmp/ci/release
+          path: |
+            tmp/ci/release
+            tmp/ci/synthetic
 
       - name: Publish deployment summary
         if: always()
@@ -181,6 +192,11 @@ jobs:
               echo ""
               echo "- Hosted smoke skipped by workflow input."
             } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f tmp/ci/synthetic/synthetic-monitoring.development.md ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            cat tmp/ci/synthetic/synthetic-monitoring.development.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
   deploy-staging:
@@ -205,6 +221,11 @@ jobs:
       CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION: ${{ vars.CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION }}
       CD_RELEASE_SMOKE_TIMEOUT_MS: ${{ vars.CD_RELEASE_SMOKE_TIMEOUT_MS }}
       CD_RELEASE_SMOKE_INTERVAL_MS: ${{ vars.CD_RELEASE_SMOKE_INTERVAL_MS }}
+      CD_SYNTHETIC_USER_EMAIL: ${{ secrets.CD_SYNTHETIC_USER_EMAIL }}
+      CD_SYNTHETIC_USER_PASSWORD: ${{ secrets.CD_SYNTHETIC_USER_PASSWORD }}
+      CD_SYNTHETIC_EXPECTED_USER_ROLE: ${{ vars.CD_SYNTHETIC_EXPECTED_USER_ROLE }}
+      CD_SYNTHETIC_CONFIRM_RETRIES: ${{ vars.CD_SYNTHETIC_CONFIRM_RETRIES }}
+      CD_SYNTHETIC_RETRY_INTERVAL_MS: ${{ vars.CD_SYNTHETIC_RETRY_INTERVAL_MS }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Checkout code
@@ -232,12 +253,18 @@ jobs:
         if: ${{ github.event.inputs.skip_hosted_smoke != 'true' }}
         run: npm run ci:release:smoke
 
+      - name: Run hosted synthetic monitoring checks
+        if: ${{ github.event.inputs.skip_hosted_smoke != 'true' }}
+        run: npm run ci:synthetic
+
       - name: Upload deployment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: release-staging
-          path: tmp/ci/release
+          path: |
+            tmp/ci/release
+            tmp/ci/synthetic
 
       - name: Publish deployment summary
         if: always()
@@ -256,6 +283,11 @@ jobs:
               echo ""
               echo "- Hosted smoke skipped by workflow input."
             } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f tmp/ci/synthetic/synthetic-monitoring.staging.md ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            cat tmp/ci/synthetic/synthetic-monitoring.staging.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
   deploy-production:
@@ -280,6 +312,11 @@ jobs:
       CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION: ${{ vars.CD_DEPLOY_EXPECTED_FRONTEND_RELEASE_VERSION }}
       CD_RELEASE_SMOKE_TIMEOUT_MS: ${{ vars.CD_RELEASE_SMOKE_TIMEOUT_MS }}
       CD_RELEASE_SMOKE_INTERVAL_MS: ${{ vars.CD_RELEASE_SMOKE_INTERVAL_MS }}
+      CD_SYNTHETIC_USER_EMAIL: ${{ secrets.CD_SYNTHETIC_USER_EMAIL }}
+      CD_SYNTHETIC_USER_PASSWORD: ${{ secrets.CD_SYNTHETIC_USER_PASSWORD }}
+      CD_SYNTHETIC_EXPECTED_USER_ROLE: ${{ vars.CD_SYNTHETIC_EXPECTED_USER_ROLE }}
+      CD_SYNTHETIC_CONFIRM_RETRIES: ${{ vars.CD_SYNTHETIC_CONFIRM_RETRIES }}
+      CD_SYNTHETIC_RETRY_INTERVAL_MS: ${{ vars.CD_SYNTHETIC_RETRY_INTERVAL_MS }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Checkout code
@@ -307,12 +344,18 @@ jobs:
         if: ${{ github.event.inputs.skip_hosted_smoke != 'true' }}
         run: npm run ci:release:smoke
 
+      - name: Run hosted synthetic monitoring checks
+        if: ${{ github.event.inputs.skip_hosted_smoke != 'true' }}
+        run: npm run ci:synthetic
+
       - name: Upload deployment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: release-production
-          path: tmp/ci/release
+          path: |
+            tmp/ci/release
+            tmp/ci/synthetic
 
       - name: Publish deployment summary
         if: always()
@@ -331,6 +374,11 @@ jobs:
               echo ""
               echo "- Hosted smoke skipped by workflow input."
             } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f tmp/ci/synthetic/synthetic-monitoring.production.md ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            cat tmp/ci/synthetic/synthetic-monitoring.production.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
   release-summary:

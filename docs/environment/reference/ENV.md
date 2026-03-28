@@ -125,6 +125,7 @@ Agent tour mapping note:
 - `OTEL_SERVICE_NAME` sets the service name reported to the collector (default `ecotrack-api`)
 - `OTEL_EXPORTER_OTLP_ENDPOINT` sets the collector base URL for OTLP HTTP export (default `http://localhost:4318` in local/native dev)
 - `OTEL_TRACES_SAMPLER_RATIO` sets probabilistic sampling between `0` and `1` (default `1`)
+- Repo-owned sampling defaults are `1.0` in local/development, `0.2` in staging, and `0.1` in production templates unless incident response needs a temporary override.
 - `ENABLE_LOGSTASH` mirrors structured request and worker logs to Logstash over TCP (default `false`)
 - `LOGSTASH_HOST` sets the Logstash hostname used by the API runtime when shipping logs (default `logstash`)
 - `LOGSTASH_PORT` sets the Logstash TCP port used by the API runtime when shipping logs (default `5001`)
@@ -192,6 +193,10 @@ Agent tour mapping note:
 - `CD_FRONTEND_DEPLOY_HOOK_URL` and `CD_BACKEND_DEPLOY_HOOK_URL` are optional GitHub Environment secrets used to trigger provider-specific frontend/backend deployments.
 - `CD_FRONTEND_DEPLOY_HOOK_METHOD` and `CD_BACKEND_DEPLOY_HOOK_METHOD` optionally override the deploy-hook HTTP method (`POST` by default).
 - `CD_RELEASE_SMOKE_TIMEOUT_MS` and `CD_RELEASE_SMOKE_INTERVAL_MS` tune hosted smoke polling for slower providers or cold starts.
+- `CD_SYNTHETIC_USER_EMAIL` and `CD_SYNTHETIC_USER_PASSWORD` optionally enable the hosted synthetic local-auth journey (`POST /login` and `GET /me`) and should be stored as GitHub Environment secrets only.
+- `CD_SYNTHETIC_EXPECTED_USER_ROLE` optionally asserts the role returned by the synthetic local-auth account.
+- `CD_SYNTHETIC_CONFIRM_RETRIES` and `CD_SYNTHETIC_RETRY_INTERVAL_MS` tune false-positive suppression for hosted synthetic monitoring retries.
+- `npm run ci:synthetic` reuses the deploy URLs to check frontend root, `/login`, `/app/dashboard`, API readiness, optional OAuth redirect behavior, and the optional local-auth journey.
 - When `run_migrations=true` is used in `CD Deployment`, the target GitHub Environment must also provide `DATABASE_URL`.
 
 ## Optional CI Quality Keys
@@ -305,6 +310,7 @@ Removed runtime aliases (no longer read by API runtime):
 - Web initializes Sentry when `VITE_SENTRY_DSN` is present and continues forwarding aggregate client errors and Web Vitals to `/api/errors` and `/api/metrics/frontend`.
 - Mobile initializes Sentry when `EXPO_PUBLIC_SENTRY_DSN` is present and continues forwarding aggregate runtime, push, and API failures to `/api/errors`.
 - Web source maps upload through the Vite build only when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are present in the shell or CI environment.
+- Keep `VITE_RELEASE_VERSION`, `EXPO_PUBLIC_RELEASE_VERSION`, and `SENTRY_RELEASE` aligned to the same repository release identifier so Sentry issues, hosted smoke, and synthetic monitoring all point to the same deployed revision.
 - Expo builds can enable the `@sentry/react-native/expo` plugin path for native symbol/source-map support without placing private Sentry credentials in committed mobile env files.
 
 ## OAuth Callback Contract

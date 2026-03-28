@@ -312,11 +312,16 @@ GitHub Environment contract:
   - `CD_BACKEND_DEPLOY_HOOK_METHOD`
   - `CD_RELEASE_SMOKE_TIMEOUT_MS`
   - `CD_RELEASE_SMOKE_INTERVAL_MS`
+  - `CD_SYNTHETIC_EXPECTED_USER_ROLE`
+  - `CD_SYNTHETIC_CONFIRM_RETRIES`
+  - `CD_SYNTHETIC_RETRY_INTERVAL_MS`
 - Required secrets when migrations are enabled:
   - `DATABASE_URL`
 - Optional secrets for provider-triggered deployment:
   - `CD_FRONTEND_DEPLOY_HOOK_URL`
   - `CD_BACKEND_DEPLOY_HOOK_URL`
+  - `CD_SYNTHETIC_USER_EMAIL`
+  - `CD_SYNTHETIC_USER_PASSWORD`
 
 Hosted smoke coverage:
 
@@ -329,6 +334,20 @@ Hosted smoke coverage:
   - OAuth entry redirects to the expected callback URL
   - frontend HTML exposes the expected `ecotrack-api-base-url` meta tag
   - frontend HTML exposes the expected `ecotrack-release-version` meta tag
+
+Hosted synthetic coverage:
+
+- required checks:
+  - frontend `/login` still returns the auth page shell
+  - frontend `/app/dashboard` still resolves as a hosted SPA deep link
+  - API readiness still returns `status: ok`
+- optional checks when configured:
+  - local synthetic user can authenticate through `POST /login`
+  - local synthetic user can read `GET /me`
+  - OAuth entry redirect still matches the expected callback contract
+- false-positive suppression:
+  - the repo-owned synthetic script retries the full suite before failing
+  - retry behavior is controlled by `CD_SYNTHETIC_CONFIRM_RETRIES` and `CD_SYNTHETIC_RETRY_INTERVAL_MS`
 
 Checklist:
 
@@ -371,6 +390,7 @@ Minimum validation areas:
 Post-release operational checks:
 
 - review the uploaded release manifest, deploy-hook evidence, and hosted smoke artifact in the GitHub Actions run
+- review the hosted synthetic-monitoring artifact in the same GitHub Actions run
 - confirm the deployed API still exposes `GET /api/metrics`
 - confirm Prometheus/Grafana or the managed equivalent is scraping the new release and alert rules stay green
 - confirm the centralized log sink is receiving current-release API logs and that `traceId` search is still working

@@ -1,6 +1,7 @@
 # IoT Event Replay and Alerting Runbook
 
 Use this runbook when the IoT event pipeline is degraded, replay is required, or Alertmanager notifications need verification.
+For non-IoT platform alerts, SLO burn, synthetic-monitor failures, or client error-tracking triage, use `docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md`.
 
 ## Start the Observability Stack
 

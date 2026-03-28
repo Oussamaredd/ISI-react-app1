@@ -1,4 +1,70 @@
 groups:
+  - name: ecotrack.reliability.slo
+    rules:
+      - record: job:ecotrack_api:http_5xx_ratio:rate5m
+        expr: |
+          sum(rate(ecotrack_http_request_status_total{status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(ecotrack_http_request_status_total[5m])), 0.001)
+
+      - record: job:ecotrack_api:http_5xx_ratio:rate30m
+        expr: |
+          sum(rate(ecotrack_http_request_status_total{status_code=~"5.."}[30m]))
+          /
+          clamp_min(sum(rate(ecotrack_http_request_status_total[30m])), 0.001)
+
+      - record: job:ecotrack_api:http_5xx_ratio:rate1h
+        expr: |
+          sum(rate(ecotrack_http_request_status_total{status_code=~"5.."}[1h]))
+          /
+          clamp_min(sum(rate(ecotrack_http_request_status_total[1h])), 0.001)
+
+      - record: job:ecotrack_api:http_5xx_ratio:rate6h
+        expr: |
+          sum(rate(ecotrack_http_request_status_total{status_code=~"5.."}[6h]))
+          /
+          clamp_min(sum(rate(ecotrack_http_request_status_total[6h])), 0.001)
+
+      - record: job:ecotrack_api:http_success_ratio:rate30m
+        expr: 1 - job:ecotrack_api:http_5xx_ratio:rate30m
+
+      - record: job:ecotrack_api:http_5xx_burn_rate:5m
+        expr: job:ecotrack_api:http_5xx_ratio:rate5m / 0.01
+
+      - record: job:ecotrack_api:http_5xx_burn_rate:30m
+        expr: job:ecotrack_api:http_5xx_ratio:rate30m / 0.01
+
+      - record: job:ecotrack_api:http_5xx_burn_rate:1h
+        expr: job:ecotrack_api:http_5xx_ratio:rate1h / 0.01
+
+      - record: job:ecotrack_api:http_5xx_burn_rate:6h
+        expr: job:ecotrack_api:http_5xx_ratio:rate6h / 0.01
+
+      - record: job:ecotrack_api:http_p95_latency_ms:5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(ecotrack_http_request_duration_ms_bucket[5m])))
+
+      - alert: EcoTrackApiErrorBudgetBurnFast
+        expr: job:ecotrack_api:http_5xx_burn_rate:5m > 14.4 and job:ecotrack_api:http_5xx_burn_rate:1h > 14.4
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "API error budget is burning too fast"
+          description: "The 1 percent 5xx-error budget is burning more than 14.4x faster than allowed across both 5-minute and 1-hour windows."
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
+
+      - alert: EcoTrackApiErrorBudgetBurnSlow
+        expr: job:ecotrack_api:http_5xx_burn_rate:30m > 6 and job:ecotrack_api:http_5xx_burn_rate:6h > 6
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "API error budget burn is elevated"
+          description: "The 1 percent 5xx-error budget is burning more than 6x faster than allowed across both 30-minute and 6-hour windows."
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
+
   - name: ecotrack.api.core
     rules:
       - alert: EcoTrackApiDown
@@ -10,10 +76,10 @@ groups:
         annotations:
           summary: "EcoTrack API metrics target is down"
           description: "Prometheus cannot scrape the EcoTrack API metrics endpoint for more than 1 minute."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: EcoTrackApiP95LatencyHigh
-        expr: histogram_quantile(0.95, sum by (le) (rate(ecotrack_http_request_duration_ms_bucket[5m]))) > 500
+        expr: job:ecotrack_api:http_p95_latency_ms:5m > 500
         for: 10m
         labels:
           severity: warning
@@ -21,7 +87,7 @@ groups:
         annotations:
           summary: "API latency p95 is above 500ms"
           description: "The 95th percentile API latency has stayed above 500ms for 10 minutes."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: EcoTrackApi5xxRateHigh
         expr: sum(rate(ecotrack_http_request_errors_total{status_class="5xx"}[5m])) > 0.05
@@ -32,7 +98,7 @@ groups:
         annotations:
           summary: "High 5xx error rate on the API"
           description: "The EcoTrack API is returning more than 0.05 server errors per second for 10 minutes."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: EcoTrackObservabilitySnapshotDown
         expr: ecotrack_observability_snapshot_up == 0
@@ -43,7 +109,7 @@ groups:
         annotations:
           summary: "DB-backed observability snapshot collection is failing"
           description: "The monitoring service cannot collect DB-backed operational gauges."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
   - name: ecotrack.iot.pipeline
     rules:
@@ -190,7 +256,7 @@ groups:
         annotations:
           summary: "Critical-fill containers detected"
           description: "At least one container is in critical fill state for more than 5 minutes."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: EcoTrackContainerMaxFillAboveNinety
         expr: ecotrack_containers_max_fill_percent > 90
@@ -201,7 +267,7 @@ groups:
         annotations:
           summary: "Container fill level above 90 percent"
           description: "The highest observed container fill level is above 90 percent."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: EcoTrackCriticalAlertEventsOpen
         expr: ecotrack_alert_events_open_total{severity="critical"} > 0
@@ -212,7 +278,7 @@ groups:
         annotations:
           summary: "Critical alert events remain open"
           description: "There are persisted critical alert events that remain open."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
   - name: ecotrack.frontend.realtime
     rules:
@@ -225,7 +291,7 @@ groups:
         annotations:
           summary: "High frontend error ingestion rate"
           description: "Frontend error ingestion rate is above 0.2 events per second for 10 minutes."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: RealtimeWebSocketAuthFailuresHigh
         expr: increase(ecotrack_realtime_connection_events_total{transport="ws",action="auth_failure"}[10m]) > 20
@@ -236,7 +302,7 @@ groups:
         annotations:
           summary: "High WebSocket auth failure rate"
           description: "WebSocket realtime auth failures exceeded 20 in a 10-minute window."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
   - name: ecotrack.security.baseline
     rules:
@@ -249,7 +315,7 @@ groups:
         annotations:
           summary: "403 authorization denials are spiking"
           description: "Authorization-denied responses exceeded 20 in a rolling 10-minute window."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"
 
       - alert: EcoTrackLoginFailuresHigh
         expr: increase(ecotrack_security_signals_total{signal="login_failure"}[10m]) > 10
@@ -260,4 +326,4 @@ groups:
         annotations:
           summary: "Login failures are elevated"
           description: "Derived login-failure signals exceeded 10 in a 10-minute window."
-          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md"

@@ -75,6 +75,7 @@
     "ci:release:manifest": "node ./infrastructure/scripts/ci/generate-release-manifest.mjs",
     "ci:release:deploy-hooks": "node ./infrastructure/scripts/ci/run-deploy-hooks.mjs",
     "ci:release:smoke": "node ./infrastructure/scripts/ci/run-release-smoke.mjs",
+    "ci:synthetic": "node ./infrastructure/scripts/ci/run-synthetic-monitor.mjs",
     "ci:quality:k6": "node ./infrastructure/scripts/ci/run-k6-scenarios.mjs --profile smoke",
     "ci:quality:mutation": "node ./infrastructure/scripts/ci/run-mutation-gate.mjs",
     "ci:quality:visual": "node ./infrastructure/scripts/ci/run-visual-gate.mjs",

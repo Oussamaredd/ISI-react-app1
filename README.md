@@ -212,6 +212,7 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run ci:release:manifest` - generate the release manifest consumed by `CD Deployment`
 - `npm run ci:release:deploy-hooks` - trigger configured frontend/backend deploy hooks and capture evidence
 - `npm run ci:release:smoke` - run hosted release smoke checks against deployed frontend/backend URLs
+- `npm run ci:synthetic` - run hosted synthetic checks for frontend availability, API readiness, auth entry, and the optional synthetic-user confirmation flow
 - `npm run ci:quality:k6` - run the default K6 smoke scenario pack against the direct API
 - `npm run ci:quality:mutation` - run mutation gate hook (enabled by CI variable)
 - `npm run ci:quality:visual` - run Percy visual-regression gate (defaults to the repo snapshot flow when no custom Percy command is set)
@@ -250,7 +251,8 @@ Release and contributor references:
 
 - `CI.yaml`: canonical `CI Integration` workflow for `pull_request` + `push` on `main`; supports manual `workflow_dispatch` with `full_run=true` and optional `run_extended_quality=true` for K6/ZAP/mutation/visual/Lighthouse lanes, builds both monolith images with release labels, and runs Trivy scans on the built API/frontend images
 - `CI.yaml` image scanning is vulnerability-only (`--scanners vuln`) with an explicit timeout and a restored/primed Trivy DB cache before the image scans run; keep runtime image bases patched so the `HIGH`/`CRITICAL` Trivy gate stays actionable instead of failing on stale base packages or secret-scan noise.
-- `CD.yml`: canonical `CD Deployment` workflow; `main` auto-promotes `development`, `workflow_dispatch` promotes `development|staging|production`, deploy jobs bind to the matching GitHub Environments (`development`, `staging`, `production`), and each release run writes manifest/deploy-hook/smoke evidence artifacts plus a rollback-by-ref summary. GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
+- `CD.yml`: canonical `CD Deployment` workflow; `main` auto-promotes `development`, `workflow_dispatch` promotes `development|staging|production`, deploy jobs bind to the matching GitHub Environments (`development`, `staging`, `production`), and each release run writes manifest/deploy-hook/smoke/synthetic evidence artifacts plus a rollback-by-ref summary. GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
+- `synthetic-monitoring.yml`: scheduled hosted synthetic workflow that runs every 30 minutes and on manual dispatch across `development`, `staging`, and `production`, reusing `npm run ci:synthetic` and the environment-scoped deploy URLs plus optional synthetic-user secrets
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
 - The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/operations/runbooks/EXTENDED_QUALITY_GATES.md`.
 
