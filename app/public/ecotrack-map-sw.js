@@ -4,6 +4,7 @@ const STATIC_ASSET_CACHE_NAME = "ecotrack-app-static-v2";
 const TILE_CACHE_EVENT = "ECOTRACK_CONFIGURE_TILE_CACHE";
 const APP_SHELL_REFRESH_SYNC_TAG = "ecotrack-refresh-shell";
 const CACHE_NAMES = [TILE_CACHE_NAME, APP_SHELL_CACHE_NAME, STATIC_ASSET_CACHE_NAME];
+const DEV_ASSET_PATH_PREFIXES = ["/@vite/", "/@fs/", "/@react-refresh", "/src/", "/node_modules/.vite/"];
 const APP_SHELL_PATHS = [
   ".",
   "./login",
@@ -85,16 +86,22 @@ const isTrustedMessageSource = (source) => {
 
 const isApiRequest = (url) => url.origin === self.location.origin && url.pathname.startsWith("/api/");
 
+const isDevelopmentAssetRequest = (url) =>
+  url.origin === self.location.origin &&
+  DEV_ASSET_PATH_PREFIXES.some((pathPrefix) => url.pathname.startsWith(pathPrefix));
+
 const isStaticAssetRequest = (request, url) =>
   request.method === "GET" &&
   url.origin === self.location.origin &&
   !isApiRequest(url) &&
+  !isDevelopmentAssetRequest(url) &&
   ["script", "style", "font", "image"].includes(request.destination);
 
 const isNavigationRequest = (request, url) =>
   request.mode === "navigate" &&
   request.method === "GET" &&
   url.origin === self.location.origin &&
+  !isDevelopmentAssetRequest(url) &&
   !isApiRequest(url);
 
 const cacheTileResponse = async (request) => {
@@ -306,6 +313,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
+  if (isDevelopmentAssetRequest(requestUrl)) {
+    return;
+  }
+
   if (isCacheableTileRequest(requestUrl)) {
     event.respondWith(cacheTileResponse(event.request));
     return;

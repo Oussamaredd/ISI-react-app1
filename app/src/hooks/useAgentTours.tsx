@@ -24,7 +24,10 @@ export type TourRouteGeometry = {
 
 export type AgentTourDataSource = 'none' | 'network' | 'cache';
 
-const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v1';
+const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v2';
+const MAX_AGENT_TOUR_CACHE_AGE_MS = 15 * 60 * 1000;
+const MAX_OVERDUE_AGENT_TOUR_CACHE_AGE_MS = 2 * 60 * 1000;
+const TERMINAL_TOUR_STATUSES = new Set(['completed', 'cancelled', 'closed']);
 
 const canUseStorage = () => typeof window !== 'undefined' && 'localStorage' in window;
 
@@ -70,6 +73,18 @@ const writeCachedEnvelope = (key: string, data: unknown) => {
   }
 };
 
+const clearCachedEnvelope = (key: string) => {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Ignore storage failures; callers already handle missing cache gracefully.
+  }
+};
+
 const hasSeedFallbackRoute = (data: unknown) => {
   if (!data || typeof data !== 'object') {
     return false;
@@ -90,17 +105,78 @@ const hasSeedFallbackRoute = (data: unknown) => {
   );
 };
 
+const readCacheAgeMs = (cachedAt: string) => {
+  const cachedAtMs = Date.parse(cachedAt);
+  if (!Number.isFinite(cachedAtMs)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return Math.max(0, Date.now() - cachedAtMs);
+};
+
+const readCachedTourScheduledFor = (data: unknown) => {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+
+  const scheduledFor = (data as Record<string, unknown>).scheduledFor;
+  if (typeof scheduledFor !== 'string' && !(scheduledFor instanceof Date)) {
+    return null;
+  }
+
+  const scheduledForMs = Date.parse(String(scheduledFor));
+  return Number.isFinite(scheduledForMs) ? scheduledForMs : null;
+};
+
+const readCachedTourStatus = (data: unknown) => {
+  if (!data || typeof data !== 'object') {
+    return '';
+  }
+
+  const status = (data as Record<string, unknown>).status;
+  return typeof status === 'string' ? status.trim().toLowerCase() : '';
+};
+
+const isExpiredAgentTourCache = (cached: CachedEnvelope<unknown>) => {
+  const cacheAgeMs = readCacheAgeMs(cached.cachedAt);
+  if (cacheAgeMs > MAX_AGENT_TOUR_CACHE_AGE_MS) {
+    return true;
+  }
+
+  const scheduledForMs = readCachedTourScheduledFor(cached.data);
+  if (scheduledForMs == null) {
+    return false;
+  }
+
+  const normalizedStatus = readCachedTourStatus(cached.data);
+  if (TERMINAL_TOUR_STATUSES.has(normalizedStatus)) {
+    return false;
+  }
+
+  return scheduledForMs < Date.now() && cacheAgeMs > MAX_OVERDUE_AGENT_TOUR_CACHE_AGE_MS;
+};
+
+export const clearCachedAgentTour = () => {
+  clearCachedEnvelope(AGENT_TOUR_CACHE_KEY);
+};
+
 const readReusableAgentTourCache = () => {
   const cached = readCachedEnvelope<unknown>(AGENT_TOUR_CACHE_KEY);
   if (!cached) {
     return null;
   }
 
-  return hasSeedFallbackRoute(cached.data) ? null : cached;
+  if (hasSeedFallbackRoute(cached.data) || isExpiredAgentTourCache(cached)) {
+    clearCachedAgentTour();
+    return null;
+  }
+
+  return cached;
 };
 
 export const useAgentTour = () =>
   {
+    const queryClient = useQueryClient();
     const initialCachedTour = readReusableAgentTourCache();
     const [dataSource, setDataSource] = useState<AgentTourDataSource>(
       initialCachedTour ? 'cache' : 'none',
@@ -132,9 +208,21 @@ export const useAgentTour = () =>
       retry: false,
     });
 
+    const refetchFromServer = async (options?: { clearCache?: boolean }) => {
+      if (options?.clearCache) {
+        clearCachedAgentTour();
+        queryClient.removeQueries({ queryKey: ['agent-tour'], exact: true });
+        setDataSource('none');
+      }
+
+      return query.refetch();
+    };
+
     return {
       ...query,
       dataSource,
+      clearCachedTour: clearCachedAgentTour,
+      refetchFromServer,
     };
   };
 

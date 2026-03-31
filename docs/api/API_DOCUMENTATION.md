@@ -154,10 +154,11 @@ Agent tour execution notes:
 - If an actionable tour is missing persisted route data, the API backfills it on the next `GET /api/tours/agent/me`.
 - If stored route geometry is present but no longer matches the current stop endpoints, `GET /api/tours/agent/me` automatically rebuilds and overwrites the stale route before returning the response.
 - Seed-generated fallback routes are also refreshed on `GET /api/tours/agent/me` so the active agent view can upgrade from demo geometry to a live road route as soon as routing is available.
+- When multiple non-terminal tours exist for the same agent, `GET /api/tours/agent/me` prefers the most recently started `in_progress` run; legacy `in_progress` rows without `startedAt` do not outrank a current planned assignment.
 - `POST /api/tours/:tourId/route/rebuild` lets manager/admin users force a fresh persisted route rebuild for a tour without editing the stops. It overwrites the current `tour_routes` row and records an audit log entry.
 - The web client caches the last successful tour payload in browser storage and reuses cached map tiles through a service worker when supported.
 - The agent web app also pre-caches a lightweight app shell and same-origin static assets for offline navigation. API traffic remains network-first and is never cached by the service worker.
-- The web client intentionally ignores cached `seed` fallback routes so the agent page does not keep booting from demo geometry after live routing becomes available.
+- The web client intentionally ignores cached `seed` fallback routes, discards expired/off-hours cached tour snapshots, and exposes a cache-bypass reload path so the agent page does not keep booting from stale demo or overdue run data.
 - `POST /api/tours/:tourId/anomalies` accepts `severity` values `low`, `medium`, `high`, or `critical`.
 - `photoUrl` in anomaly payloads must be a valid `http`/`https` URL when provided.
 

@@ -26,10 +26,11 @@ const createWrapper = () => {
   );
 };
 
-const AGENT_TOUR_CACHE_KEY = "ecotrack.agentTour.cache.v1";
+const AGENT_TOUR_CACHE_KEY = "ecotrack.agentTour.cache.v2";
 
 describe("useAgentTour cache behavior", () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.mocked(apiClient.get).mockReset();
     window.localStorage.removeItem(AGENT_TOUR_CACHE_KEY);
   });
@@ -144,5 +145,71 @@ describe("useAgentTour cache behavior", () => {
     });
     expect(result.current.error).toBeNull();
     expect(result.current.dataSource).toBe("cache");
+  });
+
+  test("ignores cache entries older than the freshness window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-30T10:00:00.000Z"));
+
+    window.localStorage.setItem(
+      AGENT_TOUR_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: new Date("2026-03-30T09:40:00.000Z").toISOString(),
+        data: {
+          id: "tour-1",
+          status: "planned",
+          scheduledFor: "2026-03-30T10:30:00.000Z",
+          routeGeometry: {
+            source: "fallback",
+            provider: "internal",
+          },
+        },
+      }),
+    );
+    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error("backend unavailable"));
+
+    const { result } = renderHook(() => useAgentTour(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+    });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.dataSource).toBe("none");
+    expect(window.localStorage.getItem(AGENT_TOUR_CACHE_KEY)).toBeNull();
+  });
+
+  test("does not reuse an overdue cached active run after the short grace window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-30T10:00:00.000Z"));
+
+    window.localStorage.setItem(
+      AGENT_TOUR_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: new Date("2026-03-30T09:57:00.000Z").toISOString(),
+        data: {
+          id: "tour-1",
+          status: "in_progress",
+          scheduledFor: "2026-03-30T09:00:00.000Z",
+          routeGeometry: {
+            source: "fallback",
+            provider: "internal",
+          },
+        },
+      }),
+    );
+    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error("backend unavailable"));
+
+    const { result } = renderHook(() => useAgentTour(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeTruthy();
+    });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.dataSource).toBe("none");
+    expect(window.localStorage.getItem(AGENT_TOUR_CACHE_KEY)).toBeNull();
   });
 });

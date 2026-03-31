@@ -62,19 +62,19 @@ describe('ToursRepository invariants', () => {
               id: 'tour-complete',
               name: 'Finished round',
               status: 'completed',
-              scheduledFor: new Date('2026-03-01T08:00:00.000Z'),
+              scheduledFor: new Date('2030-03-01T08:00:00.000Z'),
               zoneId: 'zone-1',
               zoneName: 'Downtown',
-              updatedAt: new Date('2026-03-01T10:00:00.000Z'),
+              updatedAt: new Date('2030-03-01T10:00:00.000Z'),
             },
             {
               id: 'tour-next',
               name: 'Upcoming round',
               status: 'planned',
-              scheduledFor: new Date('2026-03-03T08:00:00.000Z'),
+              scheduledFor: new Date('2030-03-03T08:00:00.000Z'),
               zoneId: 'zone-1',
               zoneName: 'Downtown',
-              updatedAt: new Date('2026-03-02T06:00:00.000Z'),
+              updatedAt: new Date('2030-03-02T06:00:00.000Z'),
             },
           ]),
         )
@@ -84,7 +84,7 @@ describe('ToursRepository invariants', () => {
               id: 'stop-1',
               stopOrder: 1,
               status: 'pending',
-              eta: new Date('2026-03-03T08:00:00.000Z'),
+              eta: new Date('2030-03-03T08:00:00.000Z'),
               completedAt: null,
               containerId: 'container-1',
               containerCode: 'CTR-001',
@@ -110,6 +110,124 @@ describe('ToursRepository invariants', () => {
           completedStops: 0,
           remainingStops: 1,
         }),
+      }),
+    );
+  });
+
+  it('prefers a current planned tour over a legacy in-progress record that never captured a start time', async () => {
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(
+          createTourSelectionChain([
+            {
+              id: 'tour-legacy-active',
+              name: 'Legacy downtown round',
+              status: 'in_progress',
+              scheduledFor: new Date('2030-03-01T08:00:00.000Z'),
+              startedAt: null,
+              zoneId: 'zone-1',
+              zoneName: 'Paris 1er - Louvre',
+              updatedAt: new Date('2030-03-01T08:30:00.000Z'),
+            },
+            {
+              id: 'tour-current',
+              name: 'Paris 1er Morning Round',
+              status: 'planned',
+              scheduledFor: new Date('2030-03-30T08:00:00.000Z'),
+              startedAt: null,
+              zoneId: 'zone-1',
+              zoneName: 'Paris 1er - Louvre',
+              updatedAt: new Date('2030-03-30T06:00:00.000Z'),
+            },
+          ]),
+        )
+        .mockReturnValueOnce(
+          createStopSelectionChain([
+            {
+              id: 'stop-1',
+              stopOrder: 1,
+              status: 'pending',
+              eta: new Date('2030-03-30T08:00:00.000Z'),
+              completedAt: null,
+              containerId: 'container-1',
+              containerCode: 'CTR-1002',
+              containerLabel: '1 PLACE DU LOUVRE - Recyclables',
+              latitude: '48.8608',
+              longitude: '2.3376',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(createLimitSelectionChain([])),
+    };
+
+    const repository = new ToursRepository(dbMock as any);
+
+    const result = await repository.getAgentTour('agent-1');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'tour-current',
+        name: 'Paris 1er Morning Round',
+      }),
+    );
+  });
+
+  it('returns the most recently started in-progress tour when multiple active runs exist', async () => {
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(
+          createTourSelectionChain([
+            {
+              id: 'tour-old-active',
+              name: 'Older run',
+              status: 'in_progress',
+              scheduledFor: new Date('2026-03-29T08:00:00.000Z'),
+              startedAt: new Date('2026-03-29T08:15:00.000Z'),
+              zoneId: 'zone-1',
+              zoneName: 'Paris 1er - Louvre',
+              updatedAt: new Date('2026-03-29T09:00:00.000Z'),
+            },
+            {
+              id: 'tour-new-active',
+              name: 'Current run',
+              status: 'in_progress',
+              scheduledFor: new Date('2026-03-30T08:00:00.000Z'),
+              startedAt: new Date('2026-03-30T08:10:00.000Z'),
+              zoneId: 'zone-1',
+              zoneName: 'Paris 1er - Louvre',
+              updatedAt: new Date('2026-03-30T08:20:00.000Z'),
+            },
+          ]),
+        )
+        .mockReturnValueOnce(
+          createStopSelectionChain([
+            {
+              id: 'stop-1',
+              stopOrder: 1,
+              status: 'active',
+              eta: new Date('2026-03-30T08:20:00.000Z'),
+              completedAt: null,
+              containerId: 'container-1',
+              containerCode: 'CTR-1002',
+              containerLabel: '1 PLACE DU LOUVRE - Recyclables',
+              latitude: '48.8608',
+              longitude: '2.3376',
+            },
+          ]),
+        )
+        .mockReturnValueOnce(createLimitSelectionChain([])),
+    };
+
+    const repository = new ToursRepository(dbMock as any);
+
+    const result = await repository.getAgentTour('agent-1');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'tour-new-active',
+        name: 'Current run',
       }),
     );
   });

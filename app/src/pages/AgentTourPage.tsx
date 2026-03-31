@@ -270,21 +270,43 @@ export default function AgentTourPage() {
       anomalyTypes?: Array<{ id: string; label: string }>;
     } | undefined)?.anomalyTypes ?? []);
   const isUsingCachedTour = agentTourQuery.dataSource === "cache";
+  const isOverdueTour = Boolean(routeSummary?.isOverdue && tourStatus !== "completed");
+  const isOverdueActiveRun = Boolean(routeSummary?.isOverdue && tourStatus === "in_progress");
+  const shouldOfferCacheBypass = isUsingCachedTour || isOverdueTour;
 
-  const refreshTour = async () => {
+  const refreshTour = async (options?: { clearCache?: boolean }) => {
     setStatusMessage("");
 
     try {
-      const result = await agentTourQuery.refetch();
+      const result = agentTourQuery.refetchFromServer
+        ? await agentTourQuery.refetchFromServer(options)
+        : await (async () => {
+            if (options?.clearCache) {
+              agentTourQuery.clearCachedTour?.();
+            }
+
+            return agentTourQuery.refetch();
+          })();
       if (result.error) {
         throw result.error;
       }
 
       setStatusTone("info");
-      setStatusMessage("Tour data refreshed.");
+      setStatusMessage(
+        options?.clearCache
+          ? "Cached tour cleared. Requested a fresh assignment snapshot from the server."
+          : "Tour data refreshed.",
+      );
     } catch (error) {
       setStatusTone("error");
-      setStatusMessage(getErrorMessage(error, "Unable to refresh the assigned tour."));
+      setStatusMessage(
+        getErrorMessage(
+          error,
+          options?.clearCache
+            ? "Unable to reload a fresh assignment snapshot from the server."
+            : "Unable to refresh the assigned tour.",
+        ),
+      );
     }
   };
 
@@ -443,7 +465,9 @@ export default function AgentTourPage() {
             <button
               type="button"
               className="ops-btn ops-btn-outline"
-              onClick={refreshTour}
+              onClick={() => {
+                void refreshTour();
+              }}
               disabled={agentTourQuery.isFetching}
             >
               {agentTourQuery.isFetching ? "Refreshing..." : "Retry"}
@@ -467,7 +491,9 @@ export default function AgentTourPage() {
             <button
               type="button"
               className="ops-btn ops-btn-outline"
-              onClick={refreshTour}
+              onClick={() => {
+                void refreshTour();
+              }}
               disabled={agentTourQuery.isFetching}
             >
               {agentTourQuery.isFetching ? "Refreshing..." : "Refresh"}
@@ -533,7 +559,7 @@ export default function AgentTourPage() {
             {startTourMutation.isPending
               ? "Starting..."
               : tourStatus === "in_progress"
-                ? "Tour In Progress"
+                ? "Current Run Active"
                 : tourStatus === "completed"
                   ? "Tour Completed"
                   : "Start Tour"}
@@ -541,19 +567,35 @@ export default function AgentTourPage() {
           <button
             type="button"
             className="ops-btn ops-btn-outline"
-            onClick={refreshTour}
+            onClick={() => {
+              void refreshTour();
+            }}
             disabled={agentTourQuery.isFetching}
           >
-            {agentTourQuery.isFetching ? "Refreshing..." : "Refresh Route"}
+            {agentTourQuery.isFetching ? "Refreshing..." : "Refresh Tour Data"}
           </button>
-          {routeSummary?.isOverdue && tourStatus !== "completed" ? (
+          {shouldOfferCacheBypass ? (
+            <button
+              type="button"
+              className="ops-btn ops-btn-outline"
+              onClick={() => {
+                void refreshTour({ clearCache: true });
+              }}
+              disabled={agentTourQuery.isFetching}
+            >
+              {agentTourQuery.isFetching ? "Reloading..." : "Reload Without Cache"}
+            </button>
+          ) : null}
+          {isOverdueTour ? (
             <span className="ops-chip ops-chip-danger">
-              Schedule has passed. Confirm this is still the active run.
+              {isOverdueActiveRun
+                ? "Active run is overdue. Continue only if this is still the live round; otherwise reload from the server before proceeding."
+                : "Scheduled time has passed. Reload the assignment before starting."}
             </span>
           ) : null}
           {isUsingCachedTour ? (
             <span className="ops-chip ops-chip-warning">
-              Offline fallback active. Showing the last cached tour and stored map data.
+              Offline snapshot shown. Reload without cache once connectivity returns.
             </span>
           ) : null}
         </div>

@@ -15,8 +15,14 @@ Execute assigned collection tours, validate stops, and report anomalies.
 2. Click `Start Tour` once the route is ready; repeated starts do not restart completed tours.
 3. Validate only the active stop with collected volume, manual container confirmation, and optional captured device location.
 4. Submit anomalies with severity and optional photo URL when blocked/damaged/unsafe conditions are observed.
-5. If connectivity drops, the page can fall back to the last cached tour payload (including persisted API route geometry) and previously viewed map tiles.
+5. If connectivity drops, the page can fall back to a recent cached tour payload (including persisted API route geometry) and previously viewed map tiles. Overdue or stale cached runs are intentionally discarded instead of being reused indefinitely.
 6. Review the in-page activity timeline for start, validation, and anomaly confirmation.
+
+## Recovery notes
+
+- `Refresh Tour Data` reloads the latest agent assignment from the API. It does not rebuild persisted geometry.
+- `Reload Without Cache` is shown when the page is using cached tour data or the assigned run is overdue.
+- Persisted-route rebuild remains a manager/admin action through manager planning/tour operations.
 
 ## Related APIs
 

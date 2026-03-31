@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { createDatabaseInstance } from '../client.js';
 import {
   alertEvents,
@@ -1172,6 +1172,8 @@ const TOUR_SEEDS: TourSeed[] = [
   },
 ];
 
+const LEGACY_TOUR_SEED_NAMES = ['Downtown Morning Round'];
+
 const CITIZEN_REPORT_SEEDS: CitizenReportSeed[] = [
   {
     containerCode: 'CTR-1002',
@@ -2049,6 +2051,33 @@ export async function seedDatabase() {
         }
       }
 
+      const managedTourNames = Array.from(
+        new Set([...TOUR_SEEDS.map((seed) => seed.name), ...LEGACY_TOUR_SEED_NAMES]),
+      );
+      const managedTourAgentIds = Array.from(
+        new Set(
+          TOUR_SEEDS.map((seed) => userIds.get(seed.assignedAgentEmail)).filter(
+            (agentId): agentId is string => Boolean(agentId),
+          ),
+        ),
+      );
+      if (managedTourNames.length > 0 && managedTourAgentIds.length > 0) {
+        const staleManagedTours = await tx
+          .select({ id: tours.id })
+          .from(tours)
+          .where(
+            and(
+              inArray(tours.name, managedTourNames),
+              inArray(tours.assignedAgentId, managedTourAgentIds),
+            ),
+          );
+
+        if (staleManagedTours.length > 0) {
+          await tx.delete(tours).where(inArray(tours.id, staleManagedTours.map((tour) => tour.id)));
+        }
+      }
+
+      const seededTourIds = new Map<string, string>();
       for (const seed of TOUR_SEEDS) {
         const zoneId = zoneIds.get(seed.zoneCode);
         const assignedAgentId = userIds.get(seed.assignedAgentEmail);
@@ -2068,17 +2097,14 @@ export async function seedDatabase() {
             assignedAgentId,
             scheduledFor,
           })
-          .onConflictDoNothing()
           .returning({ id: tours.id });
 
-        const resolvedTour =
-          tourRow ?? (await tx.select({ id: tours.id }).from(tours).where(eq(tours.name, seed.name)).limit(1))[0];
-
-        if (!resolvedTour) {
+        if (!tourRow) {
           throw new Error(`Failed to resolve tour: ${seed.name}`);
         }
 
-        await tx.delete(tourStops).where(eq(tourStops.tourId, resolvedTour.id));
+        seededTourIds.set(seed.name, tourRow.id);
+        await tx.delete(tourStops).where(eq(tourStops.tourId, tourRow.id));
 
         for (let index = 0; index < seed.stopContainerCodes.length; index += 1) {
           const containerCode = seed.stopContainerCodes[index];
@@ -2089,7 +2115,7 @@ export async function seedDatabase() {
           }
 
           await tx.insert(tourStops).values({
-            tourId: resolvedTour.id,
+            tourId: tourRow.id,
             containerId,
             stopOrder: index + 1,
             status: 'pending',
@@ -2261,8 +2287,10 @@ export async function seedDatabase() {
       for (const seed of ANOMALY_REPORT_SEEDS) {
         const anomalyTypeId = anomalyTypeIds.get(seed.anomalyTypeCode);
         const reporterUserId = userIds.get(seed.reporterEmail);
-
-        const [tourRow] = await tx.select().from(tours).where(eq(tours.name, seed.tourName)).limit(1);
+        const seededTourId = seededTourIds.get(seed.tourName);
+        const [tourRow] = seededTourId
+          ? await tx.select().from(tours).where(eq(tours.id, seededTourId)).limit(1)
+          : await tx.select().from(tours).where(eq(tours.name, seed.tourName)).limit(1);
         const [stopRow] = tourRow
           ? await tx
               .select()
@@ -2311,7 +2339,15 @@ export async function seedDatabase() {
         }
       }
 
-      const [firstTourStop] = await tx.select().from(tourStops).limit(1);
+      const primarySeedTourId = TOUR_SEEDS[0] ? seededTourIds.get(TOUR_SEEDS[0].name) : null;
+      const [firstTourStop] = primarySeedTourId
+        ? await tx
+            .select()
+            .from(tourStops)
+            .where(eq(tourStops.tourId, primarySeedTourId))
+            .orderBy(asc(tourStops.stopOrder))
+            .limit(1)
+        : [];
       if (firstTourStop) {
         const [existingCollectionEvent] = await tx
           .select()

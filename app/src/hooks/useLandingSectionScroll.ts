@@ -1,4 +1,4 @@
-import React from "react";
+import { useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const HEADER_OFFSET = 80;
@@ -28,7 +28,11 @@ export function scrollToLandingSection(sectionId: string, behavior: ScrollBehavi
 const normalizeHash = (hash: string) => hash.replace(/^#/, "").trim();
 
 export function useLandingSectionScroll() {
-  React.useEffect(() => {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     const syncHashScroll = () => {
       const sectionId = normalizeHash(window.location.hash);
       if (!sectionId) {
@@ -50,7 +54,7 @@ export function useLandingSectionNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  return React.useCallback(
+  return useCallback(
     (sectionId: string) => {
       const normalizedSectionId = sectionId.trim();
       if (!normalizedSectionId) {

@@ -155,4 +155,22 @@ describe("ecotrack service worker cache policy", () => {
 
     expect(await (await navigationResponsePromise).text()).toContain("cached shell");
   });
+
+  it("does not intercept Vite dev asset requests", async () => {
+    const harness = createServiceWorkerHarness();
+    const respondWith = vi.fn();
+
+    harness.handlers.get("fetch")?.({
+      request: {
+        url: "https://app.ecotrack.test/node_modules/.vite/deps/@tanstack_react-query.js?v=abc123",
+        method: "GET",
+        mode: "cors",
+        destination: "script",
+      },
+      respondWith,
+    });
+
+    expect(respondWith).not.toHaveBeenCalled();
+    expect(harness.fetchMock).not.toHaveBeenCalled();
+  });
 });

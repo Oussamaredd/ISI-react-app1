@@ -343,4 +343,48 @@ describe("AgentTourPage", () => {
     await user.click(screen.getByRole("button", { name: /Refresh Activity/i }));
     expect(activityRefetch).toHaveBeenCalledTimes(1);
   });
+
+  it("offers a cache-bypass reload path for overdue cached runs", async () => {
+    const agentHooks = await import("../hooks/useAgentTours");
+    const refetchFromServer = vi.fn().mockResolvedValue({ error: null });
+
+    (agentHooks.useAgentTour as Mock).mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: buildTour({
+        status: "in_progress",
+        routeSummary: {
+          totalStops: 1,
+          completedStops: 0,
+          remainingStops: 1,
+          completionPercent: 0,
+          totalDistanceKm: 1.2,
+          estimatedDurationMinutes: 8,
+          isOverdue: true,
+        },
+      }),
+      dataSource: "cache",
+      refetch: vi.fn().mockResolvedValue({ error: null }),
+      refetchFromServer,
+      clearCachedTour: vi.fn(),
+      isFetching: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<AgentTourPage />);
+
+    expect(
+      screen.getByText(/Active run is overdue\. Continue only if this is still the live round/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Offline snapshot shown\. Reload without cache once connectivity returns\./i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Reload Without Cache/i }));
+
+    expect(refetchFromServer).toHaveBeenCalledWith({ clearCache: true });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /Cached tour cleared\. Requested a fresh assignment snapshot from the server\./i,
+    );
+  });
 });

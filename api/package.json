@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail -n api,types \"cross-env NODE_ENV=development tsx watch --tsconfig tsconfig.json src/main.ts\" \"tsc -p tsconfig.build.json -w --noEmit\"",
+    "dev": "npm run build && concurrently --kill-others-on-fail -n api,types \"cross-env NODE_ENV=development node --watch-path=dist --watch-preserve-output dist/main.js\" \"tsc -p tsconfig.build.json -w --preserveWatchOutput --noEmitOnError\"",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:debug": "npm run build && cross-env NODE_ENV=development node dist/main.js",

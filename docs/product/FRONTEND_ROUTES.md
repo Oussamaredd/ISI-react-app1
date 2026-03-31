@@ -39,7 +39,7 @@ Special case:
 | `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; existing-container issue reporting only, with typed issue selection and read-only status/fill context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
-| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
 | `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, assignment, and manual persisted-route rebuild for the last created tour |
 | `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address |
@@ -86,6 +86,7 @@ PWA install behavior:
 
 - Browsers that emit `beforeinstallprompt` can show an install banner that lets authenticated users install the app shell for faster relaunch and offline access to cached tours and maps.
 - Dismissing the install banner is session-scoped and the banner is suppressed once the app is already running in standalone mode.
+- The offline/cache service worker is disabled during local Vite dev so HMR, `/src/*`, `/@vite/*`, and optimized dependency modules stay network-only and cannot drift out of sync with the active dev server.
 
 ## Frontend edge behavior (`app/nginx.conf`)
 

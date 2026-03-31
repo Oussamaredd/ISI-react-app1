@@ -80,6 +80,13 @@ const createSpawnRestrictedDepOptimizerPlugin = () => ({
   },
 });
 
+const createHtmlReleaseMetadataPlugin = (releaseVersion) => ({
+  name: "ecotrack-html-release-metadata",
+  transformIndexHtml(html) {
+    return html.replace("__ECOTRACK_RELEASE_VERSION__", releaseVersion ?? "");
+  },
+});
+
 const resolveManualChunkName = (id) => {
   const normalizedId = id.split(path.sep).join("/");
 
@@ -135,6 +142,7 @@ export default defineConfig(({ mode }) => {
 
   const plugins = [
     react(),
+    createHtmlReleaseMetadataPlugin(env.VITE_RELEASE_VERSION?.trim() || ""),
     createCloudflarePagesRedirectsPlugin({
       edgeProxyEnabled,
       edgeProxyTargetOrigin,
@@ -196,6 +204,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(currentDir, "./src"),
       },
+      dedupe: ["react", "react-dom", "@tanstack/react-query"],
     },
     server: {
       port: 5173,

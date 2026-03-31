@@ -98,6 +98,7 @@ export class ToursRepository {
         name: tours.name,
         status: tours.status,
         scheduledFor: tours.scheduledFor,
+        startedAt: tours.startedAt,
         zoneId: tours.zoneId,
         zoneName: zones.name,
         updatedAt: tours.updatedAt,
@@ -758,6 +759,8 @@ export class ToursRepository {
     T extends {
       status: string;
       scheduledFor: Date;
+      startedAt?: Date | null;
+      updatedAt?: Date | null;
     },
   >(assignedTours: T[]) {
     const nonTerminalTours = assignedTours.filter((tour) => !this.isTerminalStatus(tour.status));
@@ -765,16 +768,23 @@ export class ToursRepository {
       return null;
     }
 
-    const activeTour = nonTerminalTours.find(
+    const activeTours = nonTerminalTours.filter(
       (tour) => this.normalizeStatus(tour.status) === 'in_progress',
     );
-    if (activeTour) {
-      return activeTour;
+    const startedActiveTours = activeTours.filter((tour) => tour.startedAt != null);
+    if (startedActiveTours.length > 0) {
+      return [...startedActiveTours].sort(
+        (left, right) => this.resolveActiveTourSortTime(right) - this.resolveActiveTourSortTime(left),
+      )[0];
     }
 
     const now = Date.now();
     const upcomingTours = nonTerminalTours
-      .filter((tour) => new Date(tour.scheduledFor).getTime() >= now)
+      .filter(
+        (tour) =>
+          this.normalizeStatus(tour.status) !== 'in_progress' &&
+          new Date(tour.scheduledFor).getTime() >= now,
+      )
       .sort(
         (left, right) =>
           new Date(left.scheduledFor).getTime() - new Date(right.scheduledFor).getTime(),
@@ -783,10 +793,26 @@ export class ToursRepository {
       return upcomingTours[0];
     }
 
+    if (activeTours.length > 0) {
+      return [...activeTours].sort(
+        (left, right) => this.resolveActiveTourSortTime(right) - this.resolveActiveTourSortTime(left),
+      )[0];
+    }
+
     return [...nonTerminalTours].sort(
       (left, right) =>
         new Date(right.scheduledFor).getTime() - new Date(left.scheduledFor).getTime(),
     )[0];
+  }
+
+  private resolveActiveTourSortTime(
+    tour: Readonly<{
+      scheduledFor: Date;
+      startedAt?: Date | null;
+      updatedAt?: Date | null;
+    }>,
+  ) {
+    return new Date(tour.startedAt ?? tour.updatedAt ?? tour.scheduledFor).getTime();
   }
 
   private buildRouteSummary(
