@@ -225,6 +225,14 @@ export default function AgentTourPage() {
   const routeGeometry = tour?.routeGeometry ?? null;
   const depotLocation = tour?.depot ?? null;
   const zoneContainerCount = zoneContainers.length;
+  const uncoveredZoneContainerCount = useMemo(() => {
+    if (zoneContainers.length === 0 || stops.length === 0) {
+      return zoneContainers.length;
+    }
+
+    const routedContainerIds = new Set(stops.map((stop) => stop.containerId));
+    return zoneContainers.filter((container) => !routedContainerIds.has(container.id)).length;
+  }, [stops, zoneContainers]);
   const activeStop = useMemo(
     () =>
       stops.find((stop) => normalizeStatus(stop.status) === "active") ??
@@ -619,7 +627,7 @@ export default function AgentTourPage() {
           <div>
             <h2>Route Overview</h2>
             <p className="ops-card-intro">
-              Persisted route data from the API. The line and numbered badges show the planned route sequence, and every mapped container in the assigned zone is also visible with the same operational marker style.
+              Persisted route data from the API. The line and numbered markers show the routed stop sequence. Zone containers are still loaded paginated in the background so the page can verify route coverage against the assigned zone.
             </p>
           </div>
           <div className="ops-card-head-badges">
@@ -631,6 +639,11 @@ export default function AgentTourPage() {
             <span className="ops-chip ops-chip-info">
               {zoneContainersQuery.isLoading ? "Loading zone map..." : `${zoneContainerCount} mapped containers`}
             </span>
+            {!zoneContainersQuery.isLoading && uncoveredZoneContainerCount > 0 ? (
+              <span className="ops-chip ops-chip-warning">
+                {uncoveredZoneContainerCount} mapped containers are not assigned to this route
+              </span>
+            ) : null}
             <span className={getRouteStatusToneClass(routeGeometry)}>{routeStatusLabel}</span>
           </div>
         </div>
@@ -643,12 +656,13 @@ export default function AgentTourPage() {
           </div>
           <div>
             <p className="ops-subtle">Routed stops: {stops.length}</p>
-            <p className="ops-subtle">Mapped zone containers: {zoneContainerCount}</p>
+            <p className="ops-subtle">
+              Route coverage: {Math.max(0, zoneContainerCount - uncoveredZoneContainerCount)} / {zoneContainerCount}
+            </p>
           </div>
         </div>
         <AgentRouteMap
           stops={stops}
-          zoneContainers={zoneContainers}
           depot={depotLocation}
           routeGeometry={routeGeometry}
         />

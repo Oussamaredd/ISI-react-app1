@@ -26,7 +26,7 @@ const createWrapper = () => {
   );
 };
 
-const AGENT_TOUR_CACHE_KEY = "ecotrack.agentTour.cache.v2";
+const AGENT_TOUR_CACHE_KEY = "ecotrack.agentTour.cache.v3";
 
 describe("useAgentTour cache behavior", () => {
   beforeEach(() => {

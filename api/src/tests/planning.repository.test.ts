@@ -87,6 +87,109 @@ describe('PlanningRepository invariants', () => {
     );
   });
 
+  it('reorders depot-anchored routes when the first leg is shorter after a segment reversal', async () => {
+    const selectZoneDepot = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([
+          {
+            id: 'zone-1',
+            label: 'Depot Paris 1er - Louvre',
+            latitude: '48.863735',
+            longitude: '2.338321',
+          },
+        ]),
+      }),
+    };
+    const allCandidates = [
+      {
+        id: 'container-1',
+        code: 'CTR-1001',
+        label: '10 RUE DE L ECHELLE - Verre',
+        fillLevelPercent: 10,
+        status: 'available',
+        latitude: '48.864360',
+        longitude: '2.334760',
+        zoneId: 'zone-1',
+      },
+      {
+        id: 'container-2',
+        code: 'CTR-1002',
+        label: '17 RUE CROIX DES PETITS CHAMPS - Trilib',
+        fillLevelPercent: 15,
+        status: 'available',
+        latitude: '48.863444',
+        longitude: '2.339586',
+        zoneId: 'zone-1',
+      },
+      {
+        id: 'container-3',
+        code: 'CTR-1003',
+        label: 'ANGLE RUE DU BOULOI / RUE DU COLONEL DRIANT - Textile',
+        fillLevelPercent: 20,
+        status: 'available',
+        latitude: '48.863402',
+        longitude: '2.340617',
+        zoneId: 'zone-1',
+      },
+      {
+        id: 'container-4',
+        code: 'OPS-DOWNTOWN-01',
+        label: 'Paris 1er - Louvre - Operational General Mixed Waste 1',
+        fillLevelPercent: 25,
+        status: 'available',
+        latitude: '48.864185',
+        longitude: '2.337871',
+        zoneId: 'zone-1',
+      },
+      {
+        id: 'container-5',
+        code: 'OPS-DOWNTOWN-02',
+        label: 'Paris 1er - Louvre - Operational Glass 2',
+        fillLevelPercent: 30,
+        status: 'available',
+        latitude: '48.864635',
+        longitude: '2.337421',
+        zoneId: 'zone-1',
+      },
+    ];
+    const selectCandidates = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(allCandidates),
+      }),
+    };
+    const selectScheduledStops = {
+      from: vi.fn().mockReturnValue({
+        innerJoin: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    };
+
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(selectZoneDepot)
+        .mockReturnValueOnce(selectCandidates)
+        .mockReturnValueOnce(selectScheduledStops),
+    };
+
+    const repository = new PlanningRepository(dbMock as any);
+
+    const result = await repository.optimizeTour({
+      zoneId: 'zone-1',
+      scheduledFor: '2026-04-01T09:00:00.000Z',
+      fillThresholdPercent: 0,
+    });
+
+    expect(result.route.map((item: any) => item.id)).toEqual([
+      'container-2',
+      'container-3',
+      'container-4',
+      'container-5',
+      'container-1',
+    ]);
+  });
+
   it('rejects planned tours when containers do not belong to selected zone', async () => {
     const tx = {
       select: vi

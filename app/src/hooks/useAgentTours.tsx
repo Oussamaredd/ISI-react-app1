@@ -36,7 +36,7 @@ export type ZoneContainerData = {
 
 export type AgentTourDataSource = 'none' | 'network' | 'cache';
 
-const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v2';
+const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v3';
 const MAX_AGENT_TOUR_CACHE_AGE_MS = 15 * 60 * 1000;
 const MAX_OVERDUE_AGENT_TOUR_CACHE_AGE_MS = 2 * 60 * 1000;
 const TERMINAL_TOUR_STATUSES = new Set(['completed', 'cancelled', 'closed']);

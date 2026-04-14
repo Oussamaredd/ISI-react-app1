@@ -231,7 +231,7 @@ export class PlanningRepository {
         : [...eligibleCandidates].sort((left, right) => right.fillLevelPercent - left.fillLevelPercent);
 
     const heuristicRoute = this.computeHeuristicRoute(selectedCandidates, zoneDepot);
-    const route = this.refineRouteWithTwoOpt(heuristicRoute);
+    const route = this.refineRouteWithTwoOpt(heuristicRoute, zoneDepot);
     const totalDistanceKm = this.computeRouteDistance(route, zoneDepot);
 
     return {
@@ -1374,8 +1374,15 @@ export class PlanningRepository {
     return route;
   }
 
-  private refineRouteWithTwoOpt(route: Array<Record<string, unknown>>) {
-    if (route.length < 4) {
+  private refineRouteWithTwoOpt(
+    route: Array<Record<string, unknown>>,
+    startLocation?: ZoneDepotPoint | null,
+  ) {
+    if (startLocation == null && route.length < 4) {
+      return route;
+    }
+
+    if (startLocation != null && route.length < 3) {
       return route;
     }
 
@@ -1387,17 +1394,30 @@ export class PlanningRepository {
       didImprove = false;
       passCount += 1;
 
-      for (let left = 1; left < optimized.length - 2; left += 1) {
-        for (let right = left + 1; right < optimized.length - 1; right += 1) {
-          const leftPrev = optimized[left - 1];
+      const leftStartIndex = startLocation == null ? 1 : 0;
+      const rightBoundary = startLocation == null ? optimized.length - 1 : optimized.length;
+
+      for (let left = leftStartIndex; left < optimized.length - 1; left += 1) {
+        for (let right = left + 1; right < rightBoundary; right += 1) {
+          const leftPrev = left === 0 ? startLocation ?? null : this.toLatLngPoint(optimized[left - 1]);
+          if (leftPrev == null) {
+            continue;
+          }
           const leftNode = optimized[left];
           const rightNode = optimized[right];
-          const rightNext = optimized[right + 1];
+          const rightNext =
+            right + 1 < optimized.length ? this.toLatLngPoint(optimized[right + 1]) : null;
 
           const currentDistance =
-            this.distanceBetweenNodes(leftPrev, leftNode) + this.distanceBetweenNodes(rightNode, rightNext);
+            haversineDistanceKm(leftPrev, this.toLatLngPoint(leftNode)) +
+            (rightNext == null
+              ? 0
+              : haversineDistanceKm(this.toLatLngPoint(rightNode), rightNext));
           const swappedDistance =
-            this.distanceBetweenNodes(leftPrev, rightNode) + this.distanceBetweenNodes(leftNode, rightNext);
+            haversineDistanceKm(leftPrev, this.toLatLngPoint(rightNode)) +
+            (rightNext == null
+              ? 0
+              : haversineDistanceKm(this.toLatLngPoint(leftNode), rightNext));
 
           if (swappedDistance + 0.0001 < currentDistance) {
             const reversed = optimized.slice(left, right + 1).reverse();

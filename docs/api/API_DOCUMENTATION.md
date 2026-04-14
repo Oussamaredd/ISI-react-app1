@@ -165,7 +165,7 @@ Agent tour execution notes:
 - The web client caches the last successful tour payload in browser storage and reuses cached map tiles through a service worker when supported.
 - The agent web app also pre-caches a lightweight app shell and same-origin static assets for offline navigation. API traffic remains network-first and is never cached by the service worker.
 - The web client intentionally ignores cached `seed` fallback routes, discards expired/off-hours cached tour snapshots, and exposes a cache-bypass reload path so the agent page does not keep booting from stale demo or overdue run data.
-- The agent map renders all mapped containers for the assigned zone and uses the same operational marker family for routed and non-routed containers; numbered badges remain reserved for the current routed sequence.
+- The agent page loads all mapped containers for the assigned zone through paginated container reads, but the map renders only the current routed stop sequence; numbered markers identify routed stops while the page separately reports any zone-to-route coverage gap.
 - `POST /api/tours/:tourId/anomalies` accepts `severity` values `low`, `medium`, `high`, or `critical`.
 - `photoUrl` in anomaly payloads must be a valid `http`/`https` URL when provided.
 

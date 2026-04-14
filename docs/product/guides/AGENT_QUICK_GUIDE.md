@@ -18,7 +18,7 @@ Execute assigned collection tours, validate stops, and report anomalies.
 4. Submit anomalies with severity and optional photo URL when blocked/damaged/unsafe conditions are observed.
 5. If connectivity drops, the page can fall back to a recent cached tour payload (including persisted API route geometry) and previously viewed map tiles. Overdue or stale cached runs are intentionally discarded instead of being reused indefinitely.
 6. Review the in-page activity timeline for start, validation, and anomaly confirmation.
-7. All mapped containers in the assigned zone remain visible on the map with the same operational marker family. Numbered badges identify the containers that are part of the current routed sequence.
+7. The map draws only the current routed stop sequence. Zone containers are still loaded in the background so the page can flag any coverage mismatch between the assigned route and the mapped zone inventory.
 
 ## Recovery notes
 

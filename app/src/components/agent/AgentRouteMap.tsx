@@ -2,11 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { DivIcon, LayerGroup, Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-import type {
-  GeoJsonLineString,
-  TourRouteGeometry,
-  ZoneContainerData,
-} from "../../hooks/useAgentTours";
+import type { GeoJsonLineString, TourRouteGeometry } from "../../hooks/useAgentTours";
 import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL_TEMPLATE } from "../../lib/mapConfig";
 
 type RouteStop = {
@@ -27,7 +23,6 @@ type DepotLocation = {
 
 type AgentRouteMapProps = {
   stops: RouteStop[];
-  zoneContainers?: ZoneContainerData[];
   depot?: DepotLocation | null;
   routeGeometry?: TourRouteGeometry | null;
 };
@@ -40,17 +35,6 @@ type NormalizedRouteStop = {
   containerLabel: string;
   latitude: number;
   longitude: number;
-};
-
-type NormalizedVisibleContainer = {
-  id: string;
-  code: string;
-  label: string;
-  status: string;
-  latitude: number;
-  longitude: number;
-  stopOrder: number | null;
-  isRouted: boolean;
 };
 
 type NormalizedDepot = {
@@ -106,62 +90,6 @@ const normalizeDepot = (depot: DepotLocation | null | undefined): NormalizedDepo
   };
 };
 
-const normalizeVisibleContainers = (
-  stops: NormalizedRouteStop[],
-  zoneContainers: ZoneContainerData[],
-) => {
-  const visibleContainers = new Map<string, NormalizedVisibleContainer>();
-
-  zoneContainers.forEach((container) => {
-    const latitude = toNumberOrNull(container.latitude);
-    const longitude = toNumberOrNull(container.longitude);
-
-    if (latitude == null || longitude == null) {
-      return;
-    }
-
-    visibleContainers.set(container.id, {
-      id: container.id,
-      code: container.code,
-      label: container.label,
-      status: container.status,
-      latitude,
-      longitude,
-      stopOrder: null,
-      isRouted: false,
-    });
-  });
-
-  stops.forEach((stop) => {
-    visibleContainers.set(stop.id, {
-      id: stop.id,
-      code: stop.containerCode,
-      label: stop.containerLabel,
-      status: stop.status,
-      latitude: stop.latitude,
-      longitude: stop.longitude,
-      stopOrder: stop.stopOrder,
-      isRouted: true,
-    });
-  });
-
-  return Array.from(visibleContainers.values()).sort((left, right) => {
-    if (left.isRouted && right.isRouted) {
-      return (left.stopOrder ?? 0) - (right.stopOrder ?? 0);
-    }
-
-    if (left.isRouted) {
-      return -1;
-    }
-
-    if (right.isRouted) {
-      return 1;
-    }
-
-    return left.code.localeCompare(right.code);
-  });
-};
-
 const buildFallbackLineString = (
   stops: NormalizedRouteStop[],
   depot: NormalizedDepot | null,
@@ -191,16 +119,16 @@ const toLatLngPath = (geometry: GeoJsonLineString | null) =>
     .map((coordinate) => [coordinate[1], coordinate[0]] as [number, number]) ?? [];
 
 const buildOverlaySignature = (
-  visibleContainers: NormalizedVisibleContainer[],
+  stops: NormalizedRouteStop[],
   geometry: GeoJsonLineString | null,
   geometrySource: string,
   depot: NormalizedDepot | null,
 ) =>
   [
-    visibleContainers
+    stops
       .map(
-        (container) =>
-          `${container.id}:${container.stopOrder ?? "mapped"}:${container.latitude.toFixed(6)},${container.longitude.toFixed(6)}:${container.status}`,
+        (stop) =>
+          `${stop.id}:${stop.stopOrder}:${stop.latitude.toFixed(6)},${stop.longitude.toFixed(6)}:${stop.status}`,
       )
       .join("|"),
     depot ? `${depot.label}:${depot.latitude.toFixed(6)},${depot.longitude.toFixed(6)}` : "no-depot",
@@ -214,21 +142,15 @@ const getMarkerTheme = (status: string) => {
   switch (normalizeStatus(status)) {
     case "completed":
       return {
-        fill: "#49d9a2",
-        stroke: "#0c3c2c",
         className: "ops-stop-marker ops-stop-marker-completed",
       };
     case "active":
     case "attention_required":
       return {
-        fill: "#ffd166",
-        stroke: "#4d3b00",
         className: "ops-stop-marker ops-stop-marker-active",
       };
     default:
       return {
-        fill: "#2bd4a8",
-        stroke: "#093c32",
         className: "ops-stop-marker ops-stop-marker-pending",
       };
   }
@@ -236,7 +158,6 @@ const getMarkerTheme = (status: string) => {
 
 export default function AgentRouteMap({
   stops,
-  zoneContainers = [],
   depot = null,
   routeGeometry,
 }: AgentRouteMapProps) {
@@ -249,10 +170,6 @@ export default function AgentRouteMap({
 
   const normalizedStops = useMemo(() => normalizeStops(stops), [stops]);
   const normalizedDepot = useMemo(() => normalizeDepot(depot), [depot]);
-  const visibleContainers = useMemo(
-    () => normalizeVisibleContainers(normalizedStops, zoneContainers),
-    [normalizedStops, zoneContainers],
-  );
   const displayGeometry = useMemo(
     () => routeGeometry?.geometry ?? buildFallbackLineString(normalizedStops, normalizedDepot),
     [normalizedDepot, normalizedStops, routeGeometry],
@@ -262,23 +179,23 @@ export default function AgentRouteMap({
   const fitBoundsPoints = useMemo(() => {
     const points = [
       ...routePath,
-      ...visibleContainers.map((container) => [container.latitude, container.longitude] as [number, number]),
+      ...normalizedStops.map((stop) => [stop.latitude, stop.longitude] as [number, number]),
       ...(normalizedDepot
         ? [[normalizedDepot.latitude, normalizedDepot.longitude] as [number, number]]
         : []),
     ];
 
     return points.length > 0 ? points : [PARIS_CENTER];
-  }, [normalizedDepot, routePath, visibleContainers]);
+  }, [normalizedDepot, normalizedStops, routePath]);
   const overlaySignature = useMemo(
     () =>
       buildOverlaySignature(
-        visibleContainers,
+        normalizedStops,
         displayGeometry,
         routeGeometry?.source ?? "fallback",
         normalizedDepot,
       ),
-    [displayGeometry, normalizedDepot, routeGeometry?.source, visibleContainers],
+    [displayGeometry, normalizedDepot, normalizedStops, routeGeometry?.source],
   );
 
   useEffect(() => {
@@ -349,21 +266,6 @@ export default function AgentRouteMap({
       }
 
       if (normalizedDepot) {
-        const depotCircle = L.circleMarker([normalizedDepot.latitude, normalizedDepot.longitude], {
-          radius: 8,
-          fillColor: "#8bb9ff",
-          fillOpacity: 0.98,
-          color: "#0b2444",
-          weight: 2,
-        });
-
-        depotCircle.bindTooltip(`Depot - ${normalizedDepot.label}`, {
-          direction: "top",
-          offset: [0, -8],
-          opacity: 0.95,
-        });
-        depotCircle.addTo(overlayLayer);
-
         const depotIconCacheKey = "ops-stop-marker ops-stop-marker-depot:D";
         let depotIcon = markerIconRef.current.get(depotIconCacheKey);
         if (!depotIcon) {
@@ -378,53 +280,39 @@ export default function AgentRouteMap({
 
         L.marker([normalizedDepot.latitude, normalizedDepot.longitude], {
           icon: depotIcon,
-          keyboard: false,
-          interactive: false,
-        }).addTo(overlayLayer);
+        })
+          .bindTooltip(`Depot - ${normalizedDepot.label}`, {
+            direction: "top",
+            offset: [0, -8],
+            opacity: 0.95,
+          })
+          .addTo(overlayLayer);
       }
 
-      visibleContainers.forEach((container) => {
-        const markerTheme = getMarkerTheme(container.status);
-        const circle = L.circleMarker([container.latitude, container.longitude], {
-          radius: 7,
-          fillColor: markerTheme.fill,
-          fillOpacity: 0.95,
-          color: markerTheme.stroke,
-          weight: 2,
-        });
+      normalizedStops.forEach((stop) => {
+        const markerTheme = getMarkerTheme(stop.status);
+        const iconCacheKey = `${markerTheme.className}:${stop.stopOrder}`;
+        let labelIcon = markerIconRef.current.get(iconCacheKey);
+        if (!labelIcon) {
+          labelIcon = L.divIcon({
+            className: markerTheme.className,
+            html: `<span>${stop.stopOrder}</span>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
+          markerIconRef.current.set(iconCacheKey, labelIcon);
+        }
 
-        circle.bindTooltip(
-          container.isRouted && container.stopOrder != null
-            ? `#${container.stopOrder} ${container.code} - ${container.label}`
-            : `${container.code} - ${container.label}`,
+        L.marker([stop.latitude, stop.longitude], {
+          icon: labelIcon,
+        }).bindTooltip(
+          `#${stop.stopOrder} ${stop.containerCode} - ${stop.containerLabel}`,
           {
             direction: "top",
             offset: [0, -8],
             opacity: 0.95,
           },
-        );
-        circle.addTo(overlayLayer);
-
-        if (container.isRouted && container.stopOrder != null) {
-          const iconCacheKey = `${markerTheme.className}:${container.stopOrder}`;
-          let labelIcon = markerIconRef.current.get(iconCacheKey);
-          if (!labelIcon) {
-            labelIcon = L.divIcon({
-              className: markerTheme.className,
-              html: `<span>${container.stopOrder}</span>`,
-              iconSize: [28, 28],
-              iconAnchor: [14, 14],
-            });
-            markerIconRef.current.set(iconCacheKey, labelIcon);
-          }
-
-          const labelMarker = L.marker([container.latitude, container.longitude], {
-            icon: labelIcon,
-            keyboard: false,
-            interactive: false,
-          });
-          labelMarker.addTo(overlayLayer);
-        }
+        ).addTo(overlayLayer);
       });
 
       overlayLayer.addTo(map);
@@ -434,7 +322,7 @@ export default function AgentRouteMap({
       if (bounds.isValid()) {
         map.fitBounds(bounds, {
           padding: [28, 28],
-          maxZoom: visibleContainers.length <= 1 ? 16 : 15,
+          maxZoom: normalizedStops.length <= 1 ? 16 : 15,
         });
       }
     };
@@ -444,7 +332,7 @@ export default function AgentRouteMap({
     return () => {
       isCancelled = true;
     };
-  }, [fitBoundsPoints, overlaySignature, routePath, shouldUseStaticPreview, visibleContainers.length]);
+  }, [fitBoundsPoints, normalizedStops.length, overlaySignature, routePath, shouldUseStaticPreview]);
 
   useEffect(
     () => () => {
@@ -495,8 +383,8 @@ export default function AgentRouteMap({
             ? "Stored road route"
             : routePath.length >= 2
               ? "Stored fallback route"
-              : visibleContainers.length > 0
-                ? "Zone container map"
+              : normalizedStops.length > 0
+                ? "Route stop map"
                 : "Paris focus view"}
         </span>
       </div>
