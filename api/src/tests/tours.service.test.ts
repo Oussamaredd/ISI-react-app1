@@ -320,6 +320,80 @@ describe('ToursService route geometry enrichment', () => {
     );
   });
 
+  it('returns null when fallback geometry has no depot or mapped stops', () => {
+    const service = createService(createRoutingClientMock());
+
+    expect((service as any).buildFallbackRouteGeometry([], null)).toBeNull();
+  });
+
+  it('returns null when a route cannot normalize any stop coordinates', async () => {
+    repositoryMock.getTourById.mockResolvedValue(null);
+    const routingClientMock = createRoutingClientMock();
+    const service = createService(routingClientMock);
+
+    const result = await service.persistRouteForTour('tour-1', [
+      {
+        id: 'stop-1',
+        stopOrder: 1,
+        status: 'pending',
+        containerId: 'container-1',
+        containerCode: 'CTR-1001',
+        containerLabel: 'Main Square',
+        latitude: null,
+        longitude: null,
+      },
+    ]);
+
+    expect(result).toBeNull();
+    expect(routingClientMock.fetchRoute).not.toHaveBeenCalled();
+    expect(repositoryMock.upsertTourRoute).not.toHaveBeenCalled();
+  });
+
+  it('persists a zero-distance fallback route when only one mapped stop is available', async () => {
+    repositoryMock.getTourById.mockResolvedValue(null);
+    const routingClientMock = createRoutingClientMock();
+    const service = createService(routingClientMock);
+
+    const result = await service.persistRouteForTour('tour-1', [
+      {
+        id: 'stop-1',
+        stopOrder: 1,
+        status: 'pending',
+        containerId: 'container-1',
+        containerCode: 'CTR-1001',
+        containerLabel: 'Main Square',
+        latitude: '48.8566',
+        longitude: '2.3522',
+      },
+    ]);
+
+    expect(routingClientMock.fetchRoute).not.toHaveBeenCalled();
+    expect(repositoryMock.upsertTourRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tourId: 'tour-1',
+        distanceMeters: 0,
+        durationMinutes: 4,
+        source: 'fallback',
+        provider: 'internal',
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [2.3522, 48.8566],
+            [2.3522, 48.8566],
+          ],
+        },
+        distanceKm: 0,
+        durationMinutes: 4,
+        source: 'fallback',
+        provider: 'internal',
+      }),
+    );
+  });
+
   it('uses the stored route without calling the routing provider when persistence already exists', async () => {
     repositoryMock.getAgentTour.mockResolvedValue({
       id: 'tour-1',

@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InternalEventPolicyService } from '../modules/events/internal-events.policy.js';
+import {
+  EVENT_ARCHIVE_CONNECTOR_CONSUMER,
+  VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
+  VALIDATED_EVENT_ROLLUP_CONSUMER,
+  VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
+} from '../modules/iot/validated-consumer/validated-consumer.contracts.js';
 import { ValidatedConsumerProcessorService } from '../modules/iot/validated-consumer/validated-consumer.processor.js';
 
 const createClaimedDelivery = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -46,6 +52,12 @@ describe('ValidatedConsumerProcessorService', () => {
   const eventConnectorsServiceMock = {
     stageExport: vi.fn(),
   };
+  let measurementRollupsServiceMock: {
+    projectValidatedEventRollup: ReturnType<typeof vi.fn>;
+  };
+  let monitoringServiceMock: {
+    recordServiceHop: ReturnType<typeof vi.fn>;
+  };
 
   let service: ValidatedConsumerProcessorService;
   let loggerMock: {
@@ -56,6 +68,14 @@ describe('ValidatedConsumerProcessorService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    measurementRollupsServiceMock = {
+      projectValidatedEventRollup: vi.fn().mockResolvedValue({
+        validatedEventId: 'validated-event-1',
+      }),
+    };
+    monitoringServiceMock = {
+      recordServiceHop: vi.fn(),
+    };
     loggerMock = {
       setContext: vi.fn(),
       info: vi.fn(),
@@ -69,17 +89,11 @@ describe('ValidatedConsumerProcessorService', () => {
       {
         assertConsumerAuthorized: vi.fn(),
       } as unknown as InternalEventPolicyService,
-      {
-        projectValidatedEventRollup: vi.fn().mockResolvedValue({
-          validatedEventId: 'validated-event-1',
-        }),
-      } as any,
+      measurementRollupsServiceMock as any,
       analyticsProjectionServiceMock as any,
       anomalyAlertProjectionServiceMock as any,
       eventConnectorsServiceMock as any,
-      {
-        recordServiceHop: vi.fn(),
-      } as any,
+      monitoringServiceMock as any,
       loggerMock as any,
     );
   });
@@ -119,44 +133,43 @@ describe('ValidatedConsumerProcessorService', () => {
   });
 
   it('projects rollup deliveries through the rollup service', async () => {
-    const rollupService = {
-      projectValidatedEventRollup: vi.fn().mockResolvedValue({
-        validatedEventId: 'validated-event-1',
-      }),
-    };
-    service = new ValidatedConsumerProcessorService(
-      repositoryMock as any,
-      {
-        getInstanceId: vi.fn().mockReturnValue('worker-b'),
-      } as any,
-      {
-        assertConsumerAuthorized: vi.fn(),
-      } as unknown as InternalEventPolicyService,
-      rollupService as any,
-      analyticsProjectionServiceMock as any,
-      anomalyAlertProjectionServiceMock as any,
-      eventConnectorsServiceMock as any,
-      {
-        recordServiceHop: vi.fn(),
-      } as any,
-      loggerMock as any,
-    );
     repositoryMock.claimDeliveryForProcessing.mockResolvedValueOnce(
-      createClaimedDelivery({ consumerName: 'measurement_rollup_projection' }),
+      createClaimedDelivery({ consumerName: VALIDATED_EVENT_ROLLUP_CONSUMER }),
     );
     repositoryMock.markCompleted.mockResolvedValueOnce(undefined);
 
-    await expect(service.processDelivery('delivery-1', 'measurement_rollup_projection')).resolves.toEqual({
+    await expect(service.processDelivery('delivery-1', VALIDATED_EVENT_ROLLUP_CONSUMER)).resolves.toEqual({
       status: 'completed',
     });
 
-    expect(rollupService.projectValidatedEventRollup).toHaveBeenCalledWith(
+    expect(measurementRollupsServiceMock.projectValidatedEventRollup).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'delivery-1',
-        consumerName: 'measurement_rollup_projection',
+        consumerName: VALIDATED_EVENT_ROLLUP_CONSUMER,
       }),
     );
     expect(repositoryMock.projectValidatedEvent).not.toHaveBeenCalled();
+  });
+
+  it('stages archive connector deliveries and completes them', async () => {
+    repositoryMock.claimDeliveryForProcessing.mockResolvedValueOnce(
+      createClaimedDelivery({ consumerName: EVENT_ARCHIVE_CONNECTOR_CONSUMER }),
+    );
+    repositoryMock.markCompleted.mockResolvedValueOnce(undefined);
+
+    await expect(service.processDelivery('delivery-1', EVENT_ARCHIVE_CONNECTOR_CONSUMER)).resolves.toEqual({
+      status: 'completed',
+    });
+
+    expect(eventConnectorsServiceMock.stageExport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectorName: 'archive_files',
+        sourceRecordId: 'validated-event-1',
+        sourceType: 'validated_measurement_event',
+        eventName: 'iot.measurement.validated',
+      }),
+    );
+    expect(repositoryMock.markCompleted).toHaveBeenCalledWith('delivery-1');
   });
 
   it('marks retryable failures below the retry ceiling', async () => {
@@ -189,4 +202,46 @@ describe('ValidatedConsumerProcessorService', () => {
       status: 'failed',
     });
   });
+
+  it.each([
+    [
+      VALIDATED_EVENT_ROLLUP_CONSUMER,
+      'delivery_to_rollup_projection',
+      () => measurementRollupsServiceMock.projectValidatedEventRollup.mockRejectedValueOnce(new Error('projection failed')),
+    ],
+    [
+      VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
+      'delivery_to_zone_analytics_projection',
+      () => analyticsProjectionServiceMock.projectValidatedMeasurement.mockRejectedValueOnce(new Error('projection failed')),
+    ],
+    [
+      VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
+      'delivery_to_anomaly_alert_projection',
+      () => anomalyAlertProjectionServiceMock.projectValidatedMeasurement.mockRejectedValueOnce(new Error('projection failed')),
+    ],
+    [
+      EVENT_ARCHIVE_CONNECTOR_CONSUMER,
+      'delivery_to_event_archive_connector',
+      () => eventConnectorsServiceMock.stageExport.mockRejectedValueOnce(new Error('projection failed')),
+    ],
+  ])(
+    'records the %s retry hop when consumer processing fails',
+    async (consumerName, expectedHopName, arrangeFailure) => {
+      repositoryMock.claimDeliveryForProcessing.mockResolvedValueOnce(
+        createClaimedDelivery({ consumerName, attemptCount: 2 }),
+      );
+      repositoryMock.markRetryOrFailed.mockResolvedValueOnce(undefined);
+      arrangeFailure();
+
+      await expect(service.processDelivery('delivery-1', consumerName)).resolves.toEqual({
+        status: 'retry',
+      });
+
+      expect(monitoringServiceMock.recordServiceHop).toHaveBeenCalledWith(
+        expectedHopName,
+        'retry',
+        expect.any(Number),
+      );
+    },
+  );
 });

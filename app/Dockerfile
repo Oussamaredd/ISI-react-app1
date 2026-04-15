@@ -40,13 +40,21 @@ LABEL org.opencontainers.image.title="EcoTrack App" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}"
 RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends curl \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      gpgv \
+      libpam-modules \
+      libpam-modules-bin \
+      libpam-runtime \
+      libpam0g \
+      libpng16-16 \
+      libssl3 \
+      libtiff6 \
+      openssl \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /workspace/app/dist /usr/share/nginx/html
 COPY app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:80/ >/dev/null 2>&1 || exit 1
+  CMD [ "sh", "-c", "test -s /usr/share/nginx/html/index.html && test -f /var/run/nginx.pid" ]
 CMD ["nginx", "-g", "daemon off;"]
