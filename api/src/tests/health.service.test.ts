@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { HealthService } from '../modules/health/health.service.js';
 
-const createSelectionChain = (error?: Error) => {
+const createSelectionChain = (error?: unknown) => {
   const chain: {
     from: ReturnType<typeof vi.fn>;
     innerJoin: ReturnType<typeof vi.fn>;
@@ -121,6 +121,44 @@ describe('HealthService', () => {
       expect.not.arrayContaining([expect.objectContaining({ name: 'iot.ingestion.schema' })]),
     );
     expect(dbMock.select).toHaveBeenCalledTimes(9);
+  });
+
+  it('defaults IoT readiness checks to enabled and normalizes unknown database failures', async () => {
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain('queue timeout')),
+    };
+    const configServiceMock = {
+      get: vi.fn().mockReturnValue(undefined),
+    };
+
+    const service = new HealthService(dbMock as never, configServiceMock as never);
+    const result = await service.checkDatabase();
+
+    expect(result.status).toBe('error');
+    expect(result.message).toContain('iot.ingestion.schema');
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'iot.ingestion.schema',
+          status: 'error',
+          message: 'Unknown database error',
+        }),
+      ]),
+    );
+    expect(configServiceMock.get).toHaveBeenCalledWith('iotIngestion.IOT_INGESTION_ENABLED');
+    expect(dbMock.select).toHaveBeenCalledTimes(11);
   });
 });
 
