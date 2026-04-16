@@ -209,6 +209,17 @@ describe('configuration', () => {
     });
   });
 
+  it('falls back to PORT when API_PORT is absent', () => {
+    process.env = {
+      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
+      PORT: '10000',
+    };
+
+    const config = configuration();
+
+    expect(config.api.port).toBe(10000);
+  });
+
   it('rejects missing DATABASE_URL', () => {
     process.env = {};
 

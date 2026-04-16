@@ -21,6 +21,7 @@ afterEach(() => {
   delete process.env.API_BASE_URL;
   delete process.env.API_HOST;
   delete process.env.API_PORT;
+  delete process.env.PORT;
 });
 
 describe('OAuth callback config', () => {
@@ -47,6 +48,13 @@ describe('OAuth callback config', () => {
     process.env.API_HOST = '0.0.0.0';
 
     expect(getGoogleCallbackUrl()).toBe('http://localhost:3001/api/auth/google/callback');
+  });
+
+  it('derives callback URL from PORT when API_PORT is absent', () => {
+    process.env.PORT = '10000';
+    process.env.API_HOST = '0.0.0.0';
+
+    expect(getGoogleCallbackUrl()).toBe('http://localhost:10000/api/auth/google/callback');
   });
 
   it('composes callback route to /api/auth/google/callback with global prefix', () => {
@@ -149,6 +157,17 @@ describe('OAuth callback config', () => {
         API_BASE_URL: 'http://localhost:5173',
         DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
         GOOGLE_CALLBACK_URL: 'http://localhost:5173/api/auth/google/callback',
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts localhost callback URL when PORT is present and API_PORT is absent', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        PORT: '3001',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
       }),
     ).not.toThrow();
   });

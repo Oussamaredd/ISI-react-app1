@@ -37,7 +37,7 @@ Neon managed baseline note:
 - `DATABASE_URL` for database connectivity
 - `DATABASE_POOLER_URL` for optional pooled runtime database connectivity
 - `DATABASE_POOL_MAX` for the application-side postgres client pool ceiling
-- `API_PORT` for API listen port
+- `API_PORT` for API listen port (canonical; hosted runtimes may fall back to injected `PORT` only when `API_PORT` is unset)
 - `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
 - `ROUTING_TIMEOUT_MS` for routing-call timeout before the circuit breaker records a failure
@@ -108,6 +108,7 @@ Agent tour mapping note:
   - Expo/native clients do not use the browser edge proxy or fixed browser ports.
   - `EXPO_PUBLIC_API_BASE_URL` must resolve to an API origin reachable from the active emulator, simulator, or physical device.
 - `API_PORT` is the backend listen port, not the browser entrypoint.
+- Hosted runtimes may inject `PORT`; the API runtime treats it as a platform fallback only when `API_PORT` is not set.
 - `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
 - `EXPO_PUBLIC_API_BASE_URL` must resolve to the public API origin used by the native client, not to database/internal service hosts.
 - When Cloudflare Pages fronts the SPA, keep `VITE_API_BASE_URL` on the frontend origin and enable the Pages edge proxy so browser traffic stays same-origin.
@@ -254,7 +255,7 @@ Use `docs/operations/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, c
 - Root readiness alias: `GET /readyz`
 - API liveness alias: `GET /api/health` and `GET /api/health/live`
 - Readiness probe (load-balancer/container ready-state): `GET /api/health/ready`
-  - returns HTTP `200` when critical ticketing and planning schema dependencies are ready
+  - returns HTTP `200` when auth, ticketing, planning, and enabled async-worker schema dependencies are ready
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
 - `GET /health`, `GET /healthz`, and `GET /startupz` stay dependency-free so process-start and edge-proxy probes do not flap on downstream outages.
@@ -293,9 +294,9 @@ Validation behavior:
 - live runtime env files also fail validation when deprecated aliases are present
 - remove deprecated aliases from managed env files before running local or Docker workflows
 
-Removed runtime aliases (no longer read by API runtime):
+Deprecated runtime aliases:
 
-- `PORT` -> use `API_PORT` only
+- provider-injected `PORT` is accepted only as a hosted-runtime fallback when `API_PORT` is absent; keep `API_PORT` as the repo-managed source of truth
 - `API_URL` -> use `API_BASE_URL` where an explicit API base URL is required
 
 ## Precedence Rules

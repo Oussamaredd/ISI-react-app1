@@ -184,7 +184,7 @@ Canonical keys:
 Deprecated aliases (temporary compatibility only):
 
 - `VITE_API_URL` -> `VITE_API_BASE_URL`
-- `PORT` -> `API_PORT`
+- provider-injected `PORT` -> runtime fallback only when `API_PORT` is absent
 - `DB_*` -> `DATABASE_URL`
 
 Database name policy: committed connection-string templates target `ticketdb`.

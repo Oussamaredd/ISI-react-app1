@@ -60,7 +60,8 @@ npm run smoke-test
 - Local/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for local-native diagnostics only.
 - Local/native mobile traffic enters through Expo and should use `EXPO_PUBLIC_API_BASE_URL` with a simulator/device reachable API origin.
 - Docker dev browser traffic enters through `http://localhost:3000`; the backend still listens on `API_PORT=3001`, but that port stays internal-only on the Docker network.
-- `API_PORT` is the backend listen port, while `API_BASE_URL`, `VITE_API_BASE_URL`, and `EXPO_PUBLIC_API_BASE_URL` must resolve to public client-facing origins.
+- `API_PORT` remains the canonical backend listen key; hosted providers may inject `PORT`, and the API runtime now uses that value only when `API_PORT` is absent.
+- `API_BASE_URL`, `VITE_API_BASE_URL`, and `EXPO_PUBLIC_API_BASE_URL` must resolve to public client-facing origins.
 - Public routes such as `/` and `/login` should render immediately; only protected `/app/**` routes may wait on session resolution.
 
 ### Mobile API Base Helpers
@@ -121,7 +122,7 @@ Cloudflare Pages build note:
 Deprecated aliases:
 
 - `VITE_API_URL` -> `VITE_API_BASE_URL`
-- `PORT` -> `API_PORT`
+- provider-injected `PORT` -> runtime fallback only when `API_PORT` is absent
 - `DB_*` -> `DATABASE_URL`
 
 ## Validation Commands

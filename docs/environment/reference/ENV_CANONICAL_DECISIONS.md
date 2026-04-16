@@ -15,7 +15,7 @@ This file records the decision history behind the current env model. For active 
 Deprecated aliases (read-only compatibility window):
 
 - `VITE_API_URL` -> `VITE_API_BASE_URL`
-- `PORT` -> `API_PORT`
+- provider-injected `PORT` -> runtime fallback only when `API_PORT` is absent
 - `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_PORT` -> `DATABASE_URL`
 
 ## 2) Port Contract

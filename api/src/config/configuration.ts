@@ -1,3 +1,4 @@
+import { resolveApiPort } from './api-port.js';
 import { loadIotIngestionConfig, type IotIngestionConfig } from './iot-ingestion.js';
 
 function requireEnv(name: keyof NodeJS.ProcessEnv): string {
@@ -115,7 +116,7 @@ export type AppConfig = {
 export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   api: {
-    port: Number(process.env.API_PORT ?? 3001),
+    port: resolveApiPort(process.env as Record<string, unknown>),
     rateLimit: {
       windowMs: toPositiveInt(process.env.RATE_LIMIT_WINDOW_MS, DEFAULT_RATE_LIMIT_WINDOW_MS),
       maxRequests: toPositiveInt(process.env.RATE_LIMIT_MAX_REQUESTS, DEFAULT_RATE_LIMIT_MAX_REQUESTS),

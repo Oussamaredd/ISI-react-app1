@@ -343,7 +343,7 @@ GET /api/metrics
 Readiness notes:
 - `GET /health`, `GET /healthz`, and `GET /startupz` are dependency-free liveness probes for direct process or edge checks.
 - `GET /readyz` is the root readiness alias for container, load-balancer, and platform probes.
-- `GET /api/health/ready` and `GET /api/health/database` validate the ticketing schema plus the planning dashboard and telemetry schema dependencies.
+- `GET /api/health/ready` and `GET /api/health/database` validate auth, ticketing, planning dashboard, planning telemetry, and enabled async-worker schema dependencies.
 - These readiness endpoints return HTTP `503` when database connectivity fails or when a required relation/column is no longer queryable after a schema change.
 - Liveness and readiness payloads now include `release.version`, sourced from the root package version when available, so hosted release smoke checks can verify the deployed API revision directly.
 - Health probes and `GET /api/metrics` are excluded from request-completion auto-logging noise and from rate limiting.

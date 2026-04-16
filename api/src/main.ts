@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import type { LogLevel } from '@nestjs/common';
 
+import { resolveApiPort } from './config/api-port.js';
 import { ensureApiEnvLoaded } from './config/env-file.js';
 import { startTelemetry } from './observability/tracing.js';
 
@@ -139,7 +140,7 @@ async function bootstrap() {
     );
     app.useGlobalFilters(new HttpExceptionFilter());
 
-    const port = Number(process.env.API_PORT ?? 3001);
+    const port = resolveApiPort(process.env as Record<string, unknown>);
     const host = process.env.API_HOST ?? '0.0.0.0';
     const origins = resolveCorsOrigins({
       corsOrigins: process.env.CORS_ORIGINS,

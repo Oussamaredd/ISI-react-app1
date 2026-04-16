@@ -34,7 +34,7 @@
     "build:app": "npm run build --workspace=ecotrack-app",
     "build:api": "npm run build --workspace=ecotrack-api",
     "build:database": "npm run build --workspace=ecotrack-database",
-    "deploy:render:build": "npm ci --include=dev && npm run validate:workspace-toolchain && npm run build:database && npm run build:api && npm run validate:api-runtime",
+    "deploy:render:build": "npm ci --include=dev && npm run validate:workspace-toolchain && npm run build:database && npm run db:migrate --workspace=ecotrack-database && npm run build:api && npm run validate:api-runtime",
     "deploy:render:start": "npm run start --workspace=ecotrack-api",
     "deploy:render:verify-local": "npm run validate:workspace-toolchain && npm run build:database && npm run build:api && npm run validate:api-runtime",
     "test": "npm run validate:workspace-toolchain && npm run test:app && npm run test:mobile && npm run test:api",

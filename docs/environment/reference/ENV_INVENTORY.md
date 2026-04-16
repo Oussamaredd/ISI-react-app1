@@ -144,7 +144,7 @@ Visibility legend:
 | OTEL_SERVICE_NAME | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | OTEL_TRACES_SAMPLER_RATIO | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | OTEL_TRACING_ENABLED | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
-| PORT | api | private | local-dev, deploy-dev, deploy-staging, deploy-prod | removed API runtime alias (normalize to `API_PORT`) |
+| PORT | api | private | deploy-dev, deploy-staging, deploy-prod | hosted-runtime fallback only when provider injects the listen port and `API_PORT` is unset |
 | POSTGRES_DB | infrastructure | private | docker-dev | canonical compose DB container setting |
 | POSTGRES_PASSWORD | infrastructure | private | docker-dev | canonical compose DB container setting |
 | POSTGRES_USER | infrastructure | private | docker-dev | canonical compose DB container setting |

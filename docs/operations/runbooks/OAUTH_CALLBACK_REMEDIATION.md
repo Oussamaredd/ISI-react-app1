@@ -80,7 +80,7 @@ Decision:
 - Canonical local callback URI: `http://localhost:5173/api/auth/google/callback`.
 - Canonical Docker callback URI: `http://localhost:3000/api/auth/google/callback`.
 - Legacy treatment:
-  - `PORT=<legacy-api-port>` is deprecated and ignored by runtime/tooling.
+  - `PORT=<legacy-api-port>` remains deprecated as a repo-managed key; the API runtime only accepts provider-injected `PORT` as a hosted fallback when `API_PORT` is absent.
   - Legacy callback path `/auth/google/callback` is invalid for this API and will be removed from active env sources/docs.
 
 ## Phase 3: Env + Config Alignment

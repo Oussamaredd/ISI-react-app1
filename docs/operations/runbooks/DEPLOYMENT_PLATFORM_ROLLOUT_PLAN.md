@@ -162,13 +162,12 @@ Completion definition:
 - the service can connect to Neon and pass startup validation
 - implemented baseline:
   - Render web service `ecotrack-3ggh` is live at `https://ecotrack-3ggh.onrender.com`
-  - monorepo build runs from the repo root with `npm run deploy:render:build`
+  - monorepo build runs from the repo root with `npm run deploy:render:build`, which now compiles `database`, applies Drizzle migrations against the direct `DATABASE_URL`, builds `api`, and validates runtime dependencies
   - runtime start command is `npm run deploy:render:start`
-  - Render port contract is aligned with `API_PORT=10000`
+  - Render port contract is aligned with canonical `API_PORT`, with hosted-runtime fallback to Render-injected `PORT` when `API_PORT` is absent
   - readiness health check uses `/api/health/ready`
   - baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Phase 6 work
-  - because the service is on the Render free plan, migrations run manually via `npm run db:migrate --workspace=ecotrack-database` against the direct Neon connection string before deploys that include schema changes
-  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, compiles `database` and `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
+  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, compiles `database`, runs Drizzle migrations, compiles `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
   - local Windows verification should use `npm run deploy:render:verify-local` instead of the full Render build command if `npm ci` is blocked by file-locking or antivirus on native modules under `node_modules`
   - local recovery uses one repo-root install contract only: stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, run `npm run validate:workspace-toolchain`, then rerun Render verification; do not use workspace-local `--prefix` installs
 
@@ -280,11 +279,11 @@ Implemented release discipline:
 - release order:
   1. run `.github/workflows/CD.yml` (`CD Deployment`) against the intended target environment
   2. let the workflow execute repo-owned pre-deploy validation (`validate-env`, lint, typecheck, tests, Render verification, frontend production build)
-  3. optionally run `npm run db:migrate --workspace=ecotrack-database` from the workflow when `run_migrations=true`
-  4. trigger the backend and frontend deploy hooks owned by the target GitHub Environment
+  3. trigger the backend and frontend deploy hooks owned by the target GitHub Environment
+  4. let the Render backend build run `npm run deploy:render:build`, which applies Drizzle migrations before the API release is started
   5. run hosted smoke checks on frontend HTML, API readiness, optional OAuth redirect, and optional release-version assertions
   6. review the uploaded release artifacts and GitHub step summary before closing the release
-- migrations stay explicit and operator-controlled even though the workflow can execute them
+- migrations remain release-controlled through the backend deploy path and should continue targeting the direct Neon `DATABASE_URL`
 - seed data is allowed only for local development and deliberate non-production demo resets; it is not part of the production release path
 - rollback after a failed deploy is not automatic: re-run `CD Deployment` from the previous known-good git ref and the same target environment, prefer a forward fix where possible, and use Neon restore/backup recovery before reopening traffic if schema or data reversal is required
 - first-release bootstrap path uses the tracked Drizzle migration chain against the direct Neon URL before the first hosted API deploy, with seed data remaining optional and non-production only

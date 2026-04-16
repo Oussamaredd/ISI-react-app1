@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { resolveApiPortValue } from './api-port.js';
 import { resolveCorsOrigins } from './cors-origins.js';
 import {
   buildOAuthCallbackUrlFromApiBase,
@@ -71,7 +72,13 @@ const envSchema = z.object({
 export type ValidatedEnv = z.infer<typeof envSchema>;
 
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
-  const result = envSchema.safeParse(config);
+  const normalizedConfig = { ...config };
+  const resolvedApiPortValue = resolveApiPortValue(normalizedConfig);
+  if (resolvedApiPortValue) {
+    normalizedConfig.API_PORT = resolvedApiPortValue;
+  }
+
+  const result = envSchema.safeParse(normalizedConfig);
   if (!result.success) {
     throw new Error(`Invalid environment variables: ${result.error.message}`);
   }

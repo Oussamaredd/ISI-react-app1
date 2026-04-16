@@ -1,3 +1,4 @@
+import { DEFAULT_API_PORT, resolveApiPort } from '../../config/api-port.js';
 import { resolveCorsOrigins } from '../../config/cors-origins.js';
 import {
   buildOAuthCallbackUrlFromApiBase,
@@ -6,7 +7,6 @@ import {
 } from '../../config/public-api-url.js';
 
 const DEFAULT_APP_BASE_URL = 'http://localhost:5173';
-const DEFAULT_API_PORT = 3001;
 const DEFAULT_AUTH_COOKIE_NAME = 'auth_token';
 const FRONTEND_AUTH_CALLBACK_PATH = '/auth/callback';
 
@@ -53,7 +53,7 @@ export const getGoogleCallbackUrl = () => {
 
   const apiHost = getEnvValue('API_HOST');
   const host = apiHost && apiHost !== '0.0.0.0' ? apiHost : 'localhost';
-  const port = Number(process.env.API_PORT ?? DEFAULT_API_PORT) || DEFAULT_API_PORT;
+  const port = resolveApiPort(process.env as Record<string, unknown>) || DEFAULT_API_PORT;
 
   return `http://${host}:${port}${OAUTH_CALLBACK_PATH}`;
 };
