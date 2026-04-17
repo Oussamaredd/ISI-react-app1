@@ -1,13 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { type FormEvent, useMemo, useState } from "react";
-import { useCreateCitizenReport } from "../hooks/useCitizen";
+import { useQuery } from '@tanstack/react-query';
+import { type FormEvent, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import { useCreateCitizenReport } from '../hooks/useCitizen';
 import {
   DEFAULT_CITIZEN_REPORT_TYPE,
   citizenReportTypes,
   type CitizenReportType,
-} from "../lib/citizenReports";
-import { apiClient } from "../services/api";
-import "../styles/OperationsPages.css";
+} from '../lib/citizenReports';
+import { ApiRequestError, apiClient } from '../services/api';
+import '../styles/OperationsPages.css';
 
 type ContainerOption = {
   id: string;
@@ -18,43 +20,79 @@ type ContainerOption = {
   zoneName?: string | null;
 };
 
-type StatusTone = "success" | "error";
+type StatusTone = 'success' | 'error';
 
 const formatContainerStatus = (value?: string | null) => {
   if (!value) {
-    return "Unknown";
+    return 'Unknown';
   }
 
   return value
-    .split("_")
+    .split('_')
     .filter(Boolean)
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
+    .join(' ');
 };
 
 const formatFillLevel = (value?: number | null) =>
-  typeof value === "number" ? `${Math.round(value)}%` : "Unavailable";
+  typeof value === 'number' ? `${Math.round(value)}%` : 'Unavailable';
+
+const normalizeSearchValue = (value: string) => value.trim().toLowerCase();
+
+const containerMatchesSearch = (container: ContainerOption, searchTerm: string) => {
+  const normalizedSearch = normalizeSearchValue(searchTerm);
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return [container.code, container.label, container.zoneName]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .some((value) => value.toLowerCase().includes(normalizedSearch));
+};
+
+const resolveSubmissionMessage = (error: unknown) => {
+  if (error instanceof ApiRequestError) {
+    if (error.status === 404) {
+      return 'The selected mapped container is no longer available. Reload the list and choose another container.';
+    }
+
+    if (error.status === 409) {
+      return 'You already reported this issue for this container within the last hour. Open your profile or history instead of creating a duplicate report.';
+    }
+
+    if (error.status === 401) {
+      return 'Your session expired. Sign in again to continue reporting.';
+    }
+  }
+
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return 'Failed to submit report. Please try again.';
+};
 
 export default function CitizenReportPage() {
-  const [containerId, setContainerId] = useState("");
+  const [containerId, setContainerId] = useState('');
+  const [containerSearch, setContainerSearch] = useState('');
   const [reportType, setReportType] = useState<CitizenReportType>(
     DEFAULT_CITIZEN_REPORT_TYPE,
   );
-  const [description, setDescription] = useState("");
-  const [reportedLocation, setReportedLocation] = useState({ latitude: "", longitude: "" });
-  const [photoUrl, setPhotoUrl] = useState("");
-  const [confirmationMessage, setConfirmationMessage] = useState("");
-  const [locationMessage, setLocationMessage] = useState("");
-  const [statusTone, setStatusTone] = useState<StatusTone>("success");
-  const [locationTone, setLocationTone] = useState<StatusTone>("success");
+  const [description, setDescription] = useState('');
+  const [reportedLocation, setReportedLocation] = useState({ latitude: '', longitude: '' });
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [confirmationMessage, setConfirmationMessage] = useState('');
+  const [locationMessage, setLocationMessage] = useState('');
+  const [statusTone, setStatusTone] = useState<StatusTone>('success');
+  const [locationTone, setLocationTone] = useState<StatusTone>('success');
 
   const containersQuery = useQuery({
-    queryKey: ["containers-options"],
-    queryFn: async () => apiClient.get("/api/containers?page=1&pageSize=100"),
+    queryKey: ['containers-options'],
+    queryFn: async () => apiClient.get('/api/containers?page=1&pageSize=100'),
   });
 
   const createReportMutation = useCreateCitizenReport();
-  const supportsGeolocation = typeof window !== "undefined" && "geolocation" in navigator;
+  const supportsGeolocation = typeof window !== 'undefined' && 'geolocation' in navigator;
 
   const containerOptions = useMemo(() => {
     const rows = Array.isArray(
@@ -78,12 +116,29 @@ export default function CitizenReportPage() {
     [containerId, containerOptions],
   );
 
+  const filteredContainerOptions = useMemo(
+    () => containerOptions.filter((item) => containerMatchesSearch(item, containerSearch)),
+    [containerOptions, containerSearch],
+  );
+
+  const visibleContainerOptions = useMemo(() => {
+    if (!selectedContainer) {
+      return filteredContainerOptions;
+    }
+
+    return filteredContainerOptions.some((item) => item.id === selectedContainer.id)
+      ? filteredContainerOptions
+      : [selectedContainer, ...filteredContainerOptions];
+  }, [filteredContainerOptions, selectedContainer]);
+
+  const hasMappedContainers = containerOptions.length > 0;
+  const searchHasMatches = visibleContainerOptions.length > 0;
   const selectedReportType =
     citizenReportTypes.find((item) => item.value === reportType) ?? citizenReportTypes[0];
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setConfirmationMessage("");
+    setConfirmationMessage('');
 
     try {
       const response = (await createReportMutation.mutateAsync({
@@ -95,23 +150,22 @@ export default function CitizenReportPage() {
         photoUrl: photoUrl || undefined,
       })) as { confirmationMessage?: string };
 
-      setStatusTone("success");
+      setStatusTone('success');
       setConfirmationMessage(
         response.confirmationMessage ??
-          "Report submitted. Thank you for helping your community.",
+          'Report submitted. Thank you for helping your community.',
       );
-      setDescription("");
-      setPhotoUrl("");
+      setDescription('');
+      setPhotoUrl('');
     } catch (error) {
-      const fallback = error instanceof Error ? error.message : "Failed to submit report.";
-      setStatusTone("error");
-      setConfirmationMessage(fallback);
+      setStatusTone('error');
+      setConfirmationMessage(resolveSubmissionMessage(error));
     }
   };
 
-  const updateReportedLocation = (field: "latitude" | "longitude", value: string) => {
+  const updateReportedLocation = (field: 'latitude' | 'longitude', value: string) => {
     if (locationMessage) {
-      setLocationMessage("");
+      setLocationMessage('');
     }
 
     setReportedLocation((current) => ({
@@ -122,8 +176,10 @@ export default function CitizenReportPage() {
 
   const captureDeviceLocation = () => {
     if (!supportsGeolocation) {
-      setLocationTone("error");
-      setLocationMessage("Device geolocation is not available in this browser.");
+      setLocationTone('error');
+      setLocationMessage(
+        'Device geolocation is not available in this browser. Continue by selecting the mapped container manually.',
+      );
       return;
     }
 
@@ -133,12 +189,14 @@ export default function CitizenReportPage() {
           latitude: position.coords.latitude.toFixed(6),
           longitude: position.coords.longitude.toFixed(6),
         });
-        setLocationTone("success");
-        setLocationMessage("Location captured from your device.");
+        setLocationTone('success');
+        setLocationMessage('Location captured from your device.');
       },
       () => {
-        setLocationTone("error");
-        setLocationMessage("We could not access your device location. Enter coordinates manually.");
+        setLocationTone('error');
+        setLocationMessage(
+          'We could not access your device location. Continue by selecting the mapped container manually or enter coordinates yourself.',
+        );
       },
       {
         enableHighAccuracy: true,
@@ -153,17 +211,34 @@ export default function CitizenReportPage() {
       <header className="ops-hero">
         <h1>Report Container Issue</h1>
         <p>
-          Select an existing collection point, review its latest known state,
+          Select an existing mapped container, review its latest known state,
           and send a typed issue report for manager triage.
         </p>
       </header>
 
       <form className="ops-card ops-form" onSubmit={onSubmit}>
         <p className="ops-helper">
-          Citizens report issues on existing mapped containers only. EcoTrack
-          records the selected container context and operations validates the
-          incident before dispatching field work.
+          Citizens report issues on existing mapped containers only. Web GPS is
+          optional here, so you can keep going with manual mapped-container
+          selection if location is unavailable.
         </p>
+
+        <div className="ops-field">
+          <label htmlFor="citizen-report-search" className="ops-label">
+            Find a mapped container
+          </label>
+          <input
+            id="citizen-report-search"
+            className="ops-input"
+            placeholder="Search by code, address, waste stream, or zone"
+            value={containerSearch}
+            onChange={(event) => setContainerSearch(event.target.value)}
+            disabled={containersQuery.isLoading || containersQuery.isError || !hasMappedContainers}
+          />
+          <p className="ops-helper">
+            Search the live mapped-container list if the nearest container is not obvious.
+          </p>
+        </div>
 
         <div className="ops-field">
           <label htmlFor="citizen-report-container" className="ops-label">
@@ -175,15 +250,44 @@ export default function CitizenReportPage() {
             value={containerId}
             onChange={(event) => setContainerId(event.target.value)}
             required
+            disabled={containersQuery.isLoading || containersQuery.isError || !hasMappedContainers}
           >
-            <option value="">Select a container</option>
-            {containerOptions.map((container) => (
+            <option value="">
+              {containersQuery.isLoading
+                ? 'Loading mapped containers...'
+                : hasMappedContainers
+                  ? 'Select a container'
+                  : 'No mapped containers available'}
+            </option>
+            {visibleContainerOptions.map((container) => (
               <option key={container.id} value={container.id}>
                 {container.code} - {container.label}
               </option>
             ))}
           </select>
         </div>
+
+        {containersQuery.isLoading ? (
+          <p className="ops-status ops-status-info">Loading mapped containers for citizen reporting.</p>
+        ) : null}
+
+        {!containersQuery.isLoading && !containersQuery.isError && !hasMappedContainers ? (
+          <p className="ops-status ops-status-error">
+            No mapped containers are available right now. Try again later or contact support if
+            the coverage data should already exist.
+          </p>
+        ) : null}
+
+        {!containersQuery.isLoading &&
+        !containersQuery.isError &&
+        hasMappedContainers &&
+        normalizeSearchValue(containerSearch).length > 0 &&
+        !searchHasMatches ? (
+          <p className="ops-status ops-status-info">
+            No mapped containers match this search. Try another code, address, zone, or clear the
+            filter.
+          </p>
+        ) : null}
 
         {selectedContainer ? (
           <article className="ops-card">
@@ -194,7 +298,7 @@ export default function CitizenReportPage() {
             <div className="ops-grid ops-grid-3">
               <div className="ops-field">
                 <span className="ops-label">Zone</span>
-                <span>{selectedContainer.zoneName ?? "Unavailable"}</span>
+                <span>{selectedContainer.zoneName ?? 'Unavailable'}</span>
               </div>
               <div className="ops-field">
                 <span className="ops-label">Status</span>
@@ -251,7 +355,7 @@ export default function CitizenReportPage() {
               className="ops-input"
               inputMode="decimal"
               value={reportedLocation.latitude}
-              onChange={(event) => updateReportedLocation("latitude", event.target.value)}
+              onChange={(event) => updateReportedLocation('latitude', event.target.value)}
             />
           </div>
           <div className="ops-field">
@@ -263,7 +367,7 @@ export default function CitizenReportPage() {
               className="ops-input"
               inputMode="decimal"
               value={reportedLocation.longitude}
-              onChange={(event) => updateReportedLocation("longitude", event.target.value)}
+              onChange={(event) => updateReportedLocation('longitude', event.target.value)}
             />
           </div>
         </div>
@@ -282,9 +386,9 @@ export default function CitizenReportPage() {
         {locationMessage ? (
           <p
             className={
-              locationTone === "success"
-                ? "ops-status ops-status-success"
-                : "ops-status ops-status-error"
+              locationTone === 'success'
+                ? 'ops-status ops-status-success'
+                : 'ops-status ops-status-error'
             }
             role="status"
           >
@@ -310,31 +414,49 @@ export default function CitizenReportPage() {
           <button
             type="submit"
             className="ops-btn ops-btn-success"
-            disabled={createReportMutation.isPending || containersQuery.isLoading}
+            disabled={
+              createReportMutation.isPending ||
+              containersQuery.isLoading ||
+              containersQuery.isError ||
+              !hasMappedContainers
+            }
           >
-            {createReportMutation.isPending ? "Submitting..." : "Submit Report"}
+            {createReportMutation.isPending ? 'Submitting...' : 'Submit Report'}
           </button>
         </div>
       </form>
 
       {containersQuery.isError ? (
         <p className="ops-status ops-status-error">
-          Could not load container options. Please refresh.
+          Could not load mapped containers. Refresh the page and try again.
         </p>
       ) : null}
 
       {confirmationMessage ? (
-        <p
-          className={
-            statusTone === "success"
-              ? "ops-status ops-status-success"
-              : "ops-status ops-status-error"
-          }
-          role="status"
-          aria-live="polite"
-        >
-          {confirmationMessage}
-        </p>
+        <div className="ops-grid">
+          <p
+            className={
+              statusTone === 'success'
+                ? 'ops-status ops-status-success'
+                : 'ops-status ops-status-error'
+            }
+            role="status"
+            aria-live="polite"
+          >
+            {confirmationMessage}
+          </p>
+
+          {statusTone === 'success' ? (
+            <div className="ops-actions">
+              <Link to="/app/citizen/profile" className="ops-btn ops-btn-outline">
+                Open Profile & History
+              </Link>
+              <Link to="/app/citizen/challenges" className="ops-btn ops-btn-outline">
+                View Challenges
+              </Link>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );

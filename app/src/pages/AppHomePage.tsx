@@ -1,7 +1,19 @@
-import { ArrowRight, Compass, FileText, House, LifeBuoy, Map, Settings, Shield, Sparkles, Truck } from 'lucide-react';
+import {
+  ArrowRight,
+  Compass,
+  FileText,
+  House,
+  LifeBuoy,
+  Map,
+  Settings,
+  Shield,
+  Sparkles,
+  Truck,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { useCurrentUser } from '../hooks/useAuth';
+import { useCitizenProfile } from '../hooks/useCitizen';
 import {
   hasAdminAccess,
   hasAgentAccess,
@@ -22,6 +34,19 @@ type RoleGuide = {
   description: string;
   links: WorkspaceLink[];
 };
+
+type CitizenProfileSnapshot = {
+  gamification?: {
+    points?: number | null;
+    badges?: string[] | null;
+  };
+  impact?: {
+    reportsSubmitted?: number | null;
+    reportsResolved?: number | null;
+  };
+};
+
+type CitizenEntryState = 'loading' | 'first-run' | 'returning' | 'unavailable';
 
 const universalLinks: WorkspaceLink[] = [
   {
@@ -77,8 +102,8 @@ const citizenLinks: WorkspaceLink[] = [
   },
   {
     label: 'Citizen Profile',
-    description: 'Review points, status, and current community participation.',
-    meta: 'Account view',
+    description: 'Review points, badges, report history, and current community participation.',
+    meta: 'History and profile',
     to: '/app/citizen/profile',
   },
   {
@@ -89,6 +114,27 @@ const citizenLinks: WorkspaceLink[] = [
   },
 ];
 
+const citizenFollowUpLinks: WorkspaceLink[] = [
+  {
+    label: 'Profile & History',
+    description: 'Review points, badges, and your recent citizen reports.',
+    meta: 'Follow-up',
+    to: '/app/citizen/profile',
+  },
+  {
+    label: 'Challenges',
+    description: 'Open current citizen challenges without leaving the shared host.',
+    meta: 'Engagement',
+    to: '/app/citizen/challenges',
+  },
+  {
+    label: 'Support',
+    description: 'Get help if a mapped container or session issue blocks the report flow.',
+    meta: 'Recovery',
+    to: '/app/support',
+  },
+];
+
 const adminLinks: WorkspaceLink[] = [
   {
     label: 'Admin Center',
@@ -96,6 +142,18 @@ const adminLinks: WorkspaceLink[] = [
     meta: 'Governance',
     to: '/app/admin',
   },
+];
+
+const citizenFirstRunChecklist = [
+  'Choose an existing mapped container in the current report flow.',
+  'Select the typed issue that best matches what you saw.',
+  'Submit one valid report to unlock the lighter returning-citizen lane at /app.',
+];
+
+const citizenRecoveryNotes = [
+  'Web GPS is optional. If location is unavailable or denied, keep going with manual mapped-container selection.',
+  'If the mapped container no longer exists, reload the report page and choose another live container.',
+  'If you already reported the same issue recently, EcoTrack will stop the duplicate and point you back to history.',
 ];
 
 const buildRoleGuides = (options: {
@@ -110,7 +168,8 @@ const buildRoleGuides = (options: {
     guides.push({
       eyebrow: 'Operations lane',
       title: 'Manager control',
-      description: 'Manager-capable accounts can move into live monitoring, planning, and reporting without exposing those tools to other roles.',
+      description:
+        'Manager-capable accounts can move into live monitoring, planning, and reporting without exposing those tools to other roles.',
       links: managerLinks,
     });
   }
@@ -119,7 +178,8 @@ const buildRoleGuides = (options: {
     guides.push({
       eyebrow: 'Field lane',
       title: 'Agent execution',
-      description: 'Agents use this host as a launch point into route execution and ticket delivery work.',
+      description:
+        'Agents use this host as a launch point into route execution and ticket delivery work.',
       links: agentLinks,
     });
   }
@@ -128,7 +188,8 @@ const buildRoleGuides = (options: {
     guides.push({
       eyebrow: 'Community lane',
       title: 'Citizen experience',
-      description: 'Citizen access stays focused on reporting, participation, and personal progress.',
+      description:
+        'Citizen access stays focused on reporting, participation, and personal progress.',
       links: citizenLinks,
     });
   }
@@ -137,7 +198,8 @@ const buildRoleGuides = (options: {
     guides.push({
       eyebrow: 'Governance lane',
       title: 'Admin oversight',
-      description: 'Admins and super admins retain governance tools alongside the operational lanes they already inherit.',
+      description:
+        'Admins and super admins retain governance tools alongside the operational lanes they already inherit.',
       links: adminLinks,
     });
   }
@@ -251,12 +313,184 @@ const buildPriorityActions = (options: {
   return actions.slice(0, 4);
 };
 
+const formatCountLabel = (value: number, singular: string, plural: string) =>
+  `${value} ${value === 1 ? singular : plural}`;
+
+function CitizenEntrySection({
+  state,
+  profile,
+  errorMessage,
+}: {
+  state: CitizenEntryState;
+  profile: CitizenProfileSnapshot | null;
+  errorMessage: string | null;
+}) {
+  const reportsSubmitted = Math.max(0, profile?.impact?.reportsSubmitted ?? 0);
+  const reportsResolved = Math.max(0, profile?.impact?.reportsResolved ?? 0);
+  const points = Math.max(0, profile?.gamification?.points ?? 0);
+  const badgesCount = Array.isArray(profile?.gamification?.badges)
+    ? profile?.gamification?.badges.length
+    : 0;
+
+  let eyebrow = 'Citizen lane';
+  let title = 'Report quickly, then follow your impact';
+  let description =
+    'You have already completed the first-report milestone. Use /app as a lighter launch point into reporting, profile or history, and challenges.';
+  let statusLabel = 'Recent citizen progress';
+
+  if (state === 'loading') {
+    eyebrow = 'Citizen onboarding';
+    title = 'Checking your citizen first-report milestone';
+    description =
+      'EcoTrack is verifying whether this session already has a valid citizen report on record. You can still jump straight into reporting while the profile snapshot loads.';
+    statusLabel = 'Current status';
+  } else if (state === 'first-run') {
+    eyebrow = 'Citizen first report';
+    title = 'Complete your first valid container report';
+    description =
+      'Start with one report on an existing mapped container. After that first successful submission, /app becomes a lighter citizen lane with quick access to history, profile, and challenges.';
+    statusLabel = 'What completion means';
+  } else if (state === 'unavailable') {
+    eyebrow = 'Citizen onboarding';
+    title = 'Citizen progress is temporarily unavailable';
+    description =
+      'EcoTrack could not verify your citizen progress right now. You can still open the existing report flow, and sign-in recovery will keep the route intact if the session has expired.';
+    statusLabel = 'Recovery';
+  }
+
+  return (
+    <section className="app-home-card app-home-citizen-entry" aria-labelledby="citizen-entry-title">
+      <div className="app-home-citizen-grid">
+        <div className="app-home-citizen-copy">
+          <div className="app-home-badge app-home-badge-citizen">
+            <FileText size={14} aria-hidden="true" />
+            {eyebrow}
+          </div>
+
+          <div className="app-home-citizen-heading">
+            <h2 id="citizen-entry-title">{title}</h2>
+            <p>{description}</p>
+          </div>
+
+          <div className="app-home-citizen-chip-row" aria-label="Citizen onboarding facts">
+            <span className="app-home-citizen-chip">Mapped containers only</span>
+            <span className="app-home-citizen-chip">GPS optional on web</span>
+            <span className="app-home-citizen-chip">Same report flow, lighter follow-up after first report</span>
+          </div>
+
+          <div className="app-home-citizen-actions">
+            <Link to="/app/citizen/report" className="app-home-primary-cta">
+              Report an issue
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </div>
+
+          {errorMessage ? <p className="app-home-citizen-inline-status">{errorMessage}</p> : null}
+
+          <div className="app-home-citizen-secondary-links">
+            {citizenFollowUpLinks.map((link) => (
+              <Link key={link.to} to={link.to} className="app-home-citizen-secondary-link">
+                <span className="app-home-citizen-secondary-title">{link.label}</span>
+                <span className="app-home-citizen-secondary-meta">{link.meta}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <aside className="app-home-citizen-panel" aria-label={statusLabel}>
+          {state === 'returning' ? (
+            <>
+              <div className="app-home-card-head">
+                <span className="app-home-icon app-home-icon-muted">
+                  <Sparkles size={18} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Citizen progress</h3>
+                  <p>Use the shared host without repeating the first-run walkthrough.</p>
+                </div>
+              </div>
+
+              <dl className="app-home-metric-list">
+                <div className="app-home-metric">
+                  <dt>Reports submitted</dt>
+                  <dd>{formatCountLabel(reportsSubmitted, 'report', 'reports')}</dd>
+                </div>
+                <div className="app-home-metric">
+                  <dt>Resolved reports</dt>
+                  <dd>{formatCountLabel(reportsResolved, 'report', 'reports')}</dd>
+                </div>
+                <div className="app-home-metric">
+                  <dt>Citizen points</dt>
+                  <dd>{formatCountLabel(points, 'point', 'points')}</dd>
+                </div>
+                <div className="app-home-metric">
+                  <dt>Badges earned</dt>
+                  <dd>{formatCountLabel(badgesCount, 'badge', 'badges')}</dd>
+                </div>
+              </dl>
+            </>
+          ) : (
+            <>
+              <div className="app-home-card-head">
+                <span className="app-home-icon app-home-icon-muted">
+                  <Compass size={18} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>{state === 'first-run' ? 'Before you start' : statusLabel}</h3>
+                  <p>
+                    {state === 'first-run'
+                      ? 'Keep the first report focused and lightweight.'
+                      : 'These recovery rules keep the citizen lane usable even when supporting data is unavailable.'}
+                  </p>
+                </div>
+              </div>
+
+              <ul className="app-home-citizen-list">
+                {citizenFirstRunChecklist.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+
+              <div className="app-home-citizen-subsection">
+                <p className="app-home-citizen-subtitle">If something blocks you</p>
+                <ul className="app-home-citizen-list app-home-citizen-list-muted">
+                  {citizenRecoveryNotes.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 export default function AppHomePage() {
   const { user } = useCurrentUser();
   const canAccessManager = hasManagerAccess(user);
   const canAccessAgent = hasAgentAccess(user);
   const canAccessCitizen = hasCitizenAccess(user);
   const canAccessAdmin = hasAdminAccess(user);
+  const citizenProfileQuery = useCitizenProfile(canAccessCitizen);
+  const citizenProfile = ((citizenProfileQuery.data ?? null) as CitizenProfileSnapshot | null);
+  const reportsSubmitted = Math.max(0, citizenProfile?.impact?.reportsSubmitted ?? 0);
+  const citizenEntryState: CitizenEntryState = !canAccessCitizen
+    ? 'unavailable'
+    : citizenProfileQuery.isLoading
+      ? 'loading'
+      : citizenProfileQuery.isError || !citizenProfile
+        ? 'unavailable'
+        : reportsSubmitted > 0
+          ? 'returning'
+          : 'first-run';
+  const citizenProfileError =
+    canAccessCitizen && citizenProfileQuery.isError && citizenProfileQuery.error instanceof Error
+      ? citizenProfileQuery.error.message
+      : canAccessCitizen && citizenProfileQuery.isError
+        ? 'Citizen progress could not be loaded.'
+        : null;
   const roleGuides = buildRoleGuides({
     canAccessManager,
     canAccessAgent,
@@ -271,7 +505,8 @@ export default function AppHomePage() {
   });
   const roleNames = collectRoleNames(user);
   const firstName = resolveFirstName(user);
-  const accessibleSurfaceCount = universalLinks.length + roleGuides.reduce((count, guide) => count + guide.links.length, 0);
+  const accessibleSurfaceCount =
+    universalLinks.length + roleGuides.reduce((count, guide) => count + guide.links.length, 0);
   const primaryLane = roleGuides[0]?.title ?? 'Shared operations';
   const workspaceSignals = [
     {
@@ -305,6 +540,14 @@ export default function AppHomePage() {
   return (
     <section className="app-home-page app-content-page">
       <div className="app-home-stack">
+        {canAccessCitizen ? (
+          <CitizenEntrySection
+            state={citizenEntryState}
+            profile={citizenProfile}
+            errorMessage={citizenProfileError}
+          />
+        ) : null}
+
         <section className="app-home-command">
           <div className="app-home-command-grid">
             <div className="app-home-command-copy">
@@ -322,10 +565,7 @@ export default function AppHomePage() {
               </div>
               <div className="app-home-signal-row">
                 {workspaceSignals.map((signal) => (
-                  <div
-                    key={signal.label}
-                    className="app-home-signal"
-                  >
+                  <div key={signal.label} className="app-home-signal">
                     <p className="app-home-signal-label">{signal.label}</p>
                     <p className="app-home-signal-value">{signal.value}</p>
                   </div>
@@ -378,11 +618,7 @@ export default function AppHomePage() {
 
             <div className="app-home-action-grid">
               {priorityActions.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="app-home-action-card"
-                >
+                <Link key={link.to} to={link.to} className="app-home-action-card">
                   <div className="app-home-action-title">
                     <span className="app-home-icon app-home-icon-compact">
                       {renderRouteIcon(link.to)}
@@ -416,10 +652,7 @@ export default function AppHomePage() {
 
             <div className="app-home-rule-list">
               {operatingRules.map((rule, index) => (
-                <div
-                  key={rule.title}
-                  className="app-home-rule-item"
-                >
+                <div key={rule.title} className="app-home-rule-item">
                   <span className="app-home-rule-index">0{index + 1}</span>
                   <div>
                     <h3>{rule.title}</h3>
@@ -444,10 +677,7 @@ export default function AppHomePage() {
           {roleGuides.length > 0 ? (
             <div className="app-home-lane-grid">
               {roleGuides.map((guide) => (
-                <section
-                  key={guide.title}
-                  className="app-home-card app-home-lane-card"
-                >
+                <section key={guide.title} className="app-home-card app-home-lane-card">
                   <div className="app-home-lane-top">
                     <span className="app-home-icon">
                       {renderRouteIcon(guide.links[0]?.to ?? '/app', 18)}
@@ -462,11 +692,7 @@ export default function AppHomePage() {
 
                   <div className="app-home-lane-links">
                     {guide.links.map((link) => (
-                      <Link
-                        key={link.to}
-                        to={link.to}
-                        className="app-home-action-card app-home-lane-link"
-                      >
+                      <Link key={link.to} to={link.to} className="app-home-action-card app-home-lane-link">
                         <div className="app-home-action-title">
                           <span>{link.label}</span>
                         </div>

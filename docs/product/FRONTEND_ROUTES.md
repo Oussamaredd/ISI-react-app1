@@ -34,7 +34,7 @@ Special case:
 
 | Path | Component | Notes |
 | --- | --- | --- |
-| `/app` | `AppHomePage` | Shared authenticated app home for all users; intended host for chatbot and role-specific guidance |
+| `/app` | `AppHomePage` | Shared authenticated app home for all users; for citizen-capable accounts with zero submitted reports it prioritizes first-report onboarding before falling back to the lighter returning-user citizen lane |
 | `/app/dashboard` | `Dashboard` | Live operational overview; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app` |
 | `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; existing-container issue reporting only, with typed issue selection and read-only status/fill context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
@@ -55,6 +55,7 @@ Special case:
 Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
+- Citizen-capable accounts with no submitted citizen reports see a focused first-report onboarding panel at `/app` with one dominant report CTA; once the first report exists, `/app` switches that lane to lighter report/profile/history/challenges shortcuts.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with the shared Workspace hub first.
 - Primary navigation can include Workspace, Dashboard, Agent Tour, Tour Planning, Tour Operations, Manager Reports, Report Overflow, Citizen Profile, and Challenges depending on role.

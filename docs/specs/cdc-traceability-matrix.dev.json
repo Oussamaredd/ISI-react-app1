@@ -16,7 +16,8 @@
         "Workbook:M5.2"
       ],
       "specFiles": [
-        "docs/specs/mobile-platform-integration-contract.md"
+        "docs/specs/mobile-platform-integration-contract.md",
+        "docs/specs/citizen-first-report-onboarding.md"
       ],
       "contract": {
         "backendEndpoints": [
@@ -50,7 +51,8 @@
         "Workbook:M5.2"
       ],
       "specFiles": [
-        "docs/specs/mobile-platform-integration-contract.md"
+        "docs/specs/mobile-platform-integration-contract.md",
+        "docs/specs/citizen-first-report-onboarding.md"
       ],
       "contract": {
         "backendEndpoints": [
@@ -88,7 +90,8 @@
         "Workbook:M14.7"
       ],
       "specFiles": [
-        "docs/specs/mobile-platform-integration-contract.md"
+        "docs/specs/mobile-platform-integration-contract.md",
+        "docs/specs/citizen-first-report-onboarding.md"
       ],
       "contract": {
         "backendEndpoints": [

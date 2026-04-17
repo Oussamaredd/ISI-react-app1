@@ -3,10 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
 import type { CitizenReportType } from '../lib/citizenReports';
 
-export const useCitizenProfile = () =>
+export const useCitizenProfile = (enabled = true) =>
   useQuery({
     queryKey: ['citizen-profile'],
     queryFn: async () => apiClient.get('/api/citizen/profile'),
+    enabled,
     staleTime: 60_000,
   });
 

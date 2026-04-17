@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import CitizenReportPage from "../pages/CitizenReportPage";
-import { apiClient } from "../services/api";
+import { ApiRequestError, apiClient } from "../services/api";
 import { renderWithProviders } from "./test-utils";
 
 vi.mock("../hooks/useCitizen", () => ({
@@ -42,7 +42,11 @@ describe("CitizenReportPage", () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Use My Location/i }));
-    expect(await screen.findByText(/Device geolocation is not available in this browser/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /Device geolocation is not available in this browser\. Continue by selecting the mapped container manually\./i,
+      ),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/Latitude/i), "48.8566");
 
@@ -60,7 +64,7 @@ describe("CitizenReportPage", () => {
     expect(
       await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
     ).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/Container/i), "container-1");
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
 
     expect(
       await screen.findByRole("heading", { name: /Selected Container Context/i }),
@@ -92,10 +96,23 @@ describe("CitizenReportPage", () => {
     const user = userEvent.setup();
     renderWithProviders(<CitizenReportPage />);
 
-    await user.click(screen.getByRole("button", { name: /Use My Location/i }));
-    expect(await screen.findByText(/We could not access your device location/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Find a mapped container/i), "unknown place");
+    expect(
+      await screen.findByText(/No mapped containers match this search/i),
+    ).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/Container/i), "container-1");
+    await user.clear(screen.getByLabelText(/Find a mapped container/i));
+    await user.click(screen.getByRole("button", { name: /Use My Location/i }));
+    expect(
+      await screen.findByText(
+        /We could not access your device location\. Continue by selecting the mapped container manually or enter coordinates yourself\./i,
+      ),
+    ).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
     await user.type(
       screen.getByLabelText(/Details \(optional\)/i),
       "Container is overflowing near the tram stop.",
@@ -123,10 +140,14 @@ describe("CitizenReportPage", () => {
     expect(
       await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
     ).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/Container/i), "container-1");
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
     await user.click(screen.getByRole("button", { name: /Submit Report/i }));
 
     expect(await screen.findByText(/Report submitted\. Thank you for helping your community\./i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Open Profile & History/i })).toHaveAttribute(
+      "href",
+      "/app/citizen/profile",
+    );
   });
 
   it("shows a clear error banner when container options cannot be loaded", async () => {
@@ -134,6 +155,51 @@ describe("CitizenReportPage", () => {
 
     renderWithProviders(<CitizenReportPage />);
 
-    expect(await screen.findByText(/Could not load container options\. Please refresh\./i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Could not load mapped containers\. Refresh the page and try again\./i),
+    ).toBeInTheDocument();
+  });
+
+  it("maps duplicate-report conflicts to explicit recovery guidance", async () => {
+    const citizenHooks = await import("../hooks/useCitizen");
+    const mutateAsync = vi
+      .fn()
+      .mockRejectedValue(
+        new ApiRequestError(
+          "You already reported this issue for this container within the last hour.",
+          409,
+          {},
+        ),
+      );
+
+    (citizenHooks.useCreateCitizenReport as Mock).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<CitizenReportPage />);
+
+    expect(
+      await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
+    ).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
+    await user.click(screen.getByRole("button", { name: /Submit Report/i }));
+
+    expect(
+      await screen.findByText(
+        /You already reported this issue for this container within the last hour\. Open your profile or history instead of creating a duplicate report\./i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an explicit blocked state when no mapped containers are available", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValueOnce({ containers: [] });
+
+    renderWithProviders(<CitizenReportPage />);
+
+    expect(
+      await screen.findByText(/No mapped containers are available right now\./i),
+    ).toBeInTheDocument();
   });
 });
