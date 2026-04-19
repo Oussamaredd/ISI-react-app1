@@ -7,6 +7,51 @@ import { fileURLToPath } from "node:url";
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const spawnRestricted = process.env.ECOTRACK_VITE_SPAWN_RESTRICTED === "1";
 const includeAppE2E = process.env.ECOTRACK_INCLUDE_APP_E2E === "1";
+const appTestSuite = (process.env.ECOTRACK_APP_TEST_SUITE ?? "all").trim().toLowerCase();
+const appUiTestFiles = [
+  "src/tests/AdminTicketManagement.test.tsx",
+  "src/tests/AdvancedTicketList.test.tsx",
+  "src/tests/AgentTourPage.test.tsx",
+  "src/tests/App.integration.test.tsx",
+  "src/tests/App.test.tsx",
+  "src/tests/AppHomePage.test.tsx",
+  "src/tests/AuditLogs.test.tsx",
+  "src/tests/AuthCallbackPage.test.tsx",
+  "src/tests/CitizenChallengesPage.test.tsx",
+  "src/tests/CitizenProfilePage.test.tsx",
+  "src/tests/CitizenReportPage.test.tsx",
+  "src/tests/CreateTicket.test.tsx",
+  "src/tests/Dashboard.test.tsx",
+  "src/tests/LoginPage.test.tsx",
+  "src/tests/ManagerPlanningPage.test.tsx",
+  "src/tests/ManagerReportsPage.test.tsx",
+  "src/tests/ManagerToursPage.test.tsx",
+  "src/tests/ResetPasswordPage.test.tsx",
+  "src/tests/Routing.test.tsx",
+  "src/tests/SettingsPage.test.tsx",
+  "src/tests/SystemSettings.test.tsx",
+  "src/tests/TicketDetails.test.tsx",
+  "src/tests/TicketList.test.tsx",
+  "src/tests/UserCreateModal.test.tsx",
+];
+const appIsolatedTestFiles = [
+  "src/tests/useAuth.localStorage.test.tsx",
+  "src/tests/useDashboard.test.tsx",
+  "src/tests/useTickets.test.tsx",
+];
+const appTestInclude = appTestSuite === "ui"
+  ? appUiTestFiles
+  : appTestSuite === "isolated"
+  ? appIsolatedTestFiles
+  : ["src/tests/**/*.test.ts", "src/tests/**/*.test.tsx"];
+const appSuiteExcludes = [
+  ...(includeAppE2E ? [] : ["src/tests/e2e.key-journeys.test.tsx"]),
+  ...(appTestSuite === "fast" ? [...appUiTestFiles, ...appIsolatedTestFiles] : []),
+];
+const appTestPool = appTestSuite === "ui" ? "forks" : "forks";
+const appTestFileParallelism = false;
+const appTestMaxWorkers = 1;
+const appUsesSharedSuiteContext = appTestSuite === "fast" || appTestSuite === "ui";
 const resolveQualityOutputRoot = () => {
   const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
 
@@ -231,11 +276,18 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       setupFiles: "./src/tests/setup.tsx",
       css: true,
-      exclude: includeAppE2E ? undefined : ["src/tests/e2e.key-journeys.test.tsx"],
-      // Keep test execution stable on constrained Windows runners and WSL-mounted workspaces.
-      pool: "forks",
-      fileParallelism: false,
-      maxWorkers: 1,
+      include: appTestInclude,
+      exclude: appSuiteExcludes,
+      clearMocks: true,
+      restoreMocks: true,
+      unstubGlobals: true,
+      unstubEnvs: true,
+      // Reuse a single jsdom context for the split fast/UI lanes, while keeping
+      // the default all-files and isolated lanes on per-file module isolation.
+      pool: appTestPool,
+      isolate: !appUsesSharedSuiteContext,
+      fileParallelism: appTestFileParallelism,
+      maxWorkers: appTestMaxWorkers,
       coverage: {
         provider: "v8",
         reporter: ["text", "json", "json-summary", "html", "lcov"],

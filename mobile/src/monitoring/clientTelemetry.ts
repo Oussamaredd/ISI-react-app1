@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-import { mobileApiBase } from "@/lib/env";
+import { resolveMobileApiBase } from "@/lib/env";
 import { captureMobileException, captureMobileMessage, initializeMobileSentry } from "@/monitoring/sentry";
 
 type MobileErrorPayload = {
@@ -33,6 +33,8 @@ const scrubMetadata = (metadata?: Record<string, unknown>) => {
 };
 
 const buildMonitoringUrl = (path: string) => {
+  const mobileApiBase = resolveMobileApiBase();
+
   if (!mobileApiBase) {
     return null;
   }

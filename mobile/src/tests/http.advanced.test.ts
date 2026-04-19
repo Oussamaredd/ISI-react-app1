@@ -15,10 +15,6 @@ import {
 } from "../api/core/http";
 import { emitSessionInvalidated } from "../api/core/sessionEvents";
 
-vi.mock("@/lib/env", () => ({
-  mobileApiBase: "https://mobile.ecotrack.test",
-}));
-
 vi.mock("@/monitoring/clientTelemetry", () => ({
   reportMobileError: vi.fn(),
 }));
@@ -39,6 +35,7 @@ vi.mock("../api/core/sessionEvents", () => ({
 describe("mobile http client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.EXPO_PUBLIC_API_BASE_URL = "https://mobile.ecotrack.test";
     vi.mocked(getCachedAccessToken).mockReturnValue(null);
     vi.stubGlobal("fetch", vi.fn());
   });

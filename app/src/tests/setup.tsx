@@ -6,8 +6,49 @@ import { afterEach, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach } from "vitest";
 
+const suiteLocalMockedModules = [
+  "../context/ToastContext",
+  "../hooks/adminHooks",
+  "../hooks/useAgentTours",
+  "../hooks/useAuth",
+  "../hooks/useCitizen",
+  "../hooks/useLandingSectionScroll",
+  "../hooks/useNavbarScrollState",
+  "../hooks/usePlanning",
+  "../hooks/usePlanningRealtimeSocket",
+  "../hooks/usePlanningRealtimeStream",
+  "../hooks/useTickets",
+  "../monitoring/sentry",
+  "../services/api",
+  "../services/authApi",
+  "../services/authRedirect",
+  "../utils/errorHandlers",
+  "socket.io-client",
+];
+
+// When split suites reuse the same Vitest worker, hoisted file-level mocks can
+// leak into the next file unless we clear them before each suite starts.
+vi.resetModules();
+for (const moduleId of suiteLocalMockedModules) {
+  vi.doUnmock(moduleId);
+}
+
 afterEach(() => {
   cleanup();
+  try {
+    vi.runOnlyPendingTimers();
+  } catch {
+    // No-op when a test stayed on real timers.
+  }
+  try {
+    vi.useRealTimers();
+  } catch {
+    // No-op when fake timers were not enabled.
+  }
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 globalThis.jest = vi as unknown as typeof jest;

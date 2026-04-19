@@ -10,9 +10,12 @@
     "web": "expo start --web",
     "lint": "eslint . --cache --cache-strategy content --cache-location ../tmp/eslint/mobile --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "node ./scripts/run-vitest.mjs --configLoader runner --run",
+    "test": "npm run test:fast && npm run test:ui",
+    "test:fast": "node ./scripts/run-vitest-suite.mjs fast --configLoader runner --run",
+    "test:ui": "node ./scripts/run-vitest-suite.mjs ui --configLoader runner --run",
     "test:coverage": "node ./scripts/run-vitest.mjs --configLoader runner --coverage",
-    "test:watch": "node ./scripts/run-vitest.mjs --configLoader runner"
+    "test:watch": "node ./scripts/run-vitest-suite.mjs fast --configLoader runner",
+    "test:watch:ui": "node ./scripts/run-vitest-suite.mjs ui --configLoader runner"
   },
   "dependencies": {
     "@expo/vector-icons": "15.0.3",

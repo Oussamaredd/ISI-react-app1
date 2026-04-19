@@ -201,6 +201,20 @@ const RadioButton = Object.assign(RadioButtonBase, {
 
 afterEach(() => {
   cleanupMobileScreens();
+  try {
+    vi.runOnlyPendingTimers();
+  } catch {
+    // No-op when a test stayed on real timers.
+  }
+  try {
+    vi.useRealTimers();
+  } catch {
+    // No-op when fake timers were not enabled.
+  }
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 vi.mock("@tanstack/react-query", async () => {

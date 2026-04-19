@@ -196,9 +196,12 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run dev:doctor` - fast local diagnostics (env keys, db reachability/migrations, health endpoints)
 - `npm run build` - reuse the current database dist build when it is already fresh, then build app + api in parallel
 - `npm run check:app` / `npm run check:mobile` / `npm run check:api` / `npm run check:database` - fast daily workspace validation sets that only touch the layer you are editing
+- `npm run check:app:full` / `npm run check:mobile:full` - full frontend/mobile validation including the split slow UI lanes before handoff
 - `npm run validate:affected` - inspect the current git working tree and run only the affected workspace validation matrix plus doc-sync; falls back to the full suite for root, env, infrastructure, and CI changes
 - `npm run validate:full` - full developer validation gate for cross-layer, env, and workflow changes (`validate-env:all`, `validate-doc-sync`, `lint`, `typecheck`, `test`)
 - `npm run test` - app + mobile + api tests in the stable serial order; the `ecotrack-app` default suite excludes the dedicated key-journey e2e spec so it does not duplicate the separate e2e lane
+- `npm run test:app:fast` / `npm run test:mobile:fast` - shared-worker fast Vitest lanes for daily local iteration
+- `npm run test:app:ui` / `npm run test:mobile:ui` - slower UI-heavy Vitest lanes split out from the fast path
 - `npm run test:mobile` - mobile workspace tests
 - `npm run test:api` - backend tests with a cached `ecotrack-database` build pre-step
 - `npm run test:e2e` - key citizen/agent/manager journey tests; the app workspace enables the dedicated e2e spec only for this lane via `ECOTRACK_INCLUDE_APP_E2E=1`
@@ -233,6 +236,7 @@ Database name policy: committed connection-string templates target `ticketdb`.
 Daily validation workflow:
 
 - Use the relevant `npm run check:<workspace>` command while iterating inside one layer.
+- Use `npm run check:app:full` or `npm run check:mobile:full` before handoff when a frontend/mobile change touched the slower UI buckets.
 - Use `npm run validate:affected` before handoff when your change stays inside one or more product layers and you want the repo to choose the affected validation set from the current git diff.
 - Use `npm run validate:full` for root scripts, infrastructure, env templates, CI workflow, or other cross-layer changes.
 - Reserve `npm run quality:product-hardening` for release-style hardening work; it still includes the slow e2e, realtime, coverage, mobile readiness, and Lighthouse gates.

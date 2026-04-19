@@ -6,7 +6,10 @@ const normalizeApiBase = (value?: string) => {
   return value.trim().replace(/\/+$/, "").replace(/\/api$/, "");
 };
 
-export const mobileApiBase = normalizeApiBase(process.env.EXPO_PUBLIC_API_BASE_URL);
+export const resolveMobileApiBase = () =>
+  normalizeApiBase(process.env.EXPO_PUBLIC_API_BASE_URL);
+
+export const mobileApiBase = resolveMobileApiBase();
 
 /**
  * Returns a user-facing label for the configured mobile API base.
@@ -14,4 +17,4 @@ export const mobileApiBase = normalizeApiBase(process.env.EXPO_PUBLIC_API_BASE_U
  * @returns The normalized API base when configured, or a diagnostic label when it is missing.
  */
 export const getMobileApiBaseLabel = () =>
-  mobileApiBase ?? "Missing EXPO_PUBLIC_API_BASE_URL";
+  resolveMobileApiBase() ?? "Missing EXPO_PUBLIC_API_BASE_URL";

@@ -3,6 +3,20 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 const rootDirectory = path.dirname(fileURLToPath(import.meta.url));
+const mobileTestSuite = (process.env.ECOTRACK_MOBILE_TEST_SUITE ?? "all").trim().toLowerCase();
+const mobileUiTestFiles = [
+  "src/tests/AgentHomeScreen.test.tsx",
+  "src/tests/LoginScreen.test.tsx",
+  "src/tests/ManagerHomeScreen.test.tsx",
+  "src/tests/ReactQueryLifecycleProvider.test.tsx",
+  "src/tests/ReportScreen.test.tsx",
+  "src/tests/SessionProvider.test.tsx",
+];
+const mobileTestInclude = mobileTestSuite === "ui"
+  ? mobileUiTestFiles
+  : ["src/tests/**/*.test.ts", "src/tests/**/*.test.tsx"];
+const mobileTestExclude = mobileTestSuite === "fast" ? mobileUiTestFiles : [];
+const mobileUsesSharedSuiteContext = mobileTestSuite === "fast" || mobileTestSuite === "ui";
 const resolveQualityOutputRoot = () => {
   const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
 
@@ -36,9 +50,15 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/tests/**/*.test.ts", "src/tests/**/*.test.tsx"],
+    include: mobileTestInclude,
+    exclude: mobileTestExclude,
     setupFiles: ["./src/tests/setup.tsx"],
-    pool: "threads",
+    clearMocks: true,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
+    pool: "forks",
+    isolate: !mobileUsesSharedSuiteContext,
     fileParallelism: false,
     maxWorkers: 1,
     coverage: {

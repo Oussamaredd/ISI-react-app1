@@ -77,7 +77,7 @@ describe("Dashboard Component", () => {
       await screen.findByRole("heading", { name: /Welcome back, Test/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Total tickets/i)).toBeInTheDocument();
-    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(await screen.findByText("42")).toBeInTheDocument();
     expect(screen.getByText(/Recent ticket activity/i)).toBeInTheDocument();
     expect(await screen.findByText(/Lobby AC issue/i)).toBeInTheDocument();
   });

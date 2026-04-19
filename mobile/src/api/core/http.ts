@@ -1,4 +1,4 @@
-import { mobileApiBase } from "@/lib/env";
+import { resolveMobileApiBase } from "@/lib/env";
 import { reportMobileError } from "@/monitoring/clientTelemetry";
 
 import { clearPersistedSession, getCachedAccessToken } from "./tokenStore";
@@ -18,6 +18,8 @@ export class ApiRequestError extends Error {
 }
 
 const resolveApiBase = () => {
+  const mobileApiBase = resolveMobileApiBase();
+
   if (!mobileApiBase) {
     throw new Error("EXPO_PUBLIC_API_BASE_URL is required for the mobile API client.");
   }
