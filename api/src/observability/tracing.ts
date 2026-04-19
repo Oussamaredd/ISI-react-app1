@@ -1,10 +1,3 @@
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { ParentBasedSampler, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-base';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-
 type TracingBootstrapHandle = {
   enabled: boolean;
   shutdown: () => Promise<void>;
@@ -55,6 +48,29 @@ export async function startTelemetry(
   if (!parseBoolean(env.OTEL_TRACING_ENABLED)) {
     return DISABLED_HANDLE;
   }
+
+  const [
+    autoInstrumentationsModule,
+    traceExporterModule,
+    resourcesModule,
+    sdkNodeModule,
+    traceBaseModule,
+    semanticConventionsModule,
+  ] = await Promise.all([
+    import('@opentelemetry/auto-instrumentations-node'),
+    import('@opentelemetry/exporter-trace-otlp-http'),
+    import('@opentelemetry/resources'),
+    import('@opentelemetry/sdk-node'),
+    import('@opentelemetry/sdk-trace-base'),
+    import('@opentelemetry/semantic-conventions'),
+  ]);
+
+  const { getNodeAutoInstrumentations } = autoInstrumentationsModule;
+  const { OTLPTraceExporter } = traceExporterModule;
+  const { resourceFromAttributes } = resourcesModule;
+  const { NodeSDK } = sdkNodeModule;
+  const { ParentBasedSampler, TraceIdRatioBasedSampler } = traceBaseModule;
+  const { ATTR_SERVICE_NAME } = semanticConventionsModule;
 
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({

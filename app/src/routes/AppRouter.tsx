@@ -14,6 +14,7 @@ import {
   hasAgentAccess,
   hasCitizenAccess,
   hasManagerAccess,
+  hasSupportWorkspaceAccess,
 } from "../utils/authz";
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
@@ -169,6 +170,16 @@ function CitizenRouteGuard() {
   return <Outlet />;
 }
 
+function SupportWorkspaceRouteGuard() {
+  const { user } = useCurrentUser();
+
+  if (!hasSupportWorkspaceAccess(user)) {
+    return <Navigate to="/support" replace />;
+  }
+
+  return <Outlet />;
+}
+
 export default function AppRouter() {
   return (
     <>
@@ -214,12 +225,14 @@ export default function AppRouter() {
               <Route path="profile" element={withRouteSuspense(<CitizenProfilePage />)} />
               <Route path="challenges" element={withRouteSuspense(<CitizenChallengesPage />)} />
             </Route>
-            <Route path="support" element={withRouteSuspense(<SupportPage />)} />
-            <Route path="tickets/advanced" element={<Navigate to="/app/support#advanced" replace />} />
-            <Route path="tickets" element={<Navigate to="/app/support#simple" replace />} />
-            <Route path="tickets/create" element={<Navigate to="/app/support#create" replace />} />
-            <Route path="tickets/:id/details" element={withRouteSuspense(<TicketDetails />)} />
-            <Route path="tickets/:id/treat" element={withRouteSuspense(<TreatTicketPage />)} />
+            <Route element={<SupportWorkspaceRouteGuard />}>
+              <Route path="support" element={withRouteSuspense(<SupportPage />)} />
+              <Route path="tickets/advanced" element={<Navigate to="/app/support#advanced" replace />} />
+              <Route path="tickets" element={<Navigate to="/app/support#simple" replace />} />
+              <Route path="tickets/create" element={<Navigate to="/app/support#create" replace />} />
+              <Route path="tickets/:id/details" element={withRouteSuspense(<TicketDetails />)} />
+              <Route path="tickets/:id/treat" element={withRouteSuspense(<TreatTicketPage />)} />
+            </Route>
             <Route path="settings" element={withRouteSuspense(<SettingsPage />)} />
             <Route path="admin" element={<AdminRoute />} />
             <Route path="*" element={<Navigate to="/app" replace />} />

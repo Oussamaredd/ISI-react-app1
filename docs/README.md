@@ -96,6 +96,12 @@ npm run clean:artifacts
 
 Validate:
 ```bash
+npm run check:app
+npm run check:mobile
+npm run check:api
+npm run check:database
+npm run validate:affected
+npm run validate:full
 npm run lint
 npm run lint --workspace=ecotrack-mobile
 npm run typecheck
@@ -124,6 +130,13 @@ node infrastructure/scripts/ci/run-visual-gate.mjs
 node infrastructure/scripts/ci/run-visual-snapshots.mjs
 node infrastructure/scripts/ci/run-lighthouse-gate.mjs
 ```
+
+Validation workflow:
+
+- Use `npm run check:<workspace>` for the layer you are actively editing.
+- Use `npm run validate:affected` to apply the AGENTS path matrix to the current git diff without paying for unrelated workspaces.
+- Use `npm run validate:full` for root scripts, infrastructure, env templates, CI, or other cross-layer changes.
+- Keep `npm run quality:product-hardening` as the slow release-style gate rather than a normal edit-compile-test loop.
 
 Build:
 ```bash

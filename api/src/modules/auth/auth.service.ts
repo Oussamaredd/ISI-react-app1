@@ -475,7 +475,7 @@ export class AuthService {
 
   async updateCurrentUserProfile(
     request: Pick<Request, 'headers'>,
-    params: { displayName: string; avatarUrl?: string },
+    params: { displayName: string; avatarUrl?: string | null },
   ) {
     const authUser = this.getAuthUserFromRequest(request);
     if (!authUser) {

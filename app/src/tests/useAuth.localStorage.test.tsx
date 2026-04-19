@@ -35,6 +35,33 @@ function AuthProbe() {
   );
 }
 
+const createTransientFetch = (finalResponse?: Response) => {
+  let attemptCount = 0;
+
+  return vi.fn((_: RequestInfo | URL, init?: RequestInit) => {
+    attemptCount += 1;
+
+    if (finalResponse && attemptCount >= 4) {
+      return Promise.resolve(finalResponse);
+    }
+
+    return new Promise<Response>((_, reject) => {
+      const signal = init?.signal;
+
+      const rejectAbort = () => {
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+
+      if (signal?.aborted) {
+        rejectAbort();
+        return;
+      }
+
+      signal?.addEventListener('abort', rejectAbort, { once: true });
+    });
+  });
+};
+
 describe('useAuth local storage', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -69,28 +96,18 @@ describe('useAuth local storage', () => {
     });
   });
 
-  test('resolves loading state after auth check timeouts and retries', async () => {
+  test('keeps the protected-route session gate active until a bootstrap recheck can resolve auth', async () => {
     vi.useFakeTimers();
     window.history.pushState({}, '', '/app');
+    const transientFetch = createTransientFetch(
+      {
+        ok: false,
+        status: 401,
+        json: async () => ({ authenticated: false }),
+      } as Response,
+    );
 
-    const abortableFetch = vi.fn((_: RequestInfo | URL, init?: RequestInit) => {
-      return new Promise<Response>((_, reject) => {
-        const signal = init?.signal;
-
-        const rejectAbort = () => {
-          reject(new DOMException('Aborted', 'AbortError'));
-        };
-
-        if (signal?.aborted) {
-          rejectAbort();
-          return;
-        }
-
-        signal?.addEventListener('abort', rejectAbort, { once: true });
-      });
-    });
-
-    vi.stubGlobal('fetch', abortableFetch as unknown as typeof fetch);
+    vi.stubGlobal('fetch', transientFetch as unknown as typeof fetch);
 
     render(
       <AuthProvider>
@@ -102,11 +119,20 @@ describe('useAuth local storage', () => {
       await vi.advanceTimersByTimeAsync(20000);
     });
 
+    expect(screen.getByTestId('auth-loading').textContent).toBe('true');
+    expect(screen.getByTestId('auth-state').textContent).toBe('unknown');
+    expect(transientFetch).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
     await waitFor(() => {
       expect(screen.getByTestId('auth-loading').textContent).toBe('false');
     });
 
-    expect(abortableFetch).toHaveBeenCalledTimes(3);
+    expect(screen.getByTestId('auth-state').textContent).toBe('anonymous');
+    expect(transientFetch).toHaveBeenCalledTimes(4);
   });
 
   test('keeps public routes interactive while session discovery runs in the background', async () => {
@@ -150,28 +176,18 @@ describe('useAuth local storage', () => {
     expect(screen.getByTestId('auth-state').textContent).toBe('anonymous');
   });
 
-  test('keeps stored bearer state when auth status checks fail transiently', async () => {
+  test('keeps stored bearer state unverified until the backend confirms the session', async () => {
     vi.useFakeTimers();
     window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, 'persisted-token');
+    const transientFetch = createTransientFetch(
+      {
+        ok: true,
+        status: 200,
+        json: async () => ({ authenticated: true, user: session.user }),
+      } as Response,
+    );
 
-    const abortableFetch = vi.fn((_: RequestInfo | URL, init?: RequestInit) => {
-      return new Promise<Response>((_, reject) => {
-        const signal = init?.signal;
-
-        const rejectAbort = () => {
-          reject(new DOMException('Aborted', 'AbortError'));
-        };
-
-        if (signal?.aborted) {
-          rejectAbort();
-          return;
-        }
-
-        signal?.addEventListener('abort', rejectAbort, { once: true });
-      });
-    });
-
-    vi.stubGlobal('fetch', abortableFetch as unknown as typeof fetch);
+    vi.stubGlobal('fetch', transientFetch as unknown as typeof fetch);
 
     render(
       <AuthProvider>
@@ -183,13 +199,22 @@ describe('useAuth local storage', () => {
       await vi.advanceTimersByTimeAsync(20000);
     });
 
+    expect(screen.getByTestId('auth-header').textContent).toBe('Bearer persisted-token');
+    expect(screen.getByTestId('auth-is-authenticated').textContent).toBe('true');
+    expect(screen.getByTestId('auth-loading').textContent).toBe('true');
+    expect(screen.getByTestId('auth-state').textContent).toBe('unknown');
+    expect(transientFetch).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
     await waitFor(() => {
       expect(screen.getByTestId('auth-loading').textContent).toBe('false');
     });
 
-    expect(screen.getByTestId('auth-header').textContent).toBe('Bearer persisted-token');
-    expect(screen.getByTestId('auth-is-authenticated').textContent).toBe('true');
     expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
+    expect(transientFetch).toHaveBeenCalledTimes(4);
   });
 
   test('clears stale stored bearer when auth status reports unauthenticated', async () => {

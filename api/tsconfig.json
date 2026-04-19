@@ -16,7 +16,9 @@
     "outDir": "dist",
     "baseUrl": "src",
     "skipLibCheck": true,
-    "allowJs": true
+    "allowJs": true,
+    "incremental": true,
+    "tsBuildInfoFile": "../tmp/tsc/api.typecheck.tsbuildinfo"
   },
   "include": ["src", "src/types/**/*.d.ts"],
   "exclude": ["dist", "node_modules"]

@@ -36,7 +36,7 @@ Local signup note:
 - `GET /auth/me` and `GET /me` require an active authenticated account.
 - `GET /auth/me` and `GET /me` now include additive zone-assignment metadata when available (`zoneId`, `zoneName`, `zoneCode`, `depotLabel`, `depotLatitude`, `depotLongitude`) so agent clients can bootstrap zone-aware execution without an extra profile lookup.
 
-`PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP).
+`PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP`). Clients may also send `null` to clear an existing avatar without triggering a server error.
 `PUT /me/password` requires `currentPassword` and strong `newPassword` (12+ chars with uppercase, lowercase, number, and symbol) and is available for local accounts only.
 
 OAuth endpoints:
@@ -212,10 +212,12 @@ GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and 
 `POST /api/containers/:id/measurements` persists a new measurement, refreshes sensor heartbeat data, and updates the container's operational fill state.
 `manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
 `POST /planning/optimize-tour` excludes containers already assigned to non-terminal tours in the same zone within `+/- 120 minutes` of `scheduledFor`; explicitly supplied `manualContainerIds` still override that schedule deferral.
-`GET /api/planning/agents` returns each active agent with additive zone-assignment data (`zoneId`, `zoneCode`, `zoneName`) so manager planning can keep assignments zone-safe.
-`POST /api/planning/optimize-tour` returns `startLocation` when the selected zone has a configured depot and uses that depot as the route anchor for candidate ordering and route metrics.
+`GET /api/planning/agents` returns each active agent with additive zone-assignment data (`zoneId`, `zoneCode`, `zoneName`); the manager planning UI uses the selected zone to keep assignment choices zone-safe and labels the zone with `zoneName` rather than `zoneCode`.
+`POST /api/planning/optimize-tour` returns `startLocation` when the selected zone has a configured depot, uses that depot as the route anchor for candidate ordering and route metrics, and caps the optimized route to four selected containers per zone request.
+`POST /api/planning/optimize-tour` reports the applied optimization stages (`nearest_neighbor`, `two_opt`), selected stop count, and whether the 2-opt pass stopped at the server-side optimization time budget.
 `orderedContainerIds` in `POST /planning/create-tour` must all belong to the selected `zoneId`.
 When `assignedAgentId` is provided to `POST /api/planning/create-tour`, that agent must already belong to the selected zone.
+`orderedContainerIds` in `POST /api/planning/create-tour` may contain at most four container IDs.
 `POST /api/planning/create-tour` computes ETAs from the zone depot to the first stop and then across the ordered route.
 `GET /api/planning/dashboard` returns `telemetryHealth.lastMeasurementAt` as an ISO 8601 timestamp string or `null`.
 `GET /api/planning/heatmap` returns a pre-aggregated manager heatmap read model with `zoneSummaries`, `containerSignals`, and deterministic `low` / `medium` / `high` risk tiers.

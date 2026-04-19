@@ -11,7 +11,13 @@ import type { RoutePoint } from "../state/planningDraft";
 import "../styles/OperationsPages.css";
 
 type Zone = { id: string; name: string };
-type Agent = { id: string; displayName?: string | null; email: string };
+type Agent = {
+  id: string;
+  displayName?: string | null;
+  email: string;
+  zoneId?: string | null;
+  zoneName?: string | null;
+};
 
 const toScheduledIsoString = (value: string) => {
   if (value.trim().length === 0) {
@@ -30,6 +36,17 @@ const getErrorMessage = (error: unknown, fallbackMessage: string) =>
   error instanceof Error && error.message.trim().length > 0
     ? error.message
     : fallbackMessage;
+
+const formatOptimizationAlgorithm = (algorithm: string) => {
+  switch (algorithm) {
+    case "nearest_neighbor":
+      return "nearest-neighbor";
+    case "two_opt":
+      return "2-opt";
+    default:
+      return algorithm;
+  }
+};
 
 export default function ManagerPlanningPage() {
   const {
@@ -56,15 +73,31 @@ export default function ManagerPlanningPage() {
 
   const zones = ((zonesQuery.data as { zones?: Zone[] } | undefined)?.zones ?? []);
   const agents = ((agentsQuery.data as { agents?: Agent[] } | undefined)?.agents ?? []);
+  const selectedZoneName = zones.find((zone) => zone.id === draft.zoneId)?.name ?? null;
+  const availableAgents = useMemo(
+    () => agents.filter((agent) => agent.zoneId === draft.zoneId),
+    [agents, draft.zoneId],
+  );
 
   const optimizationMetrics = useMemo(
     () =>
       draft.optimizationMetrics ??
       ((optimizeMutation.data as {
-        metrics?: { totalDistanceKm?: number; estimatedDurationMinutes?: number };
+        metrics?: {
+          totalDistanceKm?: number;
+          estimatedDurationMinutes?: number;
+          selectedContainerCount?: number;
+          maxContainerCount?: number;
+          algorithmsApplied?: string[];
+          optimizationTimedOut?: boolean;
+        };
       } | undefined)?.metrics ?? null),
     [draft.optimizationMetrics, optimizeMutation.data],
   );
+  const optimizationAlgorithmsLabel =
+    optimizationMetrics?.algorithmsApplied
+      ?.map((algorithm) => formatOptimizationAlgorithm(algorithm))
+      .join(" + ") ?? null;
 
   const scheduledForIsoString = toScheduledIsoString(draft.scheduledFor);
   const zonePlaceholderLabel = zonesQuery.isLoading
@@ -72,11 +105,15 @@ export default function ManagerPlanningPage() {
     : zonesQuery.isError
       ? "Unable to load zones"
       : "Select zone";
-  const agentPlaceholderLabel = agentsQuery.isLoading
-    ? "Loading agents..."
-    : agentsQuery.isError
-      ? "Unable to load agents"
-      : "Unassigned";
+  const agentPlaceholderLabel = !draft.zoneId
+    ? "Select zone first"
+    : agentsQuery.isLoading
+      ? "Loading agents..."
+      : agentsQuery.isError
+        ? "Unable to load agents"
+        : availableAgents.length === 0
+          ? "No agents in selected zone"
+          : "Unassigned";
 
   const resetOptimizationState = () => {
     resetOptimization();
@@ -109,15 +146,24 @@ export default function ManagerPlanningPage() {
           totalDistanceKm?: number;
           estimatedDurationMinutes?: number;
           deferredForNearbyTours?: number;
+          selectedContainerCount?: number;
+          maxContainerCount?: number;
+          algorithmsApplied?: string[];
+          optimizationTimedOut?: boolean;
         };
       };
 
       const nextRoute = Array.isArray(response.route) ? response.route : [];
       const deferredForNearbyTours = response.metrics?.deferredForNearbyTours ?? 0;
+      const optimizationTimedOut = response.metrics?.optimizationTimedOut ?? false;
       setOrderedRoute(nextRoute);
       setOptimizationMetrics({
         totalDistanceKm: response.metrics?.totalDistanceKm,
         estimatedDurationMinutes: response.metrics?.estimatedDurationMinutes,
+        selectedContainerCount: response.metrics?.selectedContainerCount,
+        maxContainerCount: response.metrics?.maxContainerCount,
+        algorithmsApplied: response.metrics?.algorithmsApplied,
+        optimizationTimedOut,
       });
 
       if (nextRoute.length === 0) {
@@ -131,13 +177,15 @@ export default function ManagerPlanningPage() {
       }
 
       setStatus(
-        deferredForNearbyTours > 0
-          ? `Route generated. ${deferredForNearbyTours} matching container${
-              deferredForNearbyTours === 1 ? " was" : "s were"
-            } skipped because ${
-              deferredForNearbyTours === 1 ? "it is" : "they are"
-            } already planned on nearby tours.`
-          : "Route generated. Review the stop order, then create the tour.",
+        `${
+          deferredForNearbyTours > 0
+            ? `Route generated. ${deferredForNearbyTours} matching container${
+                deferredForNearbyTours === 1 ? " was" : "s were"
+              } skipped because ${
+                deferredForNearbyTours === 1 ? "it is" : "they are"
+              } already planned on nearby tours.`
+            : "Route generated. Review the stop order, then create the tour."
+        }${optimizationTimedOut ? " The 2-opt pass stopped when the planning time budget elapsed." : ""}`,
         "success",
       );
     } catch (error) {
@@ -160,6 +208,14 @@ export default function ManagerPlanningPage() {
 
     if (!scheduledForIsoString) {
       setStatus("Enter a valid schedule before creating the tour.", "error");
+      return;
+    }
+
+    if (
+      draft.assignedAgentId &&
+      !availableAgents.some((agent) => agent.id === draft.assignedAgentId)
+    ) {
+      setStatus("Select an agent who belongs to the selected zone before creating the tour.", "error");
       return;
     }
 
@@ -216,8 +272,9 @@ export default function ManagerPlanningPage() {
       <header className="ops-hero">
         <h1>Tour Planning Wizard</h1>
         <p>
-          Configure zone, threshold, and schedule to prepare a route plan, then
-          optionally assign an agent before creating the tour.
+          Configure zone, threshold, and schedule to prepare a route plan. The
+          planning service applies nearest-neighbor plus 2-opt from the selected
+          zone depot, then tour creation persists the resulting route.
         </p>
       </header>
 
@@ -272,6 +329,7 @@ export default function ManagerPlanningPage() {
               disabled={zonesQuery.isLoading || zonesQuery.isError}
               onChange={(event) => {
                 clearStatus();
+                setAssignedAgentId("");
                 setZoneId(event.target.value);
                 resetOptimizationState();
               }}
@@ -320,29 +378,35 @@ export default function ManagerPlanningPage() {
               id="manager-planning-assigned-agent"
               className="ops-select"
               value={draft.assignedAgentId}
-              disabled={agentsQuery.isLoading}
+              disabled={agentsQuery.isLoading || !draft.zoneId}
               onChange={(event) => {
                 clearStatus();
                 setAssignedAgentId(event.target.value);
               }}
             >
               <option value="">{agentPlaceholderLabel}</option>
-              {agents.map((agent) => (
+              {availableAgents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.displayName || agent.email}
                 </option>
               ))}
             </select>
+            {!draft.zoneId ? (
+              <p className="ops-subtle">Select a zone first to see assignable agents.</p>
+            ) : null}
             {agentsQuery.isError ? (
               <p className="ops-subtle" role="status" aria-live="polite">
                 Agent data could not be loaded. You can still create the tour
                 without assigning anyone yet.
               </p>
             ) : null}
-            {!agentsQuery.isLoading && !agentsQuery.isError && agents.length === 0 ? (
+            {!agentsQuery.isLoading &&
+            !agentsQuery.isError &&
+            draft.zoneId &&
+            availableAgents.length === 0 ? (
               <p className="ops-subtle">
-                No active agents are available right now. The tour can stay
-                unassigned.
+                No active agents are assigned to {selectedZoneName ?? "this zone"} right now.
+                The tour can stay unassigned.
               </p>
             ) : null}
           </div>
@@ -396,10 +460,25 @@ export default function ManagerPlanningPage() {
       <article className="ops-card">
         <h2>Optimized Route</h2>
         {optimizationMetrics ? (
-          <p className="ops-card-intro">
-            Estimated distance: {optimizationMetrics.totalDistanceKm ?? 0} km -
-            Estimated duration: {optimizationMetrics.estimatedDurationMinutes ?? 0} min
-          </p>
+          <>
+            <p className="ops-card-intro">
+              Estimated distance: {optimizationMetrics.totalDistanceKm ?? 0} km -
+              Estimated duration: {optimizationMetrics.estimatedDurationMinutes ?? 0} min
+            </p>
+            <p className="ops-subtle">
+              Stops selected: {optimizationMetrics.selectedContainerCount ?? draft.orderedRoute.length}
+              {optimizationMetrics.maxContainerCount
+                ? ` / ${optimizationMetrics.maxContainerCount}`
+                : ""}
+              {optimizationAlgorithmsLabel ? ` - Algorithms: ${optimizationAlgorithmsLabel}` : ""}
+            </p>
+            {optimizationMetrics.optimizationTimedOut ? (
+              <p className="ops-subtle">
+                The 2-opt pass stopped at the planning time budget. Review the stop order before
+                creating the tour.
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         {draft.orderedRoute.length === 0 ? (

@@ -87,7 +87,7 @@ describe('PlanningRepository invariants', () => {
     );
   });
 
-  it('reorders depot-anchored routes when the first leg is shorter after a segment reversal', async () => {
+  it('caps depot-anchored routes to four containers and reports both optimization stages', async () => {
     const selectZoneDepot = {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([
@@ -182,12 +182,53 @@ describe('PlanningRepository invariants', () => {
     });
 
     expect(result.route.map((item: any) => item.id)).toEqual([
-      'container-2',
-      'container-3',
       'container-4',
       'container-5',
-      'container-1',
+      'container-2',
+      'container-3',
     ]);
+    expect(result.metrics).toEqual(
+      expect.objectContaining({
+        selectedContainerCount: 4,
+        maxContainerCount: 4,
+        algorithmsApplied: ['nearest_neighbor', 'two_opt'],
+        optimizationTimedOut: false,
+      }),
+    );
+  });
+
+  it('rejects planned tours when more than four containers are provided', async () => {
+    const tx = {
+      select: vi.fn(),
+      insert: vi.fn(),
+    };
+
+    const dbMock = {
+      transaction: vi.fn(async (callback: (trx: typeof tx) => unknown) => callback(tx)),
+    };
+
+    const repository = new PlanningRepository(dbMock as any);
+
+    await expect(
+      repository.createPlannedTour(
+        {
+          name: 'Morning route',
+          zoneId: 'zone-1',
+          scheduledFor: new Date().toISOString(),
+          orderedContainerIds: [
+            'container-1',
+            'container-2',
+            'container-3',
+            'container-4',
+            'container-5',
+          ],
+        },
+        'manager-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(tx.select).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
   });
 
   it('rejects planned tours when containers do not belong to selected zone', async () => {

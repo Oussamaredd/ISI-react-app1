@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { authApi } from "../services/authApi";
+import { hasSupportWorkspaceAccess } from "../utils/authz";
 
 const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 80;
@@ -67,6 +68,7 @@ export default function SettingsPage() {
   const hasPasswordInput = Boolean(currentPassword || newPassword || confirmPassword);
   const hasAnyChanges = hasProfileChanged || hasPasswordInput;
   const canUpdatePassword = user?.provider === "local";
+  const supportLinkTarget = hasSupportWorkspaceAccess(user) ? "/app/support" : "/support";
   const roleLabel = toTitleCase(user?.role ?? "member");
   const providerLabel = user?.provider === "google" ? "Google SSO" : "Email and password";
   const accountStatusLabel = user?.isActive === false ? "Limited" : "Active";
@@ -430,7 +432,7 @@ export default function SettingsPage() {
               <li>Contact support if account activity looks unusual.</li>
             </ul>
 
-            <Link className="app-settings-link" to="/app/support">
+            <Link className="app-settings-link" to={supportLinkTarget}>
               Contact support
             </Link>
           </article>

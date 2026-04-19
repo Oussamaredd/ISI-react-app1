@@ -21,6 +21,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_CHECK_TIMEOUT_MS = 6000;
 const AUTH_CHECK_RETRIES = 2;
 const AUTH_RETRY_DELAY_MS = 300;
+const AUTH_RECHECK_DELAY_MS = 3000;
 
 const isProtectedAppPath = () =>
   typeof window !== 'undefined' && window.location.pathname.startsWith('/app');
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return 'anonymous';
   });
   const abortControllerRef = useRef<AbortController | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const isLoading = authState === 'unknown';
 
@@ -45,7 +47,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(Boolean(nextUser));
   }, []);
 
-  const refreshAuth = useCallback(async () => {
+  const clearRetryTimer = useCallback(() => {
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
+
+  const refreshAuth = useCallback(async function refreshAuthInternal() {
+    clearRetryTimer();
     abortControllerRef.current?.abort();
     const lifecycleController = new AbortController();
     abortControllerRef.current = lifecycleController;
@@ -133,15 +143,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    if (getAccessToken()) {
-      setIsAuthenticated(true);
-      setAuthState('authenticated');
+    if (shouldBlockOnBootstrap) {
+      setAuthState('unknown');
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        void refreshAuthInternal();
+      }, AUTH_RECHECK_DELAY_MS);
       return;
     }
 
     applyAuthenticatedState(null);
     setAuthState('anonymous');
-  }, [applyAuthenticatedState]);
+  }, [applyAuthenticatedState, clearRetryTimer]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -149,6 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const handleSessionInvalidated = () => {
+      clearRetryTimer();
       abortControllerRef.current?.abort();
       clearAccessToken();
       applyAuthenticatedState(null);
@@ -159,7 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
     };
-  }, [applyAuthenticatedState]);
+  }, [applyAuthenticatedState, clearRetryTimer]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -167,9 +185,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       isMountedRef.current = false;
+      clearRetryTimer();
       abortControllerRef.current?.abort();
     };
-  }, [refreshAuth]);
+  }, [clearRetryTimer, refreshAuth]);
 
   useEffect(() => {
     if (!isLoading && window.location.search.includes('auth=')) {
@@ -187,6 +206,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const logout = useCallback(async () => {
+    clearRetryTimer();
     try {
       await authApi.logout();
     } catch {
@@ -196,7 +216,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       applyAuthenticatedState(null);
       setAuthState('anonymous');
     }
-  }, [applyAuthenticatedState]);
+  }, [applyAuthenticatedState, clearRetryTimer]);
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
     const token = getAccessToken();

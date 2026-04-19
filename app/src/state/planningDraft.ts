@@ -11,6 +11,10 @@ export type RoutePoint = {
 export type PlanningDraftMetrics = {
   totalDistanceKm?: number;
   estimatedDurationMinutes?: number;
+  selectedContainerCount?: number;
+  maxContainerCount?: number;
+  algorithmsApplied?: string[];
+  optimizationTimedOut?: boolean;
 };
 
 export type PlanningDraftState = {

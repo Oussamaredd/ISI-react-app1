@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run build && concurrently --kill-others-on-fail -n api,types \"cross-env NODE_ENV=development node --watch-path=dist --watch-preserve-output dist/main.js\" \"tsc -p tsconfig.build.json -w --preserveWatchOutput --noEmitOnError\"",
+    "dev": "cross-env NODE_ENV=development node ./scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:debug": "npm run build && cross-env NODE_ENV=development node dist/main.js",
-    "lint": "eslint .",
+    "lint": "eslint . --cache --cache-strategy content --cache-location ../tmp/eslint/api",
     "typecheck": "tsc --noEmit",
     "test": "node ./scripts/run-vitest.mjs --configLoader runner --run",
-    "test:coverage": "node ./scripts/run-vitest.mjs --configLoader runner --coverage"
+    "test:coverage": "node ./scripts/run-vitest.mjs --configLoader runner --coverage",
+    "test:watch": "node ./scripts/run-vitest.mjs --configLoader runner"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.10",

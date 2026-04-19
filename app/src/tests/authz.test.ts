@@ -5,6 +5,7 @@ import {
   hasAgentAccess,
   hasCitizenAccess,
   hasManagerAccess,
+  hasSupportWorkspaceAccess,
   type UserLike,
 } from "../utils/authz";
 
@@ -56,6 +57,13 @@ describe("authz role helpers", () => {
     expect(hasAgentAccess({ role: "agent" })).toBe(true);
     expect(hasAgentAccess({ role: "admin" })).toBe(true);
     expect(hasAgentAccess({ roles: [{ name: "super_admin" }] })).toBe(true);
+  });
+
+  test("grants support workspace access to support-facing roles only", () => {
+    expect(hasSupportWorkspaceAccess({ role: "agent" })).toBe(true);
+    expect(hasSupportWorkspaceAccess({ role: "manager" })).toBe(true);
+    expect(hasSupportWorkspaceAccess({ role: "admin" })).toBe(true);
+    expect(hasSupportWorkspaceAccess({ role: "citizen" })).toBe(false);
   });
 
   test("does not grant citizen or agent access to unrelated roles", () => {

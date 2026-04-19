@@ -1,9 +1,13 @@
 import 'reflect-metadata';
 
+import type { Server } from 'node:http';
+
 import type { LogLevel } from '@nestjs/common';
+import type { Request, Response } from 'express';
 
 import { resolveApiPort } from './config/api-port.js';
 import { ensureApiEnvLoaded } from './config/env-file.js';
+import { buildLivenessPayload } from './modules/health/health.payloads.js';
 import { startTelemetry } from './observability/tracing.js';
 
 const resolveNestLoggerOption = (
@@ -26,6 +30,30 @@ const resolveNestLoggerOption = (
 
 async function bootstrap() {
   ensureApiEnvLoaded();
+  const port = resolveApiPort(process.env as Record<string, unknown>);
+  const host = process.env.API_HOST ?? '0.0.0.0';
+  const expressModule = await import('express');
+  const expressFactory = expressModule.default;
+  const expressApp = expressFactory();
+  const { json, urlencoded } = expressModule;
+
+  const writeLivenessResponse = (_request: Request, response: Response) => {
+    response.status(200).json(buildLivenessPayload());
+  };
+
+  expressApp.set('trust proxy', 1);
+  expressApp.get('/health', writeLivenessResponse);
+  expressApp.get('/healthz', writeLivenessResponse);
+  expressApp.get('/startupz', writeLivenessResponse);
+
+  const server = await new Promise<Server>((resolve, reject) => {
+    const nextServer = expressApp.listen(port, host, () => {
+      nextServer.off('error', reject);
+      resolve(nextServer);
+    });
+    nextServer.once('error', reject);
+  });
+
   const telemetry = await startTelemetry(process.env);
   let telemetryShutdownRegistered = false;
   let telemetryShutdownStarted = false;
@@ -43,7 +71,7 @@ async function bootstrap() {
     const [
       nestCommon,
       nestCore,
-      expressModule,
+      platformExpressImport,
       compressionModule,
       helmetModule,
       nestPino,
@@ -57,7 +85,7 @@ async function bootstrap() {
     ] = await Promise.all([
       import('@nestjs/common'),
       import('@nestjs/core'),
-      import('express'),
+      import('@nestjs/platform-express'),
       import('compression'),
       import('helmet'),
       import('nestjs-pino'),
@@ -72,7 +100,7 @@ async function bootstrap() {
 
     const { Logger: NestLogger, ValidationPipe } = nestCommon;
     const { NestFactory } = nestCore;
-    const { json, urlencoded } = expressModule;
+    const { ExpressAdapter } = platformExpressImport;
     const compression = compressionModule.default;
     const helmet = helmetModule.default;
     const { Logger } = nestPino;
@@ -85,10 +113,14 @@ async function bootstrap() {
     const { attachRootHealthRoutes } = rootHealthRoutesImport;
     const { shouldCompressResponse } = await import('./modules/performance/response-compression.js');
 
-    const app = await NestFactory.create(AppModule, {
-      bufferLogs: true,
-      logger: resolveNestLoggerOption(process.env.NODE_ENV, process.env.LOG_LEVEL),
-    });
+    const app = await NestFactory.create(
+      AppModule,
+      new ExpressAdapter(expressApp),
+      {
+        bufferLogs: true,
+        logger: resolveNestLoggerOption(process.env.NODE_ENV, process.env.LOG_LEVEL),
+      },
+    );
 
     app.useLogger(app.get(Logger));
     app.flushLogs();
@@ -140,8 +172,6 @@ async function bootstrap() {
     );
     app.useGlobalFilters(new HttpExceptionFilter());
 
-    const port = resolveApiPort(process.env as Record<string, unknown>);
-    const host = process.env.API_HOST ?? '0.0.0.0';
     const origins = resolveCorsOrigins({
       corsOrigins: process.env.CORS_ORIGINS,
       clientOrigin: process.env.CLIENT_ORIGIN,
@@ -153,8 +183,6 @@ async function bootstrap() {
       credentials: true,
     });
 
-    const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.set('trust proxy', 1);
     attachRootHealthRoutes(expressApp, app.get(HealthService));
 
     if (!telemetryShutdownRegistered) {
@@ -170,10 +198,15 @@ async function bootstrap() {
       });
     }
 
-    await app.listen(port, host);
+    await app.init();
     const displayHost = host === '0.0.0.0' ? 'localhost' : host;
     NestLogger.log(`API listening on http://${displayHost}:${port}/api`, 'Bootstrap');
   } catch (error) {
+    if (server.listening) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    }
     await shutdownTelemetry();
     throw error;
   }

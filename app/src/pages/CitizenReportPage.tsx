@@ -22,6 +22,9 @@ type ContainerOption = {
 
 type StatusTone = 'success' | 'error';
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const formatContainerStatus = (value?: string | null) => {
   if (!value) {
     return 'Unknown';
@@ -38,6 +41,30 @@ const formatFillLevel = (value?: number | null) =>
   typeof value === 'number' ? `${Math.round(value)}%` : 'Unavailable';
 
 const normalizeSearchValue = (value: string) => value.trim().toLowerCase();
+
+const normalizeOptionalField = (value: string) => {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+};
+
+const isValidLatitude = (value: string) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= -90 && parsed <= 90;
+};
+
+const isValidLongitude = (value: string) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= -180 && parsed <= 180;
+};
+
+const isValidHttpUrl = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
 
 const containerMatchesSearch = (container: ContainerOption, searchTerm: string) => {
   const normalizedSearch = normalizeSearchValue(searchTerm);
@@ -62,6 +89,23 @@ const resolveSubmissionMessage = (error: unknown) => {
 
     if (error.status === 401) {
       return 'Your session expired. Sign in again to continue reporting.';
+    }
+
+    if (error.status === 400) {
+      const details =
+        error.payload &&
+        typeof error.payload === 'object' &&
+        Array.isArray((error.payload as { details?: unknown }).details)
+          ? (error.payload as { details: unknown[] }).details.filter(
+              (detail): detail is string => typeof detail === 'string' && detail.trim().length > 0,
+            )
+          : [];
+
+      if (details.length > 0) {
+        return details[0];
+      }
+
+      return 'Report details are invalid. Review the selected container, coordinates, and photo URL before submitting again.';
     }
   }
 
@@ -140,14 +184,45 @@ export default function CitizenReportPage() {
     event.preventDefault();
     setConfirmationMessage('');
 
+    const normalizedContainerId = containerId.trim();
+    const normalizedLatitude = normalizeOptionalField(reportedLocation.latitude);
+    const normalizedLongitude = normalizeOptionalField(reportedLocation.longitude);
+    const normalizedPhotoUrl = normalizeOptionalField(photoUrl);
+
+    if (!UUID_PATTERN.test(normalizedContainerId)) {
+      setStatusTone('error');
+      setConfirmationMessage(
+        'The selected mapped container is invalid. Reload the page and choose a live container before submitting again.',
+      );
+      return;
+    }
+
+    if (normalizedLatitude && !isValidLatitude(normalizedLatitude)) {
+      setStatusTone('error');
+      setConfirmationMessage('Latitude must be a valid value between -90 and 90.');
+      return;
+    }
+
+    if (normalizedLongitude && !isValidLongitude(normalizedLongitude)) {
+      setStatusTone('error');
+      setConfirmationMessage('Longitude must be a valid value between -180 and 180.');
+      return;
+    }
+
+    if (normalizedPhotoUrl && !isValidHttpUrl(normalizedPhotoUrl)) {
+      setStatusTone('error');
+      setConfirmationMessage('Photo URL must use http or https.');
+      return;
+    }
+
     try {
       const response = (await createReportMutation.mutateAsync({
-        containerId,
+        containerId: normalizedContainerId,
         reportType,
         description: description.trim() || undefined,
-        latitude: reportedLocation.latitude || undefined,
-        longitude: reportedLocation.longitude || undefined,
-        photoUrl: photoUrl || undefined,
+        latitude: normalizedLatitude,
+        longitude: normalizedLongitude,
+        photoUrl: normalizedPhotoUrl,
       })) as { confirmationMessage?: string };
 
       setStatusTone('success');

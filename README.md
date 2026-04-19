@@ -47,9 +47,9 @@ cp mobile/.env.example mobile/.env.local
 npm run dev
 ```
 
-`npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts. The default readiness wait timeout is `180000ms`.
+`npm run dev` now gives the local direct API liveness URL from the Port Contract a best-effort warm-up window before Vite starts. If the API is still warming after `30000ms`, the frontend dev server still starts and the app falls back to its built-in API degraded/retry handling instead of killing the whole local-dev session.
 
-The API workspace dev server now does an initial local build, runs `dist/main.js` under Node watch mode, and keeps `dist/` fresh with TypeScript watch output during local development.
+The API workspace dev server now boots from the latest successful `dist/` build immediately when one is available, waits for that runtime to become healthy, then refreshes `dist/` in the background and reloads on later successful watch recompiles.
 
 Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
@@ -97,7 +97,7 @@ Docker dev:
 - Public edge health: `http://localhost:3000/health`
 - Backend container still listens on `API_PORT=3001`, but that port is internal-only and not published to the local machine
 
-Use `5173` or `3000` in the browser. Use direct `3001` only for local-native API diagnostics. In Docker, `3000` is the only browser-facing entrypoint.
+Use `5173` in the browser for local/native dev. Use `3000` in the browser only for Docker dev. Use direct `3001` only for local-native API diagnostics.
 
 If local-native frontend `/api/*` requests fail, verify the API process directly with:
 
@@ -109,7 +109,7 @@ curl -f http://localhost:3001/api/health/ready
 curl -f http://localhost:3001/api/metrics
 ```
 
-If the readiness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the database or API issue is fixed.
+If the API liveness check still has not answered after the best-effort warm-up window, `npm run dev` now launches the frontend dev server anyway and leaves the API process running. Read the API startup output in the terminal, wait for `http://localhost:3001/api` to come up, and use the app through `http://localhost:5173`.
 
 ## Auth Routes (Local/Docker)
 
@@ -194,16 +194,19 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run dev` - local/native app + api dev workflow
 - `npm run dev:mobile` - Expo mobile shell
 - `npm run dev:doctor` - fast local diagnostics (env keys, db reachability/migrations, health endpoints)
-- `npm run build` - build database, app, api
-- `npm run test` - app + mobile + api tests; the `ecotrack-app` default suite excludes the dedicated key-journey e2e spec so it does not duplicate the separate e2e lane
+- `npm run build` - reuse the current database dist build when it is already fresh, then build app + api in parallel
+- `npm run check:app` / `npm run check:mobile` / `npm run check:api` / `npm run check:database` - fast daily workspace validation sets that only touch the layer you are editing
+- `npm run validate:affected` - inspect the current git working tree and run only the affected workspace validation matrix plus doc-sync; falls back to the full suite for root, env, infrastructure, and CI changes
+- `npm run validate:full` - full developer validation gate for cross-layer, env, and workflow changes (`validate-env:all`, `validate-doc-sync`, `lint`, `typecheck`, `test`)
+- `npm run test` - app + mobile + api tests in the stable serial order; the `ecotrack-app` default suite excludes the dedicated key-journey e2e spec so it does not duplicate the separate e2e lane
 - `npm run test:mobile` - mobile workspace tests
-- `npm run test:api` - backend tests with required `ecotrack-database` build pre-step
+- `npm run test:api` - backend tests with a cached `ecotrack-database` build pre-step
 - `npm run test:e2e` - key citizen/agent/manager journey tests; the app workspace enables the dedicated e2e spec only for this lane via `ECOTRACK_INCLUDE_APP_E2E=1`
-- `npm run test:coverage` - coverage-gated validation for app + api; the app coverage lane re-enables the dedicated key-journey e2e spec so coverage matches the release gate
-- `npm run test:coverage:api` - backend coverage with required `ecotrack-database` build pre-step
-- `npm run typecheck` - app + mobile + api + database type checks
+- `npm run test:coverage` - coverage-gated validation for app + mobile + api in the stable serial order; the app coverage lane re-enables the dedicated key-journey e2e spec so coverage matches the release gate
+- `npm run test:coverage:api` - backend coverage with a cached `ecotrack-database` build pre-step
+- `npm run typecheck` - app + mobile + api + database type checks in parallel with TypeScript incremental caches stored under `tmp/tsc/`
 - `npm run typecheck --workspace=ecotrack-mobile` - mobile workspace type checks
-- `npm run lint` - lint + architecture boundaries
+- `npm run lint` - lint + architecture boundaries in parallel with ESLint content caches stored under `tmp/eslint/`
 - `npm run lint --workspace=ecotrack-mobile` - mobile workspace lint
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
 - `npm run validate-env:all` - validate all committed env templates for local, Docker, and deploy workflows
@@ -226,6 +229,13 @@ Database name policy: committed connection-string templates target `ticketdb`.
 
 `npm run infra:health` is a strict gate: it exits non-zero when Docker is unreachable or any core service health check fails.
 `npm run smoke-test` validates the single-entrypoint Docker contract: local machine port `3001` stays closed, internal backend `3001` stays healthy, and OAuth `/api/auth/google` still emits the `3000` callback origin.
+
+Daily validation workflow:
+
+- Use the relevant `npm run check:<workspace>` command while iterating inside one layer.
+- Use `npm run validate:affected` before handoff when your change stays inside one or more product layers and you want the repo to choose the affected validation set from the current git diff.
+- Use `npm run validate:full` for root scripts, infrastructure, env templates, CI workflow, or other cross-layer changes.
+- Reserve `npm run quality:product-hardening` for release-style hardening work; it still includes the slow e2e, realtime, coverage, mobile readiness, and Lighthouse gates.
 
 ## Architecture Contract
 

@@ -22,6 +22,7 @@ This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/mai
 Special case:
 
 - `/#<section-id>` remains accessible for authenticated users to support route+scroll links back to marketing sections.
+- The public landing route (`/`) redirects to `/app` only after the backend confirms an authenticated session; a cached local bearer alone keeps session discovery in progress and does not bypass the landing surface.
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
 - Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
@@ -40,26 +41,27 @@ Special case:
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. The page is zone-assigned, shows the zone depot/start location, loads all paginated mapped containers for that assigned zone to verify route coverage, and renders only the routed stop sequence on the map with numbered operational markers. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
-| `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, assignment, and manual persisted-route rebuild for the last created tour |
+| `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, zone-safe assignment, and manual persisted-route rebuild for the last created tour. The page requires a zone before it lists assignable agents, labels zones by zone name for clarity, and shows the server-side nearest-neighbor + 2-opt optimization summary for the capped four-stop route. |
 | `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address |
-| `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views |
-| `/app/tickets` | `Navigate` redirect | Compatibility redirect to `/app/support#simple` |
-| `/app/tickets/advanced` | `Navigate` redirect | Compatibility redirect to `/app/support#advanced` |
-| `/app/tickets/create` | `Navigate` redirect | Compatibility redirect to `/app/support#create` |
-| `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param |
-| `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow |
+| `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views; requires support-workspace access (`agent`/`manager`/`admin`/`super_admin`), otherwise redirects to public `/support` |
+| `/app/tickets` | `Navigate` redirect | Compatibility redirect to `/app/support#simple` for support-workspace roles; citizen-only sessions fall back to public `/support` |
+| `/app/tickets/advanced` | `Navigate` redirect | Compatibility redirect to `/app/support#advanced` for support-workspace roles; citizen-only sessions fall back to public `/support` |
+| `/app/tickets/create` | `Navigate` redirect | Compatibility redirect to `/app/support#create` for support-workspace roles; citizen-only sessions fall back to public `/support` |
+| `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param; requires support-workspace access, otherwise redirects to public `/support` |
+| `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow; requires support-workspace access, otherwise redirects to public `/support` |
 | `/app/settings` | `SettingsPage` | Account settings workspace for display name updates, profile photo upload/removal, password changes for local accounts, and account/security overview panels |
 | `/app/admin` | `AdminDashboard` | Requires `admin`/`super_admin` role |
 
 Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
+- Protected `/app/*` routes keep the shared session gate visible while `/api/auth/status` is still retrying, then either open the workspace or fall through to `/login` once the backend resolves the session.
 - Citizen-capable accounts with no submitted citizen reports see a focused first-report onboarding panel at `/app` with one dominant report CTA; once the first report exists, `/app` switches that lane to lighter report/profile/history/challenges shortcuts.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with the shared Workspace hub first.
 - Primary navigation can include Workspace, Dashboard, Agent Tour, Tour Planning, Tour Operations, Manager Reports, Report Overflow, Citizen Profile, and Challenges depending on role.
-- Sidebar bottom: Settings, Support, optional Admin Center, and Sign Out actions.
+- Sidebar bottom: Settings, a role-aware Support link (internal support workspace for support-workspace roles, public `/support` for citizen-only sessions), optional Admin Center, and Sign Out actions.
 - Sidebar toggle behavior:
   - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
   - Desktop expanded state: toggle is anchored at the right side of the sidebar top row (logo remains visible on the left).

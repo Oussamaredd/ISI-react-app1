@@ -25,6 +25,7 @@ import {
   hasAgentAccess,
   hasCitizenAccess,
   hasManagerAccess,
+  hasSupportWorkspaceAccess,
 } from "../utils/authz";
 
 type AppNavItem = {
@@ -125,6 +126,8 @@ export default function AppLayout() {
   const canAccessAgent = hasAgentAccess(user);
   const canAccessCitizen = hasCitizenAccess(user);
   const canAccessManager = hasManagerAccess(user);
+  const canAccessSupportWorkspace = hasSupportWorkspaceAccess(user);
+  const supportLinkTarget = canAccessSupportWorkspace ? "/app/support" : "/support";
   const displayName = user?.displayName || user?.name || user?.email || "User";
   const profileImageUrl = getUserAvatarUrl(user);
   const [hasAvatarError, setHasAvatarError] = React.useState(false);
@@ -329,7 +332,7 @@ export default function AppLayout() {
         matches: (pathname) => isRouteActive(pathname, "/app/settings"),
       },
       {
-        to: "/app/support",
+        to: supportLinkTarget,
         label: "Support",
         icon: LifeBuoy,
         utility: true,
@@ -344,7 +347,7 @@ export default function AppLayout() {
         matches: (pathname) => isRouteActive(pathname, "/app/admin"),
       },
     ],
-    []
+    [supportLinkTarget]
   );
 
   const currentPageCatalog = React.useMemo<PageMeta[]>(

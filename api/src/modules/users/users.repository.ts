@@ -261,7 +261,7 @@ export class UsersRepository {
     return updated ?? null;
   }
 
-  async updateUserProfile(userId: string, params: { displayName: string; avatarUrl?: string }) {
+  async updateUserProfile(userId: string, params: { displayName: string; avatarUrl?: string | null }) {
     const displayName = params.displayName.trim();
     if (!displayName) {
       throw new BadRequestException('Display name is required.');
@@ -294,9 +294,13 @@ export class UsersRepository {
     return updated;
   }
 
-  private normalizeAvatarUrl(avatarUrl?: string) {
+  private normalizeAvatarUrl(avatarUrl?: string | null) {
     if (avatarUrl === undefined) {
       return undefined;
+    }
+
+    if (avatarUrl === null) {
+      return null;
     }
 
     const normalized = avatarUrl.trim();

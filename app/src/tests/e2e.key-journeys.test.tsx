@@ -35,6 +35,8 @@ vi.mock('../hooks/usePlanning', () => ({
 }));
 
 describe('E2E key journeys (citizen/agent/manager)', () => {
+  const citizenContainerId = 'f7a67f92-f8f7-4104-97b3-9136310cb2dd';
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -64,7 +66,7 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue({
       containers: [
         {
-          id: 'container-1',
+          id: citizenContainerId,
           code: 'CTR-001',
           label: '17 RUE CROIX DES PETITS CHAMPS - Trilib',
           fillLevelPercent: 76,
@@ -78,15 +80,22 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     const { container } = renderWithProviders(<CitizenReportPage />);
 
     expect(await screen.findByRole('heading', { name: /Report Container Issue/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', {
+        name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i,
+      }),
+    ).toBeInTheDocument();
 
     await user.tab();
-    expect(screen.getByLabelText(/Container/i)).toHaveFocus();
+    expect(screen.getByLabelText(/Find a mapped container/i)).toHaveFocus();
+    await user.tab();
+    expect(screen.getByLabelText(/^Container$/i)).toHaveFocus();
     await user.tab();
     expect(screen.getByLabelText(/Issue type/i)).toHaveFocus();
     await user.tab();
     expect(screen.getByLabelText(/Details \(optional\)/i)).toHaveFocus();
 
-    await user.selectOptions(screen.getByLabelText(/Container/i), 'container-1');
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), citizenContainerId);
     await user.type(
       screen.getByLabelText(/Details \(optional\)/i),
       'Container is full and spilling near sidewalk.',
@@ -98,7 +107,7 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     await user.click(screen.getByRole('button', { name: /Submit Report/i }));
 
     expect(mutateAsync).toHaveBeenCalledWith({
-      containerId: 'container-1',
+      containerId: citizenContainerId,
       reportType: 'container_full',
       description: 'Container is full and spilling near sidewalk.',
       latitude: '36.812300',
@@ -248,7 +257,17 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       isError: false,
     });
     (planningHooks.usePlanningAgents as Mock).mockReturnValue({
-      data: { agents: [{ id: 'agent-1', displayName: 'Alex Agent', email: 'agent@example.com' }] },
+      data: {
+        agents: [
+          {
+            id: 'agent-1',
+            displayName: 'Alex Agent',
+            email: 'agent@example.com',
+            zoneId: 'zone-1',
+            zoneName: 'North Zone',
+          },
+        ],
+      },
       isLoading: false,
       isError: false,
     });

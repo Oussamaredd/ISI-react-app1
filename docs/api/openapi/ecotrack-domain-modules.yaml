@@ -165,14 +165,14 @@ paths:
   /planning/optimize-tour:
     post:
       tags: [Planning]
-      summary: Generate optimized route candidates by zone, threshold, and depot-aware route anchor
+      summary: Generate a capped four-stop optimized route by zone, threshold, and depot-aware route anchor
       responses:
         '200':
-          description: Route candidate payload with metrics and optional startLocation
+          description: Route candidate payload with metrics, applied optimization stages, and optional startLocation
   /planning/create-tour:
     post:
       tags: [Planning]
-      summary: Create a planned tour for one zone with zone-safe agent assignment
+      summary: Create a planned four-stop tour for one zone with zone-safe agent assignment
       responses:
         '200':
           description: Created tour payload

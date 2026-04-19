@@ -52,11 +52,14 @@ type ZoneDepotPoint = LatLngPoint & { label: string };
 const EARTH_RADIUS_KM = 6371;
 const REPORT_KPI_ALLOWLIST = new Set(['tours', 'collections', 'anomalies']);
 const MAX_2OPT_PASSES = 20;
+const MAX_OPTIMIZED_ROUTE_STOPS = 4;
+const OPTIMIZATION_TIME_BUDGET_MS = 1500;
 const SCHEDULE_CONFLICT_WINDOW_MINUTES = 120;
 const TERMINAL_TOUR_STATUSES = new Set(['completed', 'closed', 'cancelled']);
 const AVERAGE_ROUTE_SPEED_KMH = 24;
 const STOP_SERVICE_DURATION_MINUTES = 4;
 const HEATMAP_LOOKBACK_HOURS = 48;
+const ROUTE_OPTIMIZATION_ALGORITHMS = ['nearest_neighbor', 'two_opt'] as const;
 
 type HeatmapFilters = {
   zoneId?: string | null;
@@ -191,6 +194,14 @@ export class PlanningRepository {
 
   async optimizeTour(dto: OptimizeTourDto) {
     const zoneDepot = await this.getZoneDepot(dto.zoneId);
+    const manualIds = Array.from(new Set(dto.manualContainerIds ?? []));
+    if (manualIds.length > MAX_OPTIMIZED_ROUTE_STOPS) {
+      throw new BadRequestException(
+        `manualContainerIds must contain at most ${MAX_OPTIMIZED_ROUTE_STOPS} container IDs`,
+      );
+    }
+
+    const manualIdSet = new Set(manualIds);
     const allCandidates = await this.db
       .select({
         id: containers.id,
@@ -212,30 +223,41 @@ export class PlanningRepository {
         metrics: {
           totalDistanceKm: 0,
           estimatedDurationMinutes: 0,
+          selectedContainerCount: 0,
+          maxContainerCount: MAX_OPTIMIZED_ROUTE_STOPS,
+          algorithmsApplied: [...ROUTE_OPTIMIZATION_ALGORITHMS],
+          optimizationTimedOut: false,
+          optimizationDurationMs: 0,
         },
       };
     }
 
-    const manualIds = new Set(dto.manualContainerIds ?? []);
     const scheduledFor = new Date(dto.scheduledFor);
     const blockedContainerIds = await this.getBlockedContainerIdsForSchedule(dto.zoneId, scheduledFor);
     const deferredForNearbyTours = allCandidates.filter(
-      (item) => blockedContainerIds.has(item.id) && !manualIds.has(item.id),
+      (item) => blockedContainerIds.has(item.id) && !manualIdSet.has(item.id),
     ).length;
     const eligibleCandidates = allCandidates.filter(
-      (item) => !blockedContainerIds.has(item.id) || manualIds.has(item.id),
+      (item) => !blockedContainerIds.has(item.id) || manualIdSet.has(item.id),
     );
     const selectedCandidates =
-      manualIds.size > 0
-        ? eligibleCandidates.filter((item) => manualIds.has(item.id))
+      manualIdSet.size > 0
+        ? eligibleCandidates.filter((item) => manualIdSet.has(item.id))
         : [...eligibleCandidates].sort((left, right) => right.fillLevelPercent - left.fillLevelPercent);
-
-    const heuristicRoute = this.computeHeuristicRoute(selectedCandidates, zoneDepot);
-    const route = this.refineRouteWithTwoOpt(heuristicRoute, zoneDepot);
+    const limitedCandidates = selectedCandidates.slice(0, MAX_OPTIMIZED_ROUTE_STOPS);
+    const optimizationStartedAt = Date.now();
+    const heuristicRoute = this.computeHeuristicRoute(limitedCandidates, zoneDepot);
+    const optimizedRoute = this.refineRouteWithTwoOpt(
+      heuristicRoute,
+      zoneDepot,
+      optimizationStartedAt + OPTIMIZATION_TIME_BUDGET_MS,
+    );
+    const route = optimizedRoute.route;
     const totalDistanceKm = this.computeRouteDistance(route, zoneDepot);
+    const optimizationDurationMs = Math.max(0, Date.now() - optimizationStartedAt);
 
     return {
-      candidates: selectedCandidates,
+      candidates: limitedCandidates,
       route: route.map((item, index) => ({
         ...item,
         order: index + 1,
@@ -244,6 +266,11 @@ export class PlanningRepository {
         totalDistanceKm: Number(totalDistanceKm.toFixed(2)),
         estimatedDurationMinutes: this.estimateRouteDurationMinutes(totalDistanceKm, route.length),
         deferredForNearbyTours,
+        selectedContainerCount: route.length,
+        maxContainerCount: MAX_OPTIMIZED_ROUTE_STOPS,
+        algorithmsApplied: [...ROUTE_OPTIMIZATION_ALGORITHMS],
+        optimizationTimedOut: optimizedRoute.timedOut,
+        optimizationDurationMs,
       },
       scheduleContext: {
         scheduledFor: scheduledFor.toISOString(),
@@ -262,6 +289,12 @@ export class PlanningRepository {
 
   async createPlannedTour(dto: CreatePlannedTourDto, actorUserId: string) {
     return this.db.transaction(async (tx) => {
+      if (dto.orderedContainerIds.length > MAX_OPTIMIZED_ROUTE_STOPS) {
+        throw new BadRequestException(
+          `orderedContainerIds must contain at most ${MAX_OPTIMIZED_ROUTE_STOPS} container IDs`,
+        );
+      }
+
       const zoneDepot = await this.getZoneDepot(dto.zoneId, tx);
       const uniqueOrderedContainerIds = Array.from(new Set(dto.orderedContainerIds));
       if (uniqueOrderedContainerIds.length !== dto.orderedContainerIds.length) {
@@ -1377,20 +1410,27 @@ export class PlanningRepository {
   private refineRouteWithTwoOpt(
     route: Array<Record<string, unknown>>,
     startLocation?: ZoneDepotPoint | null,
+    deadline = Date.now() + OPTIMIZATION_TIME_BUDGET_MS,
   ) {
     if (startLocation == null && route.length < 4) {
-      return route;
+      return { route, timedOut: false };
     }
 
     if (startLocation != null && route.length < 3) {
-      return route;
+      return { route, timedOut: false };
     }
 
     const optimized = [...route];
     let didImprove = true;
     let passCount = 0;
+    let timedOut = false;
 
     while (didImprove && passCount < MAX_2OPT_PASSES) {
+      if (Date.now() > deadline) {
+        timedOut = true;
+        break;
+      }
+
       didImprove = false;
       passCount += 1;
 
@@ -1398,7 +1438,17 @@ export class PlanningRepository {
       const rightBoundary = startLocation == null ? optimized.length - 1 : optimized.length;
 
       for (let left = leftStartIndex; left < optimized.length - 1; left += 1) {
+        if (Date.now() > deadline) {
+          timedOut = true;
+          break;
+        }
+
         for (let right = left + 1; right < rightBoundary; right += 1) {
+          if (Date.now() > deadline) {
+            timedOut = true;
+            break;
+          }
+
           const leftPrev = left === 0 ? startLocation ?? null : this.toLatLngPoint(optimized[left - 1]);
           if (leftPrev == null) {
             continue;
@@ -1425,10 +1475,17 @@ export class PlanningRepository {
             didImprove = true;
           }
         }
+
+        if (timedOut) {
+          break;
+        }
       }
     }
 
-    return optimized;
+    return {
+      route: optimized,
+      timedOut,
+    };
   }
 
   private distanceBetweenNodes(fromNode: Record<string, unknown>, toNode: Record<string, unknown>) {

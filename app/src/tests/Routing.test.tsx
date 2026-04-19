@@ -334,6 +334,20 @@ describe("Routing Matrix", () => {
     expect(screen.queryByRole("heading", { name: /Access Denied/i })).not.toBeInTheDocument();
   });
 
+  test("`/app/support` redirects citizen users to public support", async () => {
+    setAuthState({
+      user: { id: "123", role: "citizen", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { getLocation } = renderRoute("/app/support");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/support");
+    });
+  });
+
   test("`/app/dashboard` redirects users without manager access to `/app`", async () => {
     setAuthState({
       user: { id: "123", role: "agent", roles: [] },

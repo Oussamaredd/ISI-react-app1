@@ -19,6 +19,7 @@ import {
   hasAgentAccess,
   hasCitizenAccess,
   hasManagerAccess,
+  hasSupportWorkspaceAccess,
 } from '../utils/authz';
 
 type WorkspaceLink = {
@@ -48,13 +49,23 @@ type CitizenProfileSnapshot = {
 
 type CitizenEntryState = 'loading' | 'first-run' | 'returning' | 'unavailable';
 
-const universalLinks: WorkspaceLink[] = [
-  {
-    label: 'Support Workspace',
-    description: 'Create, triage, and resolve support work from the shared operations surface.',
-    meta: 'Shared operations',
-    to: '/app/support',
-  },
+const buildSupportLink = (canAccessSupportWorkspace: boolean): WorkspaceLink =>
+  canAccessSupportWorkspace
+    ? {
+        label: 'Support Workspace',
+        description: 'Create, triage, and resolve support work from the shared operations surface.',
+        meta: 'Shared operations',
+        to: '/app/support',
+      }
+    : {
+        label: 'Support',
+        description: 'Open public support guidance and escalation help without entering the ticket workspace.',
+        meta: 'Public help',
+        to: '/support',
+      };
+
+const buildUniversalLinks = (canAccessSupportWorkspace: boolean): WorkspaceLink[] => [
+  buildSupportLink(canAccessSupportWorkspace),
   {
     label: 'Settings',
     description: 'Review account details, sign-in methods, and session preferences.',
@@ -114,7 +125,7 @@ const citizenLinks: WorkspaceLink[] = [
   },
 ];
 
-const citizenFollowUpLinks: WorkspaceLink[] = [
+const buildCitizenFollowUpLinks = (canAccessSupportWorkspace: boolean): WorkspaceLink[] => [
   {
     label: 'Profile & History',
     description: 'Review points, badges, and your recent citizen reports.',
@@ -131,7 +142,7 @@ const citizenFollowUpLinks: WorkspaceLink[] = [
     label: 'Support',
     description: 'Get help if a mapped container or session issue blocks the report flow.',
     meta: 'Recovery',
-    to: '/app/support',
+    to: canAccessSupportWorkspace ? '/app/support' : '/support',
   },
 ];
 
@@ -259,7 +270,7 @@ const resolveFirstName = (user: {
 };
 
 const renderRouteIcon = (route: string, size = 16) => {
-  if (route === '/app/support') {
+  if (route === '/app/support' || route === '/support') {
     return <LifeBuoy size={size} aria-hidden="true" />;
   }
 
@@ -291,8 +302,9 @@ const buildPriorityActions = (options: {
   canAccessAgent: boolean;
   canAccessCitizen: boolean;
   canAccessAdmin: boolean;
+  universalLinks: WorkspaceLink[];
 }) => {
-  const actions = [...universalLinks];
+  const actions = [...options.universalLinks];
 
   if (options.canAccessManager) {
     actions.push(managerLinks[0]);
@@ -320,10 +332,12 @@ function CitizenEntrySection({
   state,
   profile,
   errorMessage,
+  followUpLinks,
 }: {
   state: CitizenEntryState;
   profile: CitizenProfileSnapshot | null;
   errorMessage: string | null;
+  followUpLinks: WorkspaceLink[];
 }) {
   const reportsSubmitted = Math.max(0, profile?.impact?.reportsSubmitted ?? 0);
   const reportsResolved = Math.max(0, profile?.impact?.reportsResolved ?? 0);
@@ -388,7 +402,7 @@ function CitizenEntrySection({
           {errorMessage ? <p className="app-home-citizen-inline-status">{errorMessage}</p> : null}
 
           <div className="app-home-citizen-secondary-links">
-            {citizenFollowUpLinks.map((link) => (
+            {followUpLinks.map((link) => (
               <Link key={link.to} to={link.to} className="app-home-citizen-secondary-link">
                 <span className="app-home-citizen-secondary-title">{link.label}</span>
                 <span className="app-home-citizen-secondary-meta">{link.meta}</span>
@@ -473,6 +487,9 @@ export default function AppHomePage() {
   const canAccessAgent = hasAgentAccess(user);
   const canAccessCitizen = hasCitizenAccess(user);
   const canAccessAdmin = hasAdminAccess(user);
+  const canAccessSupportWorkspace = hasSupportWorkspaceAccess(user);
+  const universalLinks = buildUniversalLinks(canAccessSupportWorkspace);
+  const citizenFollowUpLinks = buildCitizenFollowUpLinks(canAccessSupportWorkspace);
   const citizenProfileQuery = useCitizenProfile(canAccessCitizen);
   const citizenProfile = ((citizenProfileQuery.data ?? null) as CitizenProfileSnapshot | null);
   const reportsSubmitted = Math.max(0, citizenProfile?.impact?.reportsSubmitted ?? 0);
@@ -502,6 +519,7 @@ export default function AppHomePage() {
     canAccessAgent,
     canAccessCitizen,
     canAccessAdmin,
+    universalLinks,
   });
   const roleNames = collectRoleNames(user);
   const firstName = resolveFirstName(user);
@@ -545,6 +563,7 @@ export default function AppHomePage() {
             state={citizenEntryState}
             profile={citizenProfile}
             errorMessage={citizenProfileError}
+            followUpLinks={citizenFollowUpLinks}
           />
         ) : null}
 

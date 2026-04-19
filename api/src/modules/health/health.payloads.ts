@@ -1,11 +1,7 @@
-import fs from 'node:fs';
-
 import type { HealthService } from './health.service.js';
 
 type DatabaseCheckPayload = Awaited<ReturnType<HealthService['checkDatabase']>>;
 
-const ROOT_PACKAGE_RELATIVE_URL = new URL('../../../../package.json', import.meta.url);
-const API_PACKAGE_RELATIVE_URL = new URL('../../../package.json', import.meta.url);
 const DEFAULT_RELEASE_VERSION = '0.0.0';
 
 let cachedReleaseVersion: string | null = null;
@@ -15,16 +11,10 @@ const resolveReleaseVersion = () => {
     return cachedReleaseVersion;
   }
 
-  for (const candidate of [ROOT_PACKAGE_RELATIVE_URL, API_PACKAGE_RELATIVE_URL]) {
-    try {
-      const raw = fs.readFileSync(candidate, 'utf8');
-      const parsed = JSON.parse(raw) as { version?: unknown };
-      if (typeof parsed.version === 'string' && parsed.version.trim()) {
-        cachedReleaseVersion = parsed.version.trim();
-        return cachedReleaseVersion;
-      }
-    } catch {
-      continue;
+  for (const candidate of [process.env.ECOTRACK_RELEASE_VERSION, process.env.npm_package_version]) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      cachedReleaseVersion = candidate.trim();
+      return cachedReleaseVersion;
     }
   }
 

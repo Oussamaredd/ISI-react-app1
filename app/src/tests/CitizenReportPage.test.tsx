@@ -10,6 +10,8 @@ vi.mock("../hooks/useCitizen", () => ({
 }));
 
 describe("CitizenReportPage", () => {
+  const containerId = "f7a67f92-f8f7-4104-97b3-9136310cb2dd";
+
   beforeEach(async () => {
     vi.clearAllMocks();
     Reflect.deleteProperty(window.navigator, "geolocation");
@@ -22,7 +24,7 @@ describe("CitizenReportPage", () => {
     vi.spyOn(apiClient, "get").mockResolvedValue({
       containers: [
         {
-          id: "container-1",
+          id: containerId,
           code: "CTR-001",
           label: "17 RUE CROIX DES PETITS CHAMPS - Trilib",
           fillLevelPercent: 76,
@@ -64,7 +66,7 @@ describe("CitizenReportPage", () => {
     expect(
       await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
     ).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), containerId);
 
     expect(
       await screen.findByRole("heading", { name: /Selected Container Context/i }),
@@ -112,7 +114,7 @@ describe("CitizenReportPage", () => {
       ),
     ).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), containerId);
     await user.type(
       screen.getByLabelText(/Details \(optional\)/i),
       "Container is overflowing near the tram stop.",
@@ -122,7 +124,7 @@ describe("CitizenReportPage", () => {
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({
-        containerId: "container-1",
+        containerId,
         reportType: "container_full",
         description: "Container is overflowing near the tram stop.",
         latitude: undefined,
@@ -140,7 +142,7 @@ describe("CitizenReportPage", () => {
     expect(
       await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
     ).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), containerId);
     await user.click(screen.getByRole("button", { name: /Submit Report/i }));
 
     expect(await screen.findByText(/Report submitted\. Thank you for helping your community\./i)).toBeInTheDocument();
@@ -183,7 +185,7 @@ describe("CitizenReportPage", () => {
     expect(
       await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
     ).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText(/^Container$/i), "container-1");
+    await user.selectOptions(screen.getByLabelText(/^Container$/i), containerId);
     await user.click(screen.getByRole("button", { name: /Submit Report/i }));
 
     expect(

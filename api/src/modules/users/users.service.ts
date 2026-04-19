@@ -54,7 +54,7 @@ export class UsersService {
     return this.usersRepository.updatePasswordHash(userId, passwordHash);
   }
 
-  async updateUserProfile(userId: string, params: { displayName: string; avatarUrl?: string }) {
+  async updateUserProfile(userId: string, params: { displayName: string; avatarUrl?: string | null }) {
     return this.usersRepository.updateUserProfile(userId, params);
   }
 

@@ -263,7 +263,7 @@ Use `docs/operations/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, c
 - Dependency-aware health payloads now include `release.version`, which is used by the hosted release smoke gate.
 - Frontend health probes, when used for diagnostics, should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
 - Frontend `/login` must stay interactive and send auth requests directly; `/health` is advisory only and must not gate sign-in submission.
-- Local `npm run dev` waits on the local direct API liveness URL from the Port Contract before launching the app dev server, and stops startup if the liveness probe times out or returns a non-`200` status (default wait timeout: `180000ms`). Use `GET /api/health/ready`, `GET /api/health/database`, or `npm run dev:doctor` for dependency-aware startup diagnostics.
+- Local `npm run dev` gives the local direct API liveness URL from the Port Contract a best-effort warm-up window before launching the app dev server. If the liveness probe still has not returned `200` after `30000ms`, the frontend dev server still starts and the app relies on its built-in API degraded/retry handling while the API continues warming. Use `GET /api/health/ready`, `GET /api/health/database`, or `npm run dev:doctor` for dependency-aware startup diagnostics.
 
 ## Request Correlation
 

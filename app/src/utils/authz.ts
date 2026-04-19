@@ -11,6 +11,7 @@ const ADMIN_ROLE_NAMES = new Set(['admin', 'super_admin']);
 const MANAGER_ROLE_NAMES = new Set(['manager', 'admin', 'super_admin']);
 const CITIZEN_ROLE_NAMES = new Set(['citizen', 'admin', 'super_admin']);
 const AGENT_ROLE_NAMES = new Set(['agent', 'admin', 'super_admin']);
+const SUPPORT_WORKSPACE_ROLE_NAMES = new Set(['agent', 'manager', 'admin', 'super_admin']);
 
 const normalizeRoleName = (roleName: string) => roleName.trim().toLowerCase();
 
@@ -79,6 +80,17 @@ export const hasAgentAccess = (user: UserLike | null | undefined): boolean => {
   const roleNames = collectRoleNames(user);
   for (const roleName of roleNames) {
     if (AGENT_ROLE_NAMES.has(roleName)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+export const hasSupportWorkspaceAccess = (user: UserLike | null | undefined): boolean => {
+  const roleNames = collectRoleNames(user);
+  for (const roleName of roleNames) {
+    if (SUPPORT_WORKSPACE_ROLE_NAMES.has(roleName)) {
       return true;
     }
   }

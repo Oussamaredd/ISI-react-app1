@@ -301,3 +301,30 @@ describe('UsersRepository local signup defaults', () => {
     );
   });
 });
+
+describe('UsersRepository profile updates', () => {
+  it('clears avatarUrl when the profile update payload sets it to null', async () => {
+    const { dbMock, updatedUsers } = buildDbMock();
+    const repository = new UsersRepository(dbMock as any);
+
+    const updated = await repository.updateUserProfile('user-1', {
+      displayName: 'Citizen User',
+      avatarUrl: null,
+    });
+
+    expect(updatedUsers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          displayName: 'Citizen User',
+          avatarUrl: null,
+        }),
+      ]),
+    );
+    expect(updated).toEqual(
+      expect.objectContaining({
+        displayName: 'Citizen User',
+        avatarUrl: null,
+      }),
+    );
+  });
+});

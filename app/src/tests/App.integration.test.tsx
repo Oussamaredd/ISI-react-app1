@@ -111,7 +111,7 @@ describe("App Integration", () => {
   test("navigation links work correctly", async () => {
     const { useCurrentUser } = await import("../hooks/useAuth");
     (useCurrentUser as unknown as Mock).mockReturnValue({
-      user: { id: "123", displayName: "Test User" },
+      user: { id: "123", displayName: "Test User", role: "manager", roles: [] },
       isLoading: false,
       isAuthenticated: true,
     });

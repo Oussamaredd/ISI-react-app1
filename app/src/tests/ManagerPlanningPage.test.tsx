@@ -40,7 +40,17 @@ describe("ManagerPlanningPage", () => {
       isError: false,
     });
     (planningHooks.usePlanningAgents as Mock).mockReturnValue({
-      data: { agents: [{ id: "agent-1", displayName: "Alex Agent", email: "agent@example.com" }] },
+      data: {
+        agents: [
+          {
+            id: "agent-1",
+            displayName: "Alex Agent",
+            email: "agent@example.com",
+            zoneId: "zone-1",
+            zoneName: "North Zone",
+          },
+        ],
+      },
       isLoading: false,
       isError: false,
     });
@@ -86,8 +96,8 @@ describe("ManagerPlanningPage", () => {
     expect(await screen.findByRole("heading", { name: /Tour Planning Wizard/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /Unable to load zones/i })).toBeInTheDocument();
     expect(screen.getByText(/Zone data could not be loaded/i)).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /Unassigned/i })).toBeInTheDocument();
-    expect(screen.getByText(/No active agents are available right now/i)).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Select zone first/i })).toBeInTheDocument();
+    expect(screen.getByText(/Select a zone first to see assignable agents/i)).toBeInTheDocument();
   });
 
   it("validates required planning inputs before optimization", async () => {
@@ -164,6 +174,64 @@ describe("ManagerPlanningPage", () => {
 
     await user.type(screen.getByLabelText(/Tour name/i), " Updated");
     expect(resetOptimization).toHaveBeenCalled();
+  });
+
+  it("limits agent assignment choices to the selected zone", async () => {
+    const planningHooks = await import("../hooks/usePlanning");
+
+    (planningHooks.usePlanningZones as Mock).mockReturnValue({
+      data: {
+        zones: [
+          { id: "zone-1", name: "North Zone" },
+          { id: "zone-2", name: "South Zone" },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    (planningHooks.usePlanningAgents as Mock).mockReturnValue({
+      data: {
+        agents: [
+          {
+            id: "agent-1",
+            displayName: "Alex Agent",
+            email: "alex@example.com",
+            zoneId: "zone-1",
+            zoneName: "North Zone",
+          },
+          {
+            id: "agent-2",
+            displayName: "Sam South",
+            email: "sam@example.com",
+            zoneId: "zone-2",
+            zoneName: "South Zone",
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ManagerPlanningPage />);
+
+    const agentSelect = screen.getByLabelText(/Assign agent/i);
+    expect(agentSelect).toBeDisabled();
+
+    await user.selectOptions(screen.getByLabelText(/^Zone$/i), "zone-1");
+
+    expect(agentSelect).toBeEnabled();
+    expect(within(agentSelect).getByRole("option", { name: /Alex Agent/i })).toBeInTheDocument();
+    expect(within(agentSelect).queryByRole("option", { name: /Sam South/i })).not.toBeInTheDocument();
+
+    await user.selectOptions(agentSelect, "agent-1");
+    expect((agentSelect as HTMLSelectElement).value).toBe("agent-1");
+
+    await user.selectOptions(screen.getByLabelText(/^Zone$/i), "zone-2");
+
+    expect((agentSelect as HTMLSelectElement).value).toBe("");
+    expect(within(agentSelect).getByRole("option", { name: /Sam South/i })).toBeInTheDocument();
+    expect(within(agentSelect).queryByRole("option", { name: /Alex Agent/i })).not.toBeInTheDocument();
   });
 
   it("surfaces create and rebuild failures with clear status messages", async () => {
