@@ -115,7 +115,7 @@ describe('AppHomePage', () => {
     renderWithProviders(<AppHomePage />, { route: '/app', withAuthProvider: false });
 
     expect(
-      screen.getByRole('heading', { name: /Command your EcoTrack workspace\./i }),
+      screen.getByRole('heading', { name: /Enter the right EcoTrack lane\./i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Complete your first valid container report/i)).not.toBeInTheDocument();
     expect(useCitizenProfile).toHaveBeenCalledWith(false);

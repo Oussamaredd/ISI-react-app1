@@ -2,11 +2,13 @@
 
 ## Overview
 
-The IoT ingestion service delivers workbook tasks `M2.1`, `M2.14`, `M3.1`, `M3.2`, `M3.3`, `M3.10`, `M3.11`, `M3.12`, `M3.14`, and the Development-owned portion of `M3.13` inside the modular monolith. It exposes async HTTP ingestion endpoints for sensor measurements, stages accepted raw events in PostgreSQL, validates them through an internal worker, projects durable validated events through dedicated downstream consumers, and preserves the standard `controller -> service -> repository -> database` flow.
+The IoT ingestion service delivers workbook tasks `M2.1`, `M2.14`, `M3.1`, `M3.2`, `M3.3`, `M3.10`, `M3.11`, `M3.12`, `M3.14`, and the Development-owned portion of `M3.13` inside the modular monolith. It exposes async HTTP ingestion endpoints for measurement payloads, stages accepted raw events in PostgreSQL, validates them through an internal worker, projects durable validated events through dedicated downstream consumers, and preserves the standard `controller -> service -> repository -> database` flow.
+
+For current product framing, this capability should be described as simulated or seeded measurement ingestion that supports the prototype's operational backbone. EcoTrack does not claim a live real-world hardware rollout in the current school-prototype scope.
 
 This implementation is optimized for the current Development scope:
 
-- HTTP ingestion is live for sensor payloads.
+- HTTP ingestion is live for measurement payloads used by seeded or simulated telemetry flows.
 - Raw events are staged first in `iot.ingestion_events`.
 - Each request or batch is staged transactionally with producer metadata and a deterministic idempotency key.
 - Internal queue workers drain staged event identifiers concurrently.
@@ -22,7 +24,7 @@ This implementation is optimized for the current Development scope:
 - Sensor devices are auto-registered on first contact.
 - Service-hop metrics, per-consumer lag gauges, shard-skew gauges, Grafana dashboards, and chaos scripts now cover the full monolith event pipeline.
 
-Direct MQTT transport and external brokers remain future extensions. The current delivery is a monolith-compatible staged-event pipeline with exactly-once staging semantics, lease-based worker recovery, and observability.
+Direct MQTT transport, real deployed hardware fleets, and external brokers remain future extensions. The current delivery is a monolith-compatible staged-event pipeline with exactly-once staging semantics, lease-based worker recovery, and observability.
 
 ## Request Flow
 

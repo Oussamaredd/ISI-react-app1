@@ -4,6 +4,8 @@
 
 Execute assigned collection tours, validate stops, and report anomalies.
 
+EcoTrack is mobile-first for agents. The web tour surface is retained as a companion, demo, testing, and accessibility workflow, while day-of-route execution should still be framed as primarily mobile.
+
 ## Main route
 
 - Agent tour workspace: `/app/agent/tour`
@@ -19,6 +21,11 @@ Execute assigned collection tours, validate stops, and report anomalies.
 5. If connectivity drops, the page can fall back to a recent cached tour payload (including persisted API route geometry) and previously viewed map tiles. Overdue or stale cached runs are intentionally discarded instead of being reused indefinitely.
 6. Review the in-page activity timeline for start, validation, and anomaly confirmation.
 7. The map draws only the current routed stop sequence. Zone containers are still loaded in the background so the page can flag any coverage mismatch between the assigned route and the mapped zone inventory.
+
+## Product framing note
+
+- Managers remain the primary web planners and monitors.
+- Agents keep this web lane for recovery and support scenarios, but EcoTrack should still present camera, location, scanning, and offline work as part of the core mobile agent story.
 
 ## Recovery notes
 

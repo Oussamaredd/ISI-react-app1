@@ -146,7 +146,7 @@ describe("CitizenReportPage", () => {
     await user.click(screen.getByRole("button", { name: /Submit Report/i }));
 
     expect(await screen.findByText(/Report submitted\. Thank you for helping your community\./i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Open Profile & History/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Open Impact & History/i })).toHaveAttribute(
       "href",
       "/app/citizen/profile",
     );

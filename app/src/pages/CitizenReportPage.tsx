@@ -21,6 +21,13 @@ type ContainerOption = {
 };
 
 type StatusTone = 'success' | 'error';
+type SubmissionSummary = {
+  confirmationState?: string;
+  managerNotificationQueued?: boolean;
+  citizenPushNotificationQueued?: boolean;
+  containerCode?: string | null;
+  containerLabel?: string | null;
+};
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -129,6 +136,7 @@ export default function CitizenReportPage() {
   const [locationMessage, setLocationMessage] = useState('');
   const [statusTone, setStatusTone] = useState<StatusTone>('success');
   const [locationTone, setLocationTone] = useState<StatusTone>('success');
+  const [submissionSummary, setSubmissionSummary] = useState<SubmissionSummary | null>(null);
 
   const containersQuery = useQuery({
     queryKey: ['containers-options'],
@@ -183,6 +191,7 @@ export default function CitizenReportPage() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setConfirmationMessage('');
+    setSubmissionSummary(null);
 
     const normalizedContainerId = containerId.trim();
     const normalizedLatitude = normalizeOptionalField(reportedLocation.latitude);
@@ -223,13 +232,25 @@ export default function CitizenReportPage() {
         latitude: normalizedLatitude,
         longitude: normalizedLongitude,
         photoUrl: normalizedPhotoUrl,
-      })) as { confirmationMessage?: string };
+      })) as {
+        confirmationMessage?: string;
+        confirmationState?: string;
+        managerNotificationQueued?: boolean;
+        citizenPushNotificationQueued?: boolean;
+      };
 
       setStatusTone('success');
       setConfirmationMessage(
         response.confirmationMessage ??
           'Report submitted. Thank you for helping your community.',
       );
+      setSubmissionSummary({
+        confirmationState: response.confirmationState,
+        managerNotificationQueued: response.managerNotificationQueued,
+        citizenPushNotificationQueued: response.citizenPushNotificationQueued,
+        containerCode: selectedContainer?.code ?? null,
+        containerLabel: selectedContainer?.label ?? null,
+      });
       setDescription('');
       setPhotoUrl('');
     } catch (error) {
@@ -286,16 +307,16 @@ export default function CitizenReportPage() {
       <header className="ops-hero">
         <h1>Report Container Issue</h1>
         <p>
-          Select an existing mapped container, review its latest known state,
-          and send a typed issue report for manager triage.
+          Use the retained web citizen flow to report a mapped container issue,
+          review the latest known context, and send a typed signal into the manager queue.
         </p>
       </header>
 
       <form className="ops-card ops-form" onSubmit={onSubmit}>
         <p className="ops-helper">
-          Citizens report issues on existing mapped containers only. Web GPS is
-          optional here, so you can keep going with manual mapped-container
-          selection if location is unavailable.
+          EcoTrack is mobile-first for citizens. This web flow stays available for
+          accessibility, demo, and fallback use cases. Citizens report issues on
+          existing mapped containers only, and web GPS remains optional.
         </p>
 
         <div className="ops-field">
@@ -384,6 +405,10 @@ export default function CitizenReportPage() {
                 <span>{formatFillLevel(selectedContainer.fillLevelPercent)}</span>
               </div>
             </div>
+            <p className="ops-helper">
+              Last known fill and status come from current platform records and simulated or seeded
+              measurements where available, not from a claimed live hardware deployment.
+            </p>
           </article>
         ) : null}
 
@@ -522,14 +547,48 @@ export default function CitizenReportPage() {
           </p>
 
           {statusTone === 'success' ? (
-            <div className="ops-actions">
-              <Link to="/app/citizen/profile" className="ops-btn ops-btn-outline">
-                Open Profile & History
-              </Link>
-              <Link to="/app/citizen/challenges" className="ops-btn ops-btn-outline">
-                View Challenges
-              </Link>
-            </div>
+            <>
+              <article className="ops-card">
+                <h2>What happens next</h2>
+                <div className="ops-list ops-mt-sm">
+                  <div className="ops-list-item">
+                    <p className="ops-list-meta">1. Report received</p>
+                    <p>
+                      {submissionSummary?.containerCode
+                        ? `EcoTrack recorded this issue for ${submissionSummary.containerCode}${submissionSummary.containerLabel ? ` - ${submissionSummary.containerLabel}` : ''}.`
+                        : 'EcoTrack recorded this issue against the selected mapped container.'}
+                    </p>
+                  </div>
+                  <div className="ops-list-item">
+                    <p className="ops-list-meta">2. Operations queue</p>
+                    <p>
+                      {submissionSummary?.confirmationState === 'confirmed_existing_issue'
+                        ? 'A matching recent issue already existed, so your confirmation strengthened that signal without sending a duplicate manager alert.'
+                        : submissionSummary?.managerNotificationQueued
+                          ? 'The relevant manager queue was updated so the issue can be reviewed and linked to operational action.'
+                          : 'The report is stored for follow-up in the current prototype flow.'}
+                    </p>
+                  </div>
+                  <div className="ops-list-item">
+                    <p className="ops-list-meta">3. Citizen follow-up</p>
+                    <p>
+                      Open Impact &amp; History to track the current report status and see when the
+                      report is marked resolved. Route or tour linkage is not yet exposed directly in
+                      the citizen web flow.
+                    </p>
+                  </div>
+                </div>
+              </article>
+
+              <div className="ops-actions">
+                <Link to="/app/citizen/profile" className="ops-btn ops-btn-outline">
+                  Open Impact &amp; History
+                </Link>
+                <Link to="/app/citizen/challenges" className="ops-btn ops-btn-outline">
+                  View Challenges
+                </Link>
+              </div>
+            </>
           ) : null}
         </div>
       ) : null}

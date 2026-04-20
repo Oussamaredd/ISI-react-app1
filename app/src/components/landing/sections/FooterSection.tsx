@@ -51,7 +51,7 @@ export default function FooterSection() {
               />
             </h3>
             <p className="mt-3 text-sm leading-7 text-[var(--text-muted)]">
-              Coordinate routes, reports, and live container intelligence from one EcoTrack workspace.
+              Citizen reports start the loop, managers coordinate the response, agents validate collection, and simulated measurements add supporting context.
             </p>
           </div>
           {footerColumns.map((column) => (

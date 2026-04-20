@@ -87,7 +87,7 @@ describe('CitizenProfilePage', () => {
       withAuthProvider: false,
     });
 
-    expect(await screen.findByRole('heading', { name: /Citizen Profile and Impact/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Citizen Impact and Follow-up/i })).toBeInTheDocument();
     expect(screen.getByText('community_guardian')).toBeInTheDocument();
     expect(screen.getByText(/CTR-1001 - Main Square - Glass/i)).toBeInTheDocument();
     expect(screen.getByText(/Container full near park/i)).toBeInTheDocument();

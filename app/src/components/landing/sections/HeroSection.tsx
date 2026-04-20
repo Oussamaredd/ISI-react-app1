@@ -13,15 +13,16 @@ export default function HeroSection() {
         <div className="landing-reveal mx-auto max-w-4xl text-center">
           <Badge className="mb-6">
             <ShieldCheck className="mr-2 h-3.5 w-3.5 text-[var(--accent-soft)]" />
-            Smart waste operations platform
+            Citizen-first coordination prototype
           </Badge>
           <h1 className="landing-h1">
-            Faster waste collection with{" "}
-            <span className="landing-gradient-text">one control center.</span>
+            Citizen reports drive{" "}
+            <span className="landing-gradient-text">faster collection follow-through.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[var(--text-muted)] sm:text-lg">
-            Plan collection routes, monitor connected containers, turn citizen reports into action,
-            and keep crews plus managers aligned from one shared workspace.
+            EcoTrack is a software-only school prototype set in Paris: citizens report container
+            problems, managers prioritize the signal, agents validate collection, and the platform
+            keeps the operational loop visible without pretending a live hardware rollout already exists.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link to="/login">
@@ -39,7 +40,8 @@ export default function HeroSection() {
             </Button>
           </div>
           <p className="mt-5 text-sm text-[var(--text-muted)]">
-            Built for municipalities, private operators, campuses, and service teams managing daily collections.
+            Mobile-first for citizens and agents. Web-first for managers and admins. Simulated
+            measurements support the workflow, but citizen reports remain the main signal in the current prototype.
           </p>
         </div>
       </div>

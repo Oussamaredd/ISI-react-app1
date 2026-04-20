@@ -14,9 +14,9 @@ describe("HeroSection", () => {
     renderWithRouter(<HeroSection />);
 
     expect(
-      screen.getByRole("heading", { name: /Faster waste collection with one control center\./i }),
+      screen.getByRole("heading", { name: /Citizen reports drive faster collection follow-through\./i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Smart waste operations platform/i)).toBeInTheDocument();
+    expect(screen.getByText(/Citizen-first coordination prototype/i)).toBeInTheDocument();
 
     const getStartedLink = screen.getByRole("link", { name: /Get Started/i });
     expect(getStartedLink).toHaveAttribute("href", "/login");

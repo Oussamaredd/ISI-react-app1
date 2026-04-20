@@ -18,6 +18,7 @@ This spec closes the current gap between:
 - Governs citizen first-run behavior at `/app`.
 - Reuses the existing web citizen report flow at `/app/citizen/report`.
 - Reuses existing citizen follow-up surfaces at `/app/citizen/profile` and `/app/citizen/challenges`.
+- Treats web as a citizen companion surface; mobile remains the primary citizen experience when device capabilities matter.
 - Does not redesign the mapped-container report flow into a different product pattern.
 - Does not add Cyber-Security or Data-Science specialty implementation.
 
@@ -50,6 +51,7 @@ When an authenticated session has citizen access and the citizen has not yet com
 - The onboarding treatment must present one dominant primary action: `Report an issue`.
 - That primary action must route into the existing web report surface at `/app/citizen/report`.
 - The onboarding copy must stay lightweight and explain that the first milestone is one valid report on an already mapped container.
+- The onboarding copy should explicitly avoid presenting web as the primary citizen channel; it must frame web as a companion or fallback path.
 - Secondary actions may appear only after the primary action area and should stay lightweight.
 - Non-citizen roles must keep the current shared `/app` behavior.
 - Multi-role users that also have citizen access may still see their other role lanes, but the citizen first-report treatment takes priority at the top of `/app` until the citizen first-report milestone is complete.
@@ -105,7 +107,7 @@ After the first successful valid report:
 - `/app` must no longer show the full first-run onboarding treatment
 - `/app` should switch the citizen lane to a lighter returning-user experience
 - the returning-user experience keeps one primary report action
-- profile or history and challenges remain accessible as secondary actions
+- profile/history follow-up and challenges remain accessible as secondary actions
 - onboarding-heavy instructional copy should not be repeated once the first-report milestone is complete
 
 ## Surface Boundaries

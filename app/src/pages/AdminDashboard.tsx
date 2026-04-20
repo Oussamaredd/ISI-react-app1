@@ -62,8 +62,8 @@ export function AdminDashboard() {
         />
         <h1>Admin Center</h1>
         <p>
-          Welcome back, {user?.displayName ?? user?.email}. Manage users,
-          tickets, and governance settings.
+          Welcome back, {user?.displayName ?? user?.email}. This is the web-only oversight lane for
+          access, governance, and prototype configuration.
         </p>
         <div className="ops-actions ops-mt-lg">
           <span className="ops-chip ops-chip-info">Current User: {user?.email}</span>

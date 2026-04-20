@@ -18,7 +18,7 @@ const FooterSection = lazy(() => import("../../components/landing/sections/Foote
 export default function LandingPage() {
   useLandingSectionScroll();
   const description =
-    "Plan collection routes, monitor connected containers, turn citizen reports into action, and track field execution from one EcoTrack workspace.";
+    "EcoTrack is a citizen-first waste reporting and collection coordination prototype for the Paris scenario, with citizen reports driving operations and simulated measurements supporting the workflow.";
   const siteRoot =
     typeof window === "undefined" ? "/" : new URL("/", window.location.origin).toString();
   const structuredData =
@@ -48,10 +48,10 @@ export default function LandingPage() {
             url: siteRoot,
             description,
             featureList: [
-              "Route planning and tour orchestration",
-              "Citizen reporting intake",
-              "Live container monitoring",
-              "Collection analytics and heatmaps",
+              "Citizen-first reporting and follow-up",
+              "Manager planning and operational monitoring",
+              "Agent tour execution",
+              "Simulated measurement ingestion",
             ],
           },
         ];
@@ -59,7 +59,7 @@ export default function LandingPage() {
   return (
     <div className="landing-root">
       <DocumentMetadata
-        title="EcoTrack | Smart Waste Operations Platform"
+        title="EcoTrack | Citizen-First Waste Reporting Prototype"
         description={description}
         canonicalPath="/"
         structuredData={structuredData}

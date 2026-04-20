@@ -74,7 +74,7 @@ describe("App Integration", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /faster waste collection/i },
+        { name: /Citizen reports drive/i },
         { timeout: 8000 },
       ),
     ).toBeInTheDocument();
@@ -132,7 +132,7 @@ describe("App Integration", () => {
       true,
     );
 
-    const workspaceLinks = screen.getAllByRole("link", { name: "Workspace" });
-    expect(workspaceLinks.some((link) => link.getAttribute("href") === "/app")).toBe(true);
+    const roleHubLinks = screen.getAllByRole("link", { name: "Role Hub" });
+    expect(roleHubLinks.some((link) => link.getAttribute("href") === "/app")).toBe(true);
   });
 });

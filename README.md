@@ -21,6 +21,53 @@ EcoTrack/
 `-- .github/workflows/
 ```
 
+## Product Identity
+
+EcoTrack is a citizen-first waste reporting and collection coordination prototype.
+
+- Primary users:
+  - citizens report container issues
+  - agents execute collection tours
+  - managers monitor, prioritize, and plan work
+  - admins manage oversight and configuration
+- Surface split:
+  - mobile-first for citizens and agents
+  - web-first for managers and admins
+  - citizen and agent web flows remain available as companion, demo, testing, or accessibility support
+- Scenario:
+  - software-only school prototype
+  - Paris metropolitan area is the working example
+  - operational signals currently come first from citizen reports and second from seeded or simulated measurement data
+- Not claimed as current scope:
+  - real deployed bin hardware
+  - AI-first smart-city automation
+  - advanced ML prediction or anomaly intelligence
+  - cyber-security or data-science specialty delivery beyond current Development-owned work
+
+## Core Product Loop
+
+Citizen spots a problem -> reports container status -> manager sees the signal -> agent gets an optimized route -> collection is validated -> EcoTrack records visible follow-up and impact.
+
+## Current Product Scope
+
+Implemented now:
+
+- citizen reports
+- citizen profile, challenges, and gamification
+- agent tours
+- manager planning, dashboard, and reporting
+- admin center
+- auth with local and OAuth flows
+- realtime updates through WebSocket or SSE
+- internal measurement ingestion and simulated telemetry support
+
+Future-ready only:
+
+- real hardware sensor rollout
+- advanced anomaly AI or ML prediction
+- SOC-grade monitoring and hardening
+- external event architecture beyond current internal contracts
+
 ## Canonical Env Model
 
 - Local/native dev:

@@ -20,7 +20,7 @@ import BrandLogo from "../branding/BrandLogo";
 const sectionLinks = [
   { id: "features", label: "Features" },
   { id: "how-it-works", label: "How it works" },
-  { id: "pricing", label: "Pricing" },
+  { id: "pricing", label: "Scope" },
   { id: "faq", label: "FAQ" },
 ];
 

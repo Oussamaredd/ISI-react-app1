@@ -72,18 +72,18 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /faster waste collection/i },
+        { name: /Citizen reports drive/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(document.title).toBe("EcoTrack | Smart Waste Operations Platform");
+      expect(document.title).toBe("EcoTrack | Citizen-First Waste Reporting Prototype");
       expect(
         document
           .querySelector('meta[name="description"]')
           ?.getAttribute("content"),
-      ).toContain("Plan collection routes");
+      ).toContain("citizen-first waste reporting");
     });
   });
 
@@ -114,7 +114,7 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /faster waste collection/i },
+        { name: /Citizen reports drive/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe("Routing Matrix", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: /Command your EcoTrack workspace\./i }),
+      await screen.findByRole("heading", { name: /Enter the right EcoTrack lane\./i }),
     ).toBeInTheDocument();
   });
 
@@ -416,7 +416,7 @@ describe("Routing Matrix", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: /Support coverage for rollout and live operations/i },
+        { name: /Support and demo guidance for the prototype/i },
         { timeout: 5000 },
       ),
     ).toBeInTheDocument();
@@ -431,7 +431,7 @@ describe("Routing Matrix", () => {
       expect(
         await screen.findByRole(
           "heading",
-          { name: /faster waste collection/i },
+          { name: /Citizen reports drive/i },
           { timeout: 5000 },
         ),
       ).toBeInTheDocument();

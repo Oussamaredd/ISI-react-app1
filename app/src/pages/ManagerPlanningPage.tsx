@@ -272,9 +272,9 @@ export default function ManagerPlanningPage() {
       <header className="ops-hero">
         <h1>Tour Planning Wizard</h1>
         <p>
-          Configure zone, threshold, and schedule to prepare a route plan. The
-          planning service applies nearest-neighbor plus 2-opt from the selected
-          zone depot, then tour creation persists the resulting route.
+          Use the primary manager desktop planner to turn citizen-driven demand and supporting
+          context into a route plan. The planning service applies nearest-neighbor plus 2-opt
+          from the selected zone depot, then tour creation persists the resulting route.
         </p>
       </header>
 

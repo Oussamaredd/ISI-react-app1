@@ -9,22 +9,22 @@ const faqs = [
   {
     question: "Who is EcoTrack built for?",
     answer:
-      "EcoTrack is designed for municipalities, private waste operators, campuses, and facilities teams that manage collection activity across multiple zones or sites.",
+      "EcoTrack is currently framed as a citizen-first waste reporting and collection coordination prototype using the Paris metropolitan area as its example scenario.",
   },
   {
     question: "Do we need sensors on every container to use EcoTrack?",
     answer:
-      "No. Teams can start with citizen reports, manual operational updates, and planned routes, then layer in connected-container telemetry where it adds value.",
+      "No. The current prototype works first from citizen reports, manual operational updates, and planned routes, with simulated measurements adding supporting context where useful.",
   },
   {
     question: "How do collection teams use EcoTrack day to day?",
     answer:
-      "Managers prioritize zones and build tours, while field crews validate stops, record collection progress, and keep the workspace current during active rounds.",
+      "Managers prioritize the incoming signal and build tours, while agents validate stops and record collection progress. Citizens then see the available follow-up through report status and resolved totals.",
   },
   {
     question: "What does rollout usually include?",
     answer:
-      "Most rollouts start with zones, containers, citizen reporting channels, role setup, and one pilot service area before expanding to wider operations.",
+      "In the current school-prototype framing, setup focuses on zones, containers, citizen reporting channels, role setup, and one demo-ready service area rather than a full production rollout.",
   },
 ];
 

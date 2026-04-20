@@ -9,34 +9,34 @@ import {
 
 const cards = [
   {
-    title: "Route planning and tour orchestration",
-    copy: "Build collection tours from zone risk, fill-level signals, and service priorities before overflow spreads.",
+    title: "Citizen reporting is the operational trigger",
+    copy: "Turn citizen reports into structured signals that managers can prioritize before overflow and missed collection issues spread.",
     icon: Route,
     featured: true,
   },
   {
-    title: "Citizen reporting intake",
-    copy: "Turn overflow, missed collection, and damaged container reports into structured operational work.",
+    title: "Mobile-first citizen reporting",
+    copy: "Keep geolocation, camera, and field-friendly reporting in the main citizen story while preserving web as a companion flow.",
     icon: Clock4,
   },
   {
-    title: "Live container monitoring",
-    copy: "Stream fill levels, battery health, and anomaly signals from connected containers into one live view.",
+    title: "Simulated measurement support",
+    copy: "Use seeded and simulated measurement ingestion to enrich context without overclaiming a live deployed sensor fleet.",
     icon: ShieldCheck,
   },
   {
-    title: "Zone risk heatmaps",
-    copy: "See hotspots across zones and containers so managers can prioritize response before service quality drops.",
+    title: "Manager web coordination",
+    copy: "Give managers the primary desktop workspace for monitoring, planning, and reporting across the Paris prototype scenario.",
     icon: Building2,
   },
   {
-    title: "Crew execution",
-    copy: "Guide field teams through assigned stops, collection validation, and completion updates during active rounds.",
+    title: "Agent execution and validation",
+    copy: "Guide agents through tours, stop validation, and anomaly reporting while keeping the mobile field workflow as the main story.",
     icon: BellRing,
   },
   {
-    title: "Performance analytics",
-    copy: "Track service reliability, collection throughput, and operational trends across sites and service areas.",
+    title: "Citizen follow-up and impact",
+    copy: "Show citizens what was received, what is resolved, and what prototype impact is visible today without inventing hidden workflow states.",
     icon: ChartSpline,
   },
 ];
@@ -46,9 +46,9 @@ export default function FeaturesBentoSection() {
     <section id="features" className="landing-section">
       <div className="landing-container py-20">
         <div className="landing-reveal mx-auto max-w-3xl text-center">
-          <h2 className="landing-h2">Everything your waste operations team needs in one platform.</h2>
+          <h2 className="landing-h2">A clearer product split for one coherent prototype.</h2>
           <p className="mt-4 text-[var(--text-muted)]">
-            EcoTrack replaces fragmented spreadsheets, inboxes, and disconnected tools with one shared operating system.
+            EcoTrack centers citizen-driven reporting, then layers manager coordination, agent execution, and simulated measurement support around that core loop.
           </p>
         </div>
 

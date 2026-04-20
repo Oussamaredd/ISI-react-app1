@@ -76,21 +76,21 @@ const buildUniversalLinks = (canAccessSupportWorkspace: boolean): WorkspaceLink[
 
 const managerLinks: WorkspaceLink[] = [
   {
-    label: 'Live Dashboard',
-    description: 'Track live volume, operational drift, and cross-team movement in real time.',
-    meta: 'Manager-only live view',
+    label: 'Manager Dashboard',
+    description: 'Monitor the incoming queue, response pace, and operational pressure from the primary web workspace.',
+    meta: 'Primary desktop lane',
     to: '/app/dashboard',
   },
   {
     label: 'Tour Planning',
-    description: 'Shape assignments, route coverage, and field readiness before execution.',
-    meta: 'Route orchestration',
+    description: 'Turn citizen signals and supporting context into assignments, route coverage, and field readiness.',
+    meta: 'Desktop planning',
     to: '/app/manager/planning',
   },
   {
     label: 'Manager Reports',
-    description: 'Review trend reporting, export summaries, and monitor output history.',
-    meta: 'Reporting lane',
+    description: 'Review trend reporting, export summaries, and monitor prototype output history.',
+    meta: 'Desktop reporting',
     to: '/app/manager/reports',
   },
 ];
@@ -98,28 +98,28 @@ const managerLinks: WorkspaceLink[] = [
 const agentLinks: WorkspaceLink[] = [
   {
     label: 'Agent Tour',
-    description: 'Move into the active field lane for assigned routes and ticket execution.',
-    meta: 'Field execution',
+    description: 'Open the retained web companion for assigned routes, recovery, accessibility, or demos when mobile is not the active lane.',
+    meta: 'Mobile-first role',
     to: '/app/agent/tour',
   },
 ];
 
 const citizenLinks: WorkspaceLink[] = [
   {
-    label: 'Report Overflow',
-    description: 'Submit overflow issues directly into EcoTrack from the citizen surface.',
-    meta: 'Issue intake',
+    label: 'Citizen Reporting',
+    description: 'Submit container issues into EcoTrack and keep citizen reporting visible as the core operational trigger.',
+    meta: 'Mobile-first role',
     to: '/app/citizen/report',
   },
   {
-    label: 'Citizen Profile',
-    description: 'Review points, badges, report history, and current community participation.',
-    meta: 'History and profile',
+    label: 'Impact & History',
+    description: 'Review report status, resolved counts, prototype impact estimates, and personal participation history.',
+    meta: 'Follow-up',
     to: '/app/citizen/profile',
   },
   {
     label: 'Challenges',
-    description: 'Track goals, available programs, and participation progress.',
+    description: 'Track goals, available programs, and participation progress without pretending points alone are the core value.',
     meta: 'Engagement',
     to: '/app/citizen/challenges',
   },
@@ -127,8 +127,8 @@ const citizenLinks: WorkspaceLink[] = [
 
 const buildCitizenFollowUpLinks = (canAccessSupportWorkspace: boolean): WorkspaceLink[] => [
   {
-    label: 'Profile & History',
-    description: 'Review points, badges, and your recent citizen reports.',
+    label: 'Impact & History',
+    description: 'Review your recent reports, current statuses, and resolved follow-up counts.',
     meta: 'Follow-up',
     to: '/app/citizen/profile',
   },
@@ -162,6 +162,7 @@ const citizenFirstRunChecklist = [
 ];
 
 const citizenRecoveryNotes = [
+  'Mobile remains the primary citizen experience when camera, geolocation, and offline support matter. This web lane stays available as a companion flow.',
   'Web GPS is optional. If location is unavailable or denied, keep going with manual mapped-container selection.',
   'If the mapped container no longer exists, reload the report page and choose another live container.',
   'If you already reported the same issue recently, EcoTrack will stop the duplicate and point you back to history.',
@@ -180,7 +181,7 @@ const buildRoleGuides = (options: {
       eyebrow: 'Operations lane',
       title: 'Manager control',
       description:
-        'Manager-capable accounts can move into live monitoring, planning, and reporting without exposing those tools to other roles.',
+        'Managers use the primary web workspace for monitoring, planning, and reporting while citizen reports remain the core operational trigger.',
       links: managerLinks,
     });
   }
@@ -190,7 +191,7 @@ const buildRoleGuides = (options: {
       eyebrow: 'Field lane',
       title: 'Agent execution',
       description:
-        'Agents use this host as a launch point into route execution and ticket delivery work.',
+        'Agents keep this host as a retained companion lane, but the main field-execution story stays mobile-first.',
       links: agentLinks,
     });
   }
@@ -200,7 +201,7 @@ const buildRoleGuides = (options: {
       eyebrow: 'Community lane',
       title: 'Citizen experience',
       description:
-        'Citizen access stays focused on reporting, participation, and personal progress.',
+        'Citizen access stays focused on reporting first, then truthful follow-up and participation after submission.',
       links: citizenLinks,
     });
   }
@@ -210,7 +211,7 @@ const buildRoleGuides = (options: {
       eyebrow: 'Governance lane',
       title: 'Admin oversight',
       description:
-        'Admins and super admins retain governance tools alongside the operational lanes they already inherit.',
+        'Admins keep the primary web-only oversight lane alongside the operational access they already inherit.',
       links: adminLinks,
     });
   }
@@ -341,6 +342,7 @@ function CitizenEntrySection({
 }) {
   const reportsSubmitted = Math.max(0, profile?.impact?.reportsSubmitted ?? 0);
   const reportsResolved = Math.max(0, profile?.impact?.reportsResolved ?? 0);
+  const reportsAwaiting = Math.max(0, reportsSubmitted - reportsResolved);
   const points = Math.max(0, profile?.gamification?.points ?? 0);
   const badgesCount = Array.isArray(profile?.gamification?.badges)
     ? profile?.gamification?.badges.length
@@ -349,7 +351,7 @@ function CitizenEntrySection({
   let eyebrow = 'Citizen lane';
   let title = 'Report quickly, then follow your impact';
   let description =
-    'You have already completed the first-report milestone. Use /app as a lighter launch point into reporting, profile or history, and challenges.';
+    'You have already completed the first-report milestone. Use /app as a lighter launch point into reporting, follow-up, and challenges while keeping the primary citizen story mobile-first.';
   let statusLabel = 'Recent citizen progress';
 
   if (state === 'loading') {
@@ -362,7 +364,7 @@ function CitizenEntrySection({
     eyebrow = 'Citizen first report';
     title = 'Complete your first valid container report';
     description =
-      'Start with one report on an existing mapped container. After that first successful submission, /app becomes a lighter citizen lane with quick access to history, profile, and challenges.';
+      'Start with one report on an existing mapped container. After that first successful submission, /app becomes a lighter citizen lane with quick access to follow-up, history, and challenges.';
     statusLabel = 'What completion means';
   } else if (state === 'unavailable') {
     eyebrow = 'Citizen onboarding';
@@ -387,9 +389,10 @@ function CitizenEntrySection({
           </div>
 
           <div className="app-home-citizen-chip-row" aria-label="Citizen onboarding facts">
+            <span className="app-home-citizen-chip">Mobile-first citizen lane</span>
             <span className="app-home-citizen-chip">Mapped containers only</span>
             <span className="app-home-citizen-chip">GPS optional on web</span>
-            <span className="app-home-citizen-chip">Same report flow, lighter follow-up after first report</span>
+            <span className="app-home-citizen-chip">Lighter follow-up after first report</span>
           </div>
 
           <div className="app-home-citizen-actions">
@@ -434,6 +437,10 @@ function CitizenEntrySection({
                   <dd>{formatCountLabel(reportsResolved, 'report', 'reports')}</dd>
                 </div>
                 <div className="app-home-metric">
+                  <dt>Awaiting follow-up</dt>
+                  <dd>{formatCountLabel(reportsAwaiting, 'report', 'reports')}</dd>
+                </div>
+                <div className="app-home-metric">
                   <dt>Citizen points</dt>
                   <dd>{formatCountLabel(points, 'point', 'points')}</dd>
                 </div>
@@ -442,6 +449,9 @@ function CitizenEntrySection({
                   <dd>{formatCountLabel(badgesCount, 'badge', 'badges')}</dd>
                 </div>
               </dl>
+              <p className="app-home-citizen-inline-status">
+                Route or tour linkage is not yet shown directly to citizens here. Today the most truthful web follow-up is report status, resolved totals, and the current prototype estimates.
+              </p>
             </>
           ) : (
             <>
@@ -528,7 +538,7 @@ export default function AppHomePage() {
   const primaryLane = roleGuides[0]?.title ?? 'Shared operations';
   const workspaceSignals = [
     {
-      label: 'Default host',
+      label: 'Default route',
       value: '/app',
     },
     {
@@ -536,22 +546,22 @@ export default function AppHomePage() {
       value: `${accessibleSurfaceCount} routes`,
     },
     {
-      label: 'Dashboard policy',
-      value: canAccessManager ? 'Enabled for this account' : 'Restricted for this account',
+      label: 'Desktop priority',
+      value: canAccessManager || canAccessAdmin ? 'Manager/admin web-first' : 'Citizen/agent companion',
     },
   ];
   const operatingRules = [
     {
-      title: 'One authenticated host',
-      description: 'Every signed-in session lands on /app first, then moves into the correct product lane.',
+      title: 'Citizen reports stay central',
+      description: 'The role hub keeps reporting and follow-up visible instead of treating the product as only a manager dashboard.',
     },
     {
-      title: 'Deep links stay intact',
-      description: 'Users requesting a protected route still return to that destination after sign-in.',
+      title: 'Mobile-first roles stay honest',
+      description: 'Citizen and agent web routes stay available, but they are framed as companion flows rather than the main field experience.',
     },
     {
-      title: 'Live analytics stay gated',
-      description: 'Dashboard access remains limited to manager, admin, and super admin accounts.',
+      title: 'Manager and admin web remain primary',
+      description: 'Desktop monitoring, planning, reporting, and governance stay centered on the roles that actually use them most.',
     },
   ];
 
@@ -572,14 +582,14 @@ export default function AppHomePage() {
             <div className="app-home-command-copy">
               <div className="app-home-badge">
                 <House size={14} aria-hidden="true" />
-                Workspace Control
+                EcoTrack role hub
               </div>
               <div className="app-home-command-heading">
-                <h1>Command your EcoTrack workspace.</h1>
+                <h1>Enter the right EcoTrack lane.</h1>
                 <p>
-                  {firstName}, this is the authenticated operating surface for every EcoTrack
-                  user. Use it to enter the right product lane, review what this session can
-                  access, and move into work without treating the dashboard as the default home.
+                  {firstName}, this shared authenticated surface routes each role into the right part
+                  of the prototype. Citizens start the loop, managers coordinate it, agents validate
+                  field work, and admins keep the platform governed.
                 </p>
               </div>
               <div className="app-home-signal-row">
@@ -598,7 +608,7 @@ export default function AppHomePage() {
                 </span>
                 <div>
                   <h2>Session routing</h2>
-                  <p>This host is now the controlled launch point for every authenticated user.</p>
+                  <p>This host stays honest about which roles are mobile-first and which roles are web-first.</p>
                 </div>
               </div>
 
@@ -612,8 +622,8 @@ export default function AppHomePage() {
                   <dd>{primaryLane}</dd>
                 </div>
                 <div className="app-home-metric">
-                  <dt>Default fallback</dt>
-                  <dd>Shared workspace routes</dd>
+                  <dt>Role split</dt>
+                  <dd>{canAccessManager || canAccessAdmin ? 'Manager/admin web-first' : 'Citizen/agent companion web'}</dd>
                 </div>
               </dl>
             </aside>
@@ -629,8 +639,7 @@ export default function AppHomePage() {
               <div>
                 <h2>Priority actions</h2>
                 <p>
-                  The workspace starts with stable routes every session can trust, then layers in
-                  the highest-value role surfaces your account can access.
+                  Start with the highest-value lane for this account without collapsing the product into a generic dashboard-first story.
                 </p>
               </div>
             </div>
@@ -663,8 +672,7 @@ export default function AppHomePage() {
               <div>
                 <h2>Operating model</h2>
                 <p>
-                  The shared host keeps workspace routing predictable and keeps protected product
-                  surfaces aligned to the right audience.
+                  The role hub keeps product positioning clear even when one account can access multiple surfaces.
                 </p>
               </div>
             </div>
@@ -688,8 +696,7 @@ export default function AppHomePage() {
             <p className="app-home-section-eyebrow">Workspace lanes</p>
             <h2>Role-aware entry points</h2>
             <p>
-              Every authenticated user shares one product-grade home, then branches into the
-              correct lane from here.
+              Every authenticated user shares one entry point, then branches into the correct lane with the citizen-first product loop still visible.
             </p>
           </div>
 

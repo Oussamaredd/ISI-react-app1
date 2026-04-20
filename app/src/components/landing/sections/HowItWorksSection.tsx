@@ -1,15 +1,19 @@
 const steps = [
   {
-    title: "Detect",
-    copy: "Combine citizen reports, sensor measurements, and manual updates into one prioritized signal stream.",
+    title: "Citizen reports",
+    copy: "A citizen spots a container problem and sends a structured report into the EcoTrack queue.",
   },
   {
-    title: "Plan",
-    copy: "Turn zone risk and operational context into collection tours, assignments, and next actions.",
+    title: "Manager prioritizes",
+    copy: "Managers review the citizen signal first, then use simulated measurement context and planning tools to decide the next action.",
   },
   {
-    title: "Collect",
-    copy: "Guide crews through stops, confirm field work, and feed verified completion back to managers.",
+    title: "Agent validates",
+    copy: "Agents execute the assigned tour, validate collection, and record what happened in the field.",
+  },
+  {
+    title: "Citizen sees follow-up",
+    copy: "EcoTrack exposes the available report status, resolved counts, and current prototype impact without pretending hidden workflow steps are visible yet.",
   },
 ];
 
@@ -18,13 +22,13 @@ export default function HowItWorksSection() {
     <section id="how-it-works" className="landing-section">
       <div className="landing-container py-20">
         <div className="landing-reveal mx-auto max-w-3xl text-center">
-          <h2 className="landing-h2">From live signals to verified collection in three steps.</h2>
+          <h2 className="landing-h2">From citizen signal to validated collection follow-up.</h2>
           <p className="mt-4 text-[var(--text-muted)]">
-            EcoTrack keeps the office, the field, and the public working from the same operational picture.
+            This is the product loop EcoTrack is designed to defend in the current prototype.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
+        <div className="mt-12 grid gap-4 md:grid-cols-4">
           {steps.map((step, index) => (
             <article
               key={step.title}

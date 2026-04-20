@@ -482,6 +482,9 @@ export default function AgentTourPage() {
           <p>
             The assigned route could not be loaded right now. Check connectivity, then refresh.
           </p>
+          <p className="ops-helper">
+            This retained web route supports recovery and accessibility. EcoTrack still treats agent execution as a mobile-first workflow when device capabilities are available.
+          </p>
           <div className="ops-actions ops-mt-lg">
             <button
               type="button"
@@ -508,6 +511,9 @@ export default function AgentTourPage() {
         <header className="ops-hero">
           <h1>Daily Agent Tour</h1>
           <p>No actionable tour is assigned to your account right now.</p>
+          <p className="ops-helper">
+            This retained web route supports recovery and demos. Daily field execution remains mobile-first in the core product story.
+          </p>
           <div className="ops-actions ops-mt-lg">
             <button
               type="button"
@@ -533,6 +539,9 @@ export default function AgentTourPage() {
             <h1>{tour.name}</h1>
             <p>
               Zone: {tour.zoneName ?? "Unassigned"} | Scheduled {formatDateTime(tour.scheduledFor)}
+            </p>
+            <p className="ops-helper">
+              Web companion for review, recovery, and accessibility. Mobile remains the primary field-execution surface for agents.
             </p>
           </div>
           <span className={getTourStatusToneClass(tour.status)}>Status: {tour.status}</span>

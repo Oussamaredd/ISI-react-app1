@@ -264,13 +264,13 @@ export default function AppLayout() {
     () => [
       {
         to: "/app",
-        label: "Workspace",
+        label: "Role Hub",
         icon: House,
         matches: (pathname) => pathname === "/app",
       },
       {
         to: "/app/dashboard",
-        label: "Dashboard",
+        label: "Manager Dashboard",
         icon: LayoutDashboard,
         requiresManager: true,
         matches: (pathname) => pathname === "/app/dashboard",
@@ -305,14 +305,14 @@ export default function AppLayout() {
       },
       {
         to: '/app/citizen/report',
-        label: 'Report Overflow',
+        label: 'Citizen Reporting',
         icon: MapPin,
         requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/report'),
       },
       {
         to: '/app/citizen/profile',
-        label: 'Citizen Profile',
+        label: 'Impact & History',
         icon: User,
         requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/profile'),
@@ -353,11 +353,11 @@ export default function AppLayout() {
   const currentPageCatalog = React.useMemo<PageMeta[]>(
     () => [
       {
-        label: "Workspace",
+        label: "Role Hub",
         matches: (pathname) => pathname === "/app",
       },
       {
-        label: "Dashboard",
+        label: "Manager Dashboard",
         requiresManager: true,
         matches: (pathname) => pathname === "/app/dashboard",
       },
@@ -394,12 +394,12 @@ export default function AppLayout() {
         matches: (pathname) => isRouteActive(pathname, '/app/manager/reports'),
       },
       {
-        label: 'Report Overflow',
+        label: 'Citizen Reporting',
         requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/report'),
       },
       {
-        label: 'Citizen Profile',
+        label: 'Impact & History',
         requiresCitizen: true,
         matches: (pathname) => isRouteActive(pathname, '/app/citizen/profile'),
       },
@@ -438,7 +438,7 @@ export default function AppLayout() {
       .filter((page) => !page.requiresCitizen || canAccessCitizen)
       .filter((page) => !page.requiresManager || canAccessManager)
       .find((page) => page.matches(location.pathname)) ?? {
-      label: "Workspace",
+      label: "Role Hub",
       matches: () => true,
     };
   const isSidebarExpanded = isDesktop ? !isSidebarCompact : isMobileSidebarOpen;

@@ -224,16 +224,16 @@ export default function Dashboard() {
     <section className="dashboard-page" aria-label="Dashboard">
       <DocumentMetadata
         title="Dashboard | EcoTrack"
-        description="Monitor ticket flow, planning risk, container heatmap status, and live EcoTrack operations from the dashboard."
+        description="Monitor citizen-driven operational demand, planning risk, and manager coordination from the primary EcoTrack dashboard."
         canonicalPath="/app/dashboard"
       />
       <header className="dashboard-hero">
         <div className="dashboard-hero-copy">
-          <p className="dashboard-eyebrow">EcoTrack command center</p>
+          <p className="dashboard-eyebrow">Manager web workspace</p>
           <h1>Welcome back, {firstName}.</h1>
           <p>
-            Track ticket flow, workload balance, and operational activity from
-            one dashboard.
+            Track citizen-driven workload, planning risk, and operational activity from the
+            primary desktop workspace for managers and admins.
           </p>
         </div>
 

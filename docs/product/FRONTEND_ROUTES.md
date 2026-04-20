@@ -2,13 +2,15 @@
 
 This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/main.tsx`). SPA refresh support is preserved via Nginx fallback rewrite (`app/nginx.conf`) for both local container runs and the production image.
 
+EcoTrack web is the primary desktop surface for manager and admin work. Citizen and agent web routes are retained as companion, demo, testing, and accessibility flows, while the main citizen and agent product story remains mobile-first.
+
 ## Route groups
 
 | Path | Auth state | Result |
 | --- | --- | --- |
-| `/` | Unauthenticated | Marketing landing page for EcoTrack smart waste operations |
+| `/` | Unauthenticated | Marketing landing page for the EcoTrack citizen-first waste reporting and collection coordination prototype |
 | `/` | Authenticated | Redirect to `/app` |
-| `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages aligned to route planning, citizen reporting, container monitoring, and platform policy |
+| `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages aligned to citizen reporting, role-based coordination, prototype scope, and platform policy |
 | `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices and assertive inline auth error announcements |
 | `/signup` | Unauthenticated | Local account registration page |
 | `/forgot-password` | Unauthenticated | Password reset request page |
@@ -27,7 +29,7 @@ Special case:
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
 - Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
 - Direct-entry performance contract: `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first auth or dashboard paint.
-- Public marketing routes publish route-specific title, description, canonical, Open Graph, Twitter, and structured-data metadata aligned to EcoTrack smart waste operations.
+- Public marketing routes publish route-specific title, description, canonical, Open Graph, Twitter, and structured-data metadata aligned to EcoTrack as a citizen-first collection coordination prototype.
 - The public sign-in route (`/login`) publishes standard indexable metadata because it is part of the audited public entry surface.
 - Sensitive auth routes (`/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`) keep `noindex` metadata so recovery and callback flows stay available to users without becoming search landing pages.
 
@@ -35,13 +37,13 @@ Special case:
 
 | Path | Component | Notes |
 | --- | --- | --- |
-| `/app` | `AppHomePage` | Shared authenticated app home for all users; for citizen-capable accounts with zero submitted reports it prioritizes first-report onboarding before falling back to the lighter returning-user citizen lane |
-| `/app/dashboard` | `Dashboard` | Live operational overview; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app` |
-| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; existing-container issue reporting only, with typed issue selection and read-only status/fill context |
-| `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app` | `AppHomePage` | Shared authenticated role hub; for citizen-capable accounts with zero submitted reports it prioritizes first-report onboarding before falling back to the lighter returning-user citizen lane |
+| `/app/dashboard` | `Dashboard` | Primary manager/admin desktop monitoring surface; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app` |
+| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; web citizen companion flow for reporting issues on existing mapped containers with typed issue selection and latest known seeded/simulated context |
+| `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; web follow-up surface for citizen history, current report status, and prototype impact visibility |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
-| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. The page is zone-assigned, shows the zone depot/start location, loads all paginated mapped containers for that assigned zone to verify route coverage, and renders only the routed stop sequence on the map with numbered operational markers. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
-| `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, zone-safe assignment, and manual persisted-route rebuild for the last created tour. The page requires a zone before it lists assignable agents, labels zones by zone name for clarity, and shows the server-side nearest-neighbor + 2-opt optimization summary for the capped four-stop route. |
+| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. This retained web companion surface supports demo, accessibility, and recovery use cases while mobile remains the primary field-execution lane. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. The page is zone-assigned, shows the zone depot/start location, loads all paginated mapped containers for that assigned zone to verify route coverage, and renders only the routed stop sequence on the map with numbered operational markers. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
+| `/app/manager/planning` | `ManagerPlanningPage` | Primary manager desktop planning surface for route optimization, zone-safe assignment, and manual persisted-route rebuild for the last created tour. The page requires a zone before it lists assignable agents, labels zones by zone name for clarity, and shows the server-side nearest-neighbor + 2-opt optimization summary for the capped four-stop route. |
 | `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address |
 | `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views; requires support-workspace access (`agent`/`manager`/`admin`/`super_admin`), otherwise redirects to public `/support` |
@@ -51,16 +53,17 @@ Special case:
 | `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param; requires support-workspace access, otherwise redirects to public `/support` |
 | `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow; requires support-workspace access, otherwise redirects to public `/support` |
 | `/app/settings` | `SettingsPage` | Account settings workspace for display name updates, profile photo upload/removal, password changes for local accounts, and account/security overview panels |
-| `/app/admin` | `AdminDashboard` | Requires `admin`/`super_admin` role |
+| `/app/admin` | `AdminDashboard` | Web-only oversight and configuration surface; requires `admin`/`super_admin` role |
 
 Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
 - Protected `/app/*` routes keep the shared session gate visible while `/api/auth/status` is still retrying, then either open the workspace or fall through to `/login` once the backend resolves the session.
 - Citizen-capable accounts with no submitted citizen reports see a focused first-report onboarding panel at `/app` with one dominant report CTA; once the first report exists, `/app` switches that lane to lighter report/profile/history/challenges shortcuts.
+- The role hub and route copy reinforce the intended split: citizens and agents are mobile-first, while managers and admins are web-first.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
-- Sidebar navigation is priority-ordered with the shared Workspace hub first.
-- Primary navigation can include Workspace, Dashboard, Agent Tour, Tour Planning, Tour Operations, Manager Reports, Report Overflow, Citizen Profile, and Challenges depending on role.
+- Sidebar navigation is priority-ordered with the shared role hub first.
+- Primary navigation can include Role Hub, Manager Dashboard, Agent Tour, Tour Planning, Tour Operations, Manager Reports, Citizen Reporting, Impact & History, and Challenges depending on role.
 - Sidebar bottom: Settings, a role-aware Support link (internal support workspace for support-workspace roles, public `/support` for citizen-only sessions), optional Admin Center, and Sign Out actions.
 - Sidebar toggle behavior:
   - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
@@ -76,6 +79,7 @@ Authenticated shell behavior:
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 - Unauthorized authenticated requests for `/app/dashboard` are redirected back to `/app` instead of rendering the dashboard.
 - `/app/dashboard` now lazy-loads non-critical analytics panels and a manager heatmap panel after the shell and KPI strip have rendered.
+- The citizen follow-up loop currently exposes truthful web visibility through report submission confirmation, history status, resolved-report counts, and prototype impact estimates. Route linkage is not yet exposed directly to citizen web users.
 - Settings form behavior:
   - Display name changes are validated client-side before submission.
   - Profile photos accept PNG, JPEG, or WEBP uploads up to 1 MB and are stored as profile/avatar URLs or data URLs.
@@ -120,18 +124,18 @@ Landing section IDs:
 Landing in-page navigation still uses `/#<section-id>` for section jump behavior.
 Footer links now use dedicated content pages (for example `/pricing`, `/terms`, `/privacy`) instead of hash anchors.
 Hash navigation is resolved on landing mount with sticky header offset support (`useLandingSectionScroll` + `scroll-margin-top`).
-Public landing copy now describes EcoTrack as a smart waste operations platform, with route planning, citizen reporting, live container monitoring, field execution, and collection analytics as the core story.
+Public landing copy now describes EcoTrack as a citizen-first waste reporting and collection coordination prototype, with citizen reports as the primary operational signal, simulated measurements as secondary support, manager/admin web workspaces as the main desktop surfaces, and citizen/agent web routes retained as companion experiences.
 
 ## Marketing/legal info pages
 
 | Path | Primary intent |
 | --- | --- |
-| `/about` | Company overview for waste operations teams |
+| `/about` | Product overview and prototype framing |
 | `/contact` | Contact and request routing |
 | `/security` | Security practices summary |
-| `/features` | Product capabilities summary across reporting, monitoring, planning, and execution |
-| `/how-it-works` | Workflow overview from signal capture to verified collection |
-| `/pricing` | Commercial model summary |
+| `/features` | Product capabilities summary across citizen reporting, coordination, planning, and execution |
+| `/how-it-works` | Workflow overview from citizen signal to validated collection and follow-up |
+| `/pricing` | Prototype scope and public framing compatibility route |
 | `/support` | Support model and escalation guidance |
 | `/terms` | Terms summary |
 | `/privacy` | Privacy commitments for account, report, and telemetry data |
