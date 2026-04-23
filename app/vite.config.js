@@ -48,10 +48,13 @@ const appSuiteExcludes = [
   ...(includeAppE2E ? [] : ["src/tests/e2e.key-journeys.test.tsx"]),
   ...(appTestSuite === "fast" ? [...appUiTestFiles, ...appIsolatedTestFiles] : []),
 ];
-const appTestPool = appTestSuite === "ui" ? "forks" : "forks";
+// Keep the browser test lanes on the standard forked workers. Stability comes
+// from per-file isolation plus the run-vitest-suite batching strategy, not from
+// switching the worker transport.
+const appTestPool = "forks";
 const appTestFileParallelism = false;
 const appTestMaxWorkers = 1;
-const appUsesSharedSuiteContext = appTestSuite === "fast" || appTestSuite === "ui";
+const appUsesSharedSuiteContext = appTestSuite === "ui";
 const resolveQualityOutputRoot = () => {
   const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
 
@@ -282,8 +285,9 @@ export default defineConfig(({ mode }) => {
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
-      // Reuse a single jsdom context for the split fast/UI lanes, while keeping
-      // the default all-files and isolated lanes on per-file module isolation.
+      // Keep the browser-heavy UI lane on a shared jsdom context, while fast
+      // and isolated lanes stay per-file isolated to avoid startup hangs and
+      // cross-test state bleed on WSL/CI.
       pool: appTestPool,
       isolate: !appUsesSharedSuiteContext,
       fileParallelism: appTestFileParallelism,

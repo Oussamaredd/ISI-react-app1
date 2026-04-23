@@ -3,7 +3,6 @@ import { View } from "react-native";
 import { router } from "expo-router";
 import { Button, HelperText, TextInput } from "react-native-paper";
 
-import { resolveAuthenticatedHomeRoute } from "@/lib/roleRoutes";
 import { useSession } from "@/providers/SessionProvider";
 import type { AppTheme } from "@/theme/theme";
 import { useAppTheme, useThemedStyles } from "@/theme/useAppTheme";
@@ -44,7 +43,7 @@ const createStyles = (theme: AppTheme) => ({
 export function SignupScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const { authState, isLoading, signUp, user } = useSession();
+  const { authState, isLoading, signUp } = useSession();
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -82,9 +81,9 @@ export function SignupScreen() {
 
   useEffect(() => {
     if (authState === "authenticated") {
-      router.replace(resolveAuthenticatedHomeRoute(user));
+      router.replace("/");
     }
-  }, [authState, user]);
+  }, [authState]);
 
   const handleSubmit = async () => {
     setEmailTouched(true);

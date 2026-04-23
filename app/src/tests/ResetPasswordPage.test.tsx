@@ -8,7 +8,8 @@ const resetPasswordMock = vi.fn();
 
 vi.mock('../services/authApi', () => ({
   authApi: {
-    resetPassword: (token: string, password: string) => resetPasswordMock(token, password),
+    resetPassword: (params: { code?: string; password: string; token?: string }) =>
+      resetPasswordMock(params),
   },
 }));
 
@@ -46,7 +47,11 @@ describe('ResetPasswordPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
     await waitFor(() => {
-      expect(resetPasswordMock).toHaveBeenCalledWith('second-token', 'UpdatedPass123!');
+      expect(resetPasswordMock).toHaveBeenCalledWith({
+        code: '',
+        password: 'UpdatedPass123!',
+        token: 'second-token',
+      });
     });
 
     await act(async () => {

@@ -6,14 +6,11 @@ import DocumentMetadata from '../../components/DocumentMetadata';
 import LoginButton from '../../components/LoginButton';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
-import { API_BASE } from '../../services/api';
 import {
   clearPendingAuthRedirect,
   resolveRequestedAuthRedirect,
   storePendingAuthRedirect,
 } from '../../services/authRedirect';
-
-const GOOGLE_AUTH_URL = `${API_BASE}/api/auth/google`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -85,13 +82,20 @@ export default function LoginPage() {
     };
   }, []);
 
-  const handleGoogleStart = () => {
+  const handleGoogleStart = async () => {
     setError(null);
     setSignInMethod('google');
     setIsSigningIn(true);
 
-    storePendingAuthRedirect(redirectTarget);
-    window.location.assign(GOOGLE_AUTH_URL);
+    try {
+      const redirectUrl = await authApi.startGoogleSignIn();
+      storePendingAuthRedirect(redirectTarget);
+      window.location.assign(redirectUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to start Google sign-in.');
+      setIsSigningIn(false);
+      setSignInMethod(null);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -106,23 +110,9 @@ export default function LoginPage() {
 
     try {
       const payload = await authApi.login(email, password);
-
-      if (payload.accessToken && payload.user) {
-        login({
-          accessToken: payload.accessToken,
-          user: payload.user,
-        });
-        clearPendingAuthRedirect();
-        navigate(redirectTarget, { replace: true });
-        return;
-      }
-
-      const params = new URLSearchParams();
-      params.set('code', payload.code);
-      if (redirectTarget.startsWith('/')) {
-        params.set('next', redirectTarget);
-      }
-      navigate(`/auth/callback?${params.toString()}`, { replace: true });
+      login(payload);
+      clearPendingAuthRedirect();
+      navigate(redirectTarget, { replace: true });
     } catch (err) {
       if (err instanceof TypeError || err instanceof DOMException) {
         setError('Unable to reach EcoTrack right now. Check your connection and try again.');
@@ -168,7 +158,9 @@ export default function LoginPage() {
           className="auth-google-btn auth-login-google-btn"
           disabled={isAuthDisabled}
           isLoading={isSigningIn && signInMethod === 'google'}
-          onClick={handleGoogleStart}
+          onClick={() => {
+            void handleGoogleStart();
+          }}
         >
           Continue with Google
         </LoginButton>

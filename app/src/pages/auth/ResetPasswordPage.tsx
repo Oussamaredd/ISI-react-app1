@@ -8,11 +8,16 @@ import { authApi } from '../../services/authApi';
 export default function ResetPasswordPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const codeFromQuery = useMemo(
+    () => new URLSearchParams(location.search).get('code') ?? '',
+    [location.search],
+  );
   const tokenFromQuery = useMemo(
     () => new URLSearchParams(location.search).get('token') ?? '',
     [location.search],
   );
 
+  const [code, setCode] = useState(codeFromQuery);
   const [token, setToken] = useState(tokenFromQuery);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,10 +26,11 @@ export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setCode(codeFromQuery);
     setToken(tokenFromQuery);
     setError(null);
     setSuccessMessage(null);
-  }, [tokenFromQuery]);
+  }, [codeFromQuery, tokenFromQuery]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +45,11 @@ export default function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      await authApi.resetPassword(token, password);
+      await authApi.resetPassword({
+        code,
+        password,
+        token,
+      });
       setSuccessMessage('Password updated successfully. Redirecting to sign in...');
       window.setTimeout(() => navigate('/login', { replace: true }), 1200);
     } catch (err) {
@@ -72,7 +82,20 @@ export default function ResetPasswordPage() {
         {successMessage ? <p className="auth-success-banner">{successMessage}</p> : null}
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          {!tokenFromQuery ? (
+          {!codeFromQuery && !tokenFromQuery ? (
+            <label>
+              <span>Recovery code</span>
+              <input
+                type="text"
+                autoComplete="off"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+
+          {!codeFromQuery && tokenFromQuery ? (
             <label>
               <span>Reset token</span>
               <input

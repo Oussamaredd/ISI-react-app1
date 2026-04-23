@@ -4,14 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import {
   authApi,
-  type AuthLoginResponse,
-  type AuthSession,
   type SessionUser
 } from "@api/modules/auth";
 import {
   clearPersistedSession,
   hydrateSessionSnapshot,
-  setPersistedSessionUser,
   setSessionSnapshot
 } from "@api/core/tokenStore";
 import { subscribeToSessionInvalidated } from "@api/core/sessionEvents";
@@ -37,25 +34,6 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const resolveAuthSession = async (payload: AuthLoginResponse): Promise<AuthSession> => {
-  if (
-    "accessToken" in payload &&
-    typeof payload.accessToken === "string" &&
-    payload.user
-  ) {
-    return {
-      accessToken: payload.accessToken,
-      user: payload.user
-    };
-  }
-
-  if (!("code" in payload)) {
-    throw new Error("Auth response did not include an exchange code.");
-  }
-
-  return authApi.exchange(payload.code);
-};
-
 export function SessionProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -75,18 +53,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
     setAuthState("unknown");
     const nextState = await bootstrapSession({
       hydrateSessionSnapshot,
-      loadStatus: authApi.status
+      loadSession: authApi.getSession,
+      resolveSessionUser: authApi.resolveSessionUser
     });
 
     if (nextState.shouldClearPersistedSession) {
       await clearPersistedSession();
     }
 
-    if (nextState.authState === "authenticated" && nextState.user) {
-      if (nextState.shouldPersistUser) {
-        await setPersistedSessionUser(nextState.user);
-      }
-
+    if (nextState.authState === "authenticated" && nextState.user && nextState.accessToken) {
+      await setSessionSnapshot({
+        accessToken: nextState.accessToken,
+        user: nextState.user
+      });
       applyAuthenticatedState(nextState.user);
       return;
     }
@@ -99,17 +78,38 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, [refreshSession]);
 
   useEffect(() => {
+    const {
+      data: { subscription }
+    } = authApi.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+        void clearPersistedSession();
+        applyAnonymousState();
+        return;
+      }
+
+      void (async () => {
+        queryClient.clear();
+        await refreshSession();
+      })();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [applyAnonymousState, queryClient, refreshSession]);
+
+  useEffect(() => {
     return subscribeToSessionInvalidated(() => {
       queryClient.clear();
-      void clearPersistedSession();
+      void authApi.logout().catch(() => undefined);
       applyAnonymousState();
     });
   }, [applyAnonymousState, queryClient]);
 
   const signIn = useCallback(
     async ({ email, password }: { email: string; password: string }) => {
-      const response = await authApi.login(email, password);
-      const session = await resolveAuthSession(response);
+      const session = await authApi.login(email, password);
       await setSessionSnapshot({
         accessToken: session.accessToken,
         user: session.user

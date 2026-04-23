@@ -1,77 +1,68 @@
-import { ApiRequestError } from "@api/core/http";
-import type { AuthStatusResponse, SessionUser } from "@api/modules/auth";
+import type { Session } from "@supabase/supabase-js";
+
 import type { PersistedSessionSnapshot } from "@api/core/tokenStore";
+import type { SessionUser } from "@api/modules/auth";
 
 import type { AuthState } from "./SessionProvider";
 
 type SessionBootstrapDeps = {
   hydrateSessionSnapshot: () => Promise<PersistedSessionSnapshot>;
-  loadStatus: () => Promise<AuthStatusResponse>;
+  loadSession: () => Promise<{ data: { session: Session | null }; error: Error | null }>;
+  resolveSessionUser: (session: Session | null) => SessionUser | null;
 };
 
 export type SessionBootstrapResult = {
   authState: AuthState;
+  accessToken: string | null;
   user: SessionUser | null;
-  shouldPersistUser: boolean;
   shouldClearPersistedSession: boolean;
 };
 
 export const bootstrapSession = async ({
   hydrateSessionSnapshot,
-  loadStatus
+  loadSession,
+  resolveSessionUser,
 }: SessionBootstrapDeps): Promise<SessionBootstrapResult> => {
   const persistedSession = await hydrateSessionSnapshot();
 
-  if (!persistedSession.accessToken) {
-    return {
-      authState: "anonymous",
-      user: null,
-      shouldPersistUser: false,
-      shouldClearPersistedSession: persistedSession.user !== null
-    };
-  }
-
   try {
-    const status = await loadStatus();
+    const { data, error } = await loadSession();
+    if (error) {
+      throw error;
+    }
 
-    if (status.authenticated && status.user) {
+    const accessToken = data.session?.access_token?.trim() ?? null;
+    const user = resolveSessionUser(data.session);
+
+    if (accessToken && user) {
       return {
         authState: "authenticated",
-        user: status.user,
-        shouldPersistUser: true,
+        accessToken,
+        user,
         shouldClearPersistedSession: false
       };
     }
 
     return {
       authState: "anonymous",
+      accessToken: null,
       user: null,
-      shouldPersistUser: false,
-      shouldClearPersistedSession: true
+      shouldClearPersistedSession: Boolean(persistedSession.accessToken || persistedSession.user)
     };
-  } catch (error) {
-    if (error instanceof ApiRequestError && error.status === 401) {
-      return {
-        authState: "anonymous",
-        user: null,
-        shouldPersistUser: false,
-        shouldClearPersistedSession: true
-      };
-    }
-
-    if (persistedSession.user) {
+  } catch {
+    if (persistedSession.accessToken && persistedSession.user) {
       return {
         authState: "authenticated",
+        accessToken: persistedSession.accessToken,
         user: persistedSession.user,
-        shouldPersistUser: false,
         shouldClearPersistedSession: false
       };
     }
 
     return {
       authState: "anonymous",
+      accessToken: null,
       user: null,
-      shouldPersistUser: false,
       shouldClearPersistedSession: false
     };
   }

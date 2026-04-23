@@ -19,6 +19,7 @@ vi.mock('../hooks/useAuth', () => ({
 vi.mock('../services/authApi', () => ({
   authApi: {
     login: vi.fn(),
+    startGoogleSignIn: vi.fn(),
   },
 }));
 
@@ -30,6 +31,7 @@ vi.mock('../services/authRedirect', () => ({
 
 const authApiModule = await import('../services/authApi');
 const mockAuthApiLogin = vi.mocked(authApiModule.authApi.login);
+const mockStartGoogleSignIn = vi.mocked(authApiModule.authApi.startGoogleSignIn);
 
 describe('LoginPage', () => {
   let locationGetterSpy: ReturnType<typeof vi.spyOn>;
@@ -38,6 +40,7 @@ describe('LoginPage', () => {
   beforeEach(() => {
     mockLogin.mockReset();
     mockAuthApiLogin.mockReset();
+    mockStartGoogleSignIn.mockReset();
     mockStorePendingAuthRedirect.mockReset();
     mockClearPendingAuthRedirect.mockReset();
     mockLocationAssign = vi.fn();
@@ -62,19 +65,21 @@ describe('LoginPage', () => {
   });
 
   test('starts google sign-in immediately without a health precheck', async () => {
+    mockStartGoogleSignIn.mockResolvedValue('https://example.supabase.co/auth/v1/authorize');
+
     renderWithRouter(<LoginPage />, { route: '/login' });
 
     fireEvent.click(screen.getByRole('button', { name: /continue with google/i }));
 
     await waitFor(() => {
+      expect(mockStartGoogleSignIn).toHaveBeenCalledTimes(1);
       expect(mockStorePendingAuthRedirect).toHaveBeenCalledWith('/app');
-      expect(mockLocationAssign).toHaveBeenCalledWith(expect.stringMatching(/\/api\/auth\/google$/));
+      expect(mockLocationAssign).toHaveBeenCalledWith('https://example.supabase.co/auth/v1/authorize');
     });
   });
 
   test('submits email sign-in without a preflight health gate', async () => {
     mockAuthApiLogin.mockResolvedValue({
-      code: 'exchange-code',
       accessToken: 'token',
       user: {
         id: 'user-1',

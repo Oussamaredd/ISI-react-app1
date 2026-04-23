@@ -14,7 +14,6 @@ import { Link } from 'react-router-dom';
 
 import { isFeatureRouteEnabled, loadAppRuntimeConfig, type AppRuntimeConfig } from '../config/runtimeFeatures';
 import { useCurrentUser } from '../hooks/useAuth';
-import { useCitizenProfile } from '../hooks/useCitizen';
 import {
   hasAdminAccess,
   hasAgentAccess,
@@ -36,19 +35,6 @@ type RoleGuide = {
   description: string;
   links: WorkspaceLink[];
 };
-
-type CitizenProfileSnapshot = {
-  gamification?: {
-    points?: number | null;
-    badges?: string[] | null;
-  };
-  impact?: {
-    reportsSubmitted?: number | null;
-    reportsResolved?: number | null;
-  };
-};
-
-type CitizenEntryState = 'loading' | 'first-run' | 'returning' | 'unavailable';
 
 const buildSupportLink = (canAccessSupportWorkspace: boolean): WorkspaceLink =>
   canAccessSupportWorkspace
@@ -129,7 +115,7 @@ const citizenLinks: WorkspaceLink[] = [
 const buildCitizenFollowUpLinks = (canAccessSupportWorkspace: boolean): WorkspaceLink[] => [
   {
     label: 'Impact & History',
-    description: 'Review your recent reports, current statuses, and resolved follow-up counts.',
+    description: 'Open live report history, current statuses, and the follow-up details when you need them.',
     meta: 'Follow-up',
     to: '/app/citizen/profile',
   },
@@ -330,66 +316,27 @@ const buildPriorityActions = (options: {
   return actions.slice(0, 4);
 };
 
-const formatCountLabel = (value: number, singular: string, plural: string) =>
-  `${value} ${value === 1 ? singular : plural}`;
-
 function CitizenEntrySection({
-  state,
-  profile,
-  errorMessage,
   followUpLinks,
 }: {
-  state: CitizenEntryState;
-  profile: CitizenProfileSnapshot | null;
-  errorMessage: string | null;
   followUpLinks: WorkspaceLink[];
 }) {
-  const reportsSubmitted = Math.max(0, profile?.impact?.reportsSubmitted ?? 0);
-  const reportsResolved = Math.max(0, profile?.impact?.reportsResolved ?? 0);
-  const reportsAwaiting = Math.max(0, reportsSubmitted - reportsResolved);
-  const points = Math.max(0, profile?.gamification?.points ?? 0);
-  const badgesCount = Array.isArray(profile?.gamification?.badges)
-    ? profile?.gamification?.badges.length
-    : 0;
-
-  let eyebrow = 'Citizen lane';
-  let title = 'Report quickly, then follow your impact';
-  let description =
-    'You have already completed the first-report milestone. Use /app as a lighter launch point into reporting, follow-up, and challenges while keeping the primary citizen story mobile-first.';
-  let statusLabel = 'Recent citizen progress';
-
-  if (state === 'loading') {
-    eyebrow = 'Citizen onboarding';
-    title = 'Checking your citizen first-report milestone';
-    description =
-      'EcoTrack is verifying whether this session already has a valid citizen report on record. You can still jump straight into reporting while the profile snapshot loads.';
-    statusLabel = 'Current status';
-  } else if (state === 'first-run') {
-    eyebrow = 'Citizen first report';
-    title = 'Complete your first valid container report';
-    description =
-      'Start with one report on an existing mapped container. After that first successful submission, /app becomes a lighter citizen lane with quick access to follow-up, history, and challenges.';
-    statusLabel = 'What completion means';
-  } else if (state === 'unavailable') {
-    eyebrow = 'Citizen onboarding';
-    title = 'Citizen progress is temporarily unavailable';
-    description =
-      'EcoTrack could not verify your citizen progress right now. You can still open the existing report flow, and sign-in recovery will keep the route intact if the session has expired.';
-    statusLabel = 'Recovery';
-  }
-
   return (
     <section className="app-home-card app-home-citizen-entry" aria-labelledby="citizen-entry-title">
       <div className="app-home-citizen-grid">
         <div className="app-home-citizen-copy">
           <div className="app-home-badge app-home-badge-citizen">
             <FileText size={14} aria-hidden="true" />
-            {eyebrow}
+            Citizen lane
           </div>
 
           <div className="app-home-citizen-heading">
-            <h2 id="citizen-entry-title">{title}</h2>
-            <p>{description}</p>
+            <h2 id="citizen-entry-title">Open citizen reporting when you are ready.</h2>
+            <p>
+              EcoTrack keeps the authenticated role hub lightweight so sign-in can finish without
+              waking the operational API. Open reporting, history, or challenges only when you want
+              live product data.
+            </p>
           </div>
 
           <div className="app-home-citizen-chip-row" aria-label="Citizen onboarding facts">
@@ -406,8 +353,6 @@ function CitizenEntrySection({
             </Link>
           </div>
 
-          {errorMessage ? <p className="app-home-citizen-inline-status">{errorMessage}</p> : null}
-
           <div className="app-home-citizen-secondary-links">
             {followUpLinks.map((link) => (
               <Link key={link.to} to={link.to} className="app-home-citizen-secondary-link">
@@ -418,77 +363,31 @@ function CitizenEntrySection({
           </div>
         </div>
 
-        <aside className="app-home-citizen-panel" aria-label={statusLabel}>
-          {state === 'returning' ? (
-            <>
-              <div className="app-home-card-head">
-                <span className="app-home-icon app-home-icon-muted">
-                  <Sparkles size={18} aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Citizen progress</h3>
-                  <p>Use the shared host without repeating the first-run walkthrough.</p>
-                </div>
-              </div>
+        <aside className="app-home-citizen-panel" aria-label="Citizen lane guidance">
+          <div className="app-home-card-head">
+            <span className="app-home-icon app-home-icon-muted">
+              <Sparkles size={18} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Citizen lane guidance</h3>
+              <p>Keep the first interaction lightweight, then open deeper follow-up only on demand.</p>
+            </div>
+          </div>
 
-              <dl className="app-home-metric-list">
-                <div className="app-home-metric">
-                  <dt>Reports submitted</dt>
-                  <dd>{formatCountLabel(reportsSubmitted, 'report', 'reports')}</dd>
-                </div>
-                <div className="app-home-metric">
-                  <dt>Resolved reports</dt>
-                  <dd>{formatCountLabel(reportsResolved, 'report', 'reports')}</dd>
-                </div>
-                <div className="app-home-metric">
-                  <dt>Awaiting follow-up</dt>
-                  <dd>{formatCountLabel(reportsAwaiting, 'report', 'reports')}</dd>
-                </div>
-                <div className="app-home-metric">
-                  <dt>Citizen points</dt>
-                  <dd>{formatCountLabel(points, 'point', 'points')}</dd>
-                </div>
-                <div className="app-home-metric">
-                  <dt>Badges earned</dt>
-                  <dd>{formatCountLabel(badgesCount, 'badge', 'badges')}</dd>
-                </div>
-              </dl>
-              <p className="app-home-citizen-inline-status">
-                Route or tour linkage is not yet shown directly to citizens here. Today the most truthful web follow-up is report status, resolved totals, and the current prototype estimates.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="app-home-card-head">
-                <span className="app-home-icon app-home-icon-muted">
-                  <Compass size={18} aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>{state === 'first-run' ? 'Before you start' : statusLabel}</h3>
-                  <p>
-                    {state === 'first-run'
-                      ? 'Keep the first report focused and lightweight.'
-                      : 'These recovery rules keep the citizen lane usable even when supporting data is unavailable.'}
-                  </p>
-                </div>
-              </div>
+          <ul className="app-home-citizen-list">
+            {citizenFirstRunChecklist.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
 
-              <ul className="app-home-citizen-list">
-                {citizenFirstRunChecklist.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-
-              <div className="app-home-citizen-subsection">
-                <p className="app-home-citizen-subtitle">If something blocks you</p>
-                <ul className="app-home-citizen-list app-home-citizen-list-muted">
-                  {citizenRecoveryNotes.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
+          <div className="app-home-citizen-subsection">
+            <p className="app-home-citizen-subtitle">If something blocks you</p>
+            <ul className="app-home-citizen-list app-home-citizen-list-muted">
+              {citizenRecoveryNotes.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
         </aside>
       </div>
     </section>
@@ -508,24 +407,6 @@ export default function AppHomePage() {
     buildCitizenFollowUpLinks(canAccessSupportWorkspace),
     runtimeConfig,
   );
-  const citizenProfileQuery = useCitizenProfile(canAccessCitizen);
-  const citizenProfile = ((citizenProfileQuery.data ?? null) as CitizenProfileSnapshot | null);
-  const reportsSubmitted = Math.max(0, citizenProfile?.impact?.reportsSubmitted ?? 0);
-  const citizenEntryState: CitizenEntryState = !canAccessCitizen
-    ? 'unavailable'
-    : citizenProfileQuery.isLoading
-      ? 'loading'
-      : citizenProfileQuery.isError || !citizenProfile
-        ? 'unavailable'
-        : reportsSubmitted > 0
-          ? 'returning'
-          : 'first-run';
-  const citizenProfileError =
-    canAccessCitizen && citizenProfileQuery.isError && citizenProfileQuery.error instanceof Error
-      ? citizenProfileQuery.error.message
-      : canAccessCitizen && citizenProfileQuery.isError
-        ? 'Citizen progress could not be loaded.'
-        : null;
   const roleGuides = buildRoleGuides({
     canAccessManager,
     canAccessAgent,
@@ -586,9 +467,6 @@ export default function AppHomePage() {
       <div className="app-home-stack">
         {canAccessCitizen ? (
           <CitizenEntrySection
-            state={citizenEntryState}
-            profile={citizenProfile}
-            errorMessage={citizenProfileError}
             followUpLinks={citizenFollowUpLinks}
           />
         ) : null}

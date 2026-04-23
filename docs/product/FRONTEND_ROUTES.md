@@ -11,11 +11,11 @@ EcoTrack web is the primary desktop surface for manager and admin work. Citizen 
 | `/` | Unauthenticated | Marketing landing page for the EcoTrack citizen-first waste reporting and collection coordination prototype |
 | `/` | Authenticated | Redirect to `/app` |
 | `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages aligned to citizen reporting, role-based coordination, prototype scope, and platform policy |
-| `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices and assertive inline auth error announcements |
-| `/signup` | Unauthenticated | Local account registration page |
-| `/forgot-password` | Unauthenticated | Password reset request page |
-| `/reset-password` | Unauthenticated | Local password reset page |
-| `/auth/callback` | Any | Exchanges one-time auth code, restores any pending post-login route, then redirects to `/app/*`; shows loading/error states and a brief success state with a green checkmark before redirect |
+| `/login` | Unauthenticated | Login page (Supabase email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices and assertive inline auth error announcements |
+| `/signup` | Unauthenticated | Supabase-backed account registration page |
+| `/forgot-password` | Unauthenticated | Supabase password reset request page |
+| `/reset-password` | Unauthenticated | Supabase password reset completion page with legacy token fallback only for compatibility |
+| `/auth/callback` | Any | Exchanges the Supabase PKCE/OAuth code in the browser client, restores any pending post-login route, then redirects to `/app/*`; shows loading/error states and a brief success state with a green checkmark before redirect |
 | `/app/*` | Unauthenticated | Redirect to `/login` (with `next` query) |
 | `/app/*` | Authenticated | Product app pages |
 | `/faq` | Any | Compatibility redirect to `/support` |
@@ -24,7 +24,7 @@ EcoTrack web is the primary desktop surface for manager and admin work. Citizen 
 Special case:
 
 - `/#<section-id>` remains accessible for authenticated users to support route+scroll links back to marketing sections.
-- The public landing route (`/`) redirects to `/app` only after the backend confirms an authenticated session; a cached local bearer alone keeps session discovery in progress and does not bypass the landing surface.
+- The public landing route (`/`) redirects to `/app` only after the browser restores a valid Supabase session; the auth bootstrap no longer calls `/api/auth/status`.
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
 - Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
@@ -37,7 +37,7 @@ Special case:
 
 | Path | Component | Notes |
 | --- | --- | --- |
-| `/app` | `AppHomePage` | Shared authenticated role hub; for citizen-capable accounts with zero submitted reports it prioritizes first-report onboarding before falling back to the lighter returning-user citizen lane |
+| `/app` | `AppHomePage` | Shared authenticated role hub; stays lightweight after sign-in and only points users into live workflows when they explicitly open them |
 | `/app/dashboard` | `Dashboard` | Primary manager/admin desktop monitoring surface; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app`. In the low-cost MVP baseline it only opens realtime while the dashboard tab is visible, prefers websocket push, keeps SSE disabled by default, and falls back to 5-minute polling. |
 | `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; web citizen companion flow for reporting issues on existing mapped containers with typed issue selection and latest known seeded/simulated context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; web follow-up surface for citizen history, current report status, and prototype impact visibility |
@@ -58,8 +58,8 @@ Special case:
 Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
-- Protected `/app/*` routes keep the shared session gate visible while `/api/auth/status` is still retrying, then either open the workspace or fall through to `/login` once the backend resolves the session.
-- Citizen-capable accounts with no submitted citizen reports see a focused first-report onboarding panel at `/app` with one dominant report CTA; once the first report exists, `/app` switches that lane to lighter report/profile/history/challenges shortcuts.
+- Protected `/app/*` routes keep the shared session gate visible only while the local Supabase session is restoring, then either open the workspace or fall through to `/login`.
+- The shared `/app` role hub does not prefetch citizen profile data on mount; citizen follow-up pages such as `/app/citizen/profile` and `/app/citizen/challenges` load their live data only when opened.
 - The role hub and route copy reinforce the intended split: citizens and agents are mobile-first, while managers and admins are web-first.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with the shared role hub first.

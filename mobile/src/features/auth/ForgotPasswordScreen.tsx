@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
 import { Button, HelperText, Text, TextInput } from "react-native-paper";
 
@@ -23,18 +23,6 @@ const createStyles = (theme: AppTheme) => ({
     color: theme.colors.success,
     lineHeight: 20
   },
-  devResetBox: {
-    gap: theme.spacing.sm,
-    padding: theme.spacing.md,
-    borderRadius: theme.shape.md,
-    backgroundColor: theme.colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSoft
-  },
-  devResetText: {
-    color: theme.colors.textMuted,
-    lineHeight: 18
-  },
   submitButton: {
     borderRadius: theme.shape.pill
   },
@@ -53,7 +41,6 @@ export function ForgotPasswordScreen() {
   const [emailTouched, setEmailTouched] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emailError = emailTouched ? getLoginEmailError(email) : null;
@@ -62,7 +49,6 @@ export function ForgotPasswordScreen() {
     setEmailTouched(true);
     setErrorMessage(null);
     setSuccessMessage(null);
-    setDevResetUrl(null);
 
     const rawEmailError = getLoginEmailError(email);
     if (rawEmailError) {
@@ -74,9 +60,8 @@ export function ForgotPasswordScreen() {
     setIsSubmitting(true);
 
     try {
-      const payload = await authApi.forgotPassword(normalizedEmail);
-      setSuccessMessage("If an account exists for this email, a reset link was generated.");
-      setDevResetUrl(payload?.devResetUrl ?? null);
+      await authApi.forgotPassword(normalizedEmail);
+      setSuccessMessage("If an account exists for this email, a reset link was sent.");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -137,24 +122,6 @@ export function ForgotPasswordScreen() {
           <Text variant="bodyMedium" style={styles.successCopy}>
             {successMessage}
           </Text>
-        ) : null}
-
-        {devResetUrl ? (
-          <View style={styles.devResetBox}>
-            <Text variant="labelLarge">Development reset link</Text>
-            <Text variant="bodySmall" style={styles.devResetText} selectable>
-              {devResetUrl}
-            </Text>
-            <Button
-              mode="text"
-              compact
-              onPress={() => {
-                void Linking.openURL(devResetUrl);
-              }}
-            >
-              Open reset link
-            </Button>
-          </View>
         ) : null}
       </View>
 

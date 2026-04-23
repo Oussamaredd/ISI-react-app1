@@ -6,7 +6,6 @@ import { SessionProvider, useSession } from "@/providers/SessionProvider";
 import { authApi } from "@api/modules/auth";
 import {
   clearPersistedSession,
-  setPersistedSessionUser,
   setSessionSnapshot,
 } from "@api/core/tokenStore";
 import { subscribeToSessionInvalidated } from "@api/core/sessionEvents";
@@ -15,18 +14,18 @@ import { mobileFireEvent, renderMobileScreen } from "./test-utils";
 
 vi.mock("@api/modules/auth", () => ({
   authApi: {
-    exchange: vi.fn(),
+    getSession: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
+    onAuthStateChange: vi.fn(),
+    resolveSessionUser: vi.fn(),
     signup: vi.fn(),
-    status: vi.fn(),
   },
 }));
 
 vi.mock("@api/core/tokenStore", () => ({
   clearPersistedSession: vi.fn(),
   hydrateSessionSnapshot: vi.fn(),
-  setPersistedSessionUser: vi.fn(),
   setSessionSnapshot: vi.fn(),
 }));
 
@@ -114,21 +113,32 @@ describe("SessionProvider", () => {
 
     vi.mocked(bootstrapSession).mockResolvedValue({
       authState: "anonymous",
+      accessToken: null,
       user: null,
-      shouldPersistUser: false,
       shouldClearPersistedSession: false,
     });
     vi.mocked(authApi.login).mockResolvedValue({
       accessToken: "token-123",
       user: managerUser,
     });
-    vi.mocked(authApi.exchange).mockResolvedValue({
-      accessToken: "exchange-token",
-      user: managerUser,
-    });
     vi.mocked(authApi.signup).mockResolvedValue({
       accessToken: "signup-token",
       user: managerUser,
+    });
+    vi.mocked(authApi.getSession).mockResolvedValue({
+      data: {
+        session: null,
+      },
+      error: null,
+    } as never);
+    vi.mocked(authApi.onAuthStateChange).mockImplementation(() => {
+      return {
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(),
+          },
+        },
+      } as never;
     });
     vi.mocked(authApi.logout).mockResolvedValue({
       success: true,
@@ -145,8 +155,8 @@ describe("SessionProvider", () => {
   it("hydrates the bootstrap result and persists a fresh authenticated user when required", async () => {
     vi.mocked(bootstrapSession).mockResolvedValue({
       authState: "authenticated",
+      accessToken: "bootstrap-token",
       user: managerUser,
-      shouldPersistUser: true,
       shouldClearPersistedSession: false,
     });
 
@@ -162,7 +172,10 @@ describe("SessionProvider", () => {
       expect(screen.getByTestId("auth-loading").textContent).toBe("false");
     });
 
-    expect(setPersistedSessionUser).toHaveBeenCalledWith(managerUser);
+    expect(setSessionSnapshot).toHaveBeenCalledWith({
+      accessToken: "bootstrap-token",
+      user: managerUser,
+    });
   });
 
   it("signs in directly when the login response already contains a session", async () => {
@@ -189,23 +202,20 @@ describe("SessionProvider", () => {
   });
 
   it("exchanges a login code, signs up, signs out, and responds to invalidation events", async () => {
-    vi.mocked(authApi.login).mockResolvedValue({
-      code: "exchange-code",
-    } as never);
     vi.mocked(bootstrapSession)
       .mockResolvedValueOnce({
         authState: "authenticated",
+        accessToken: "bootstrap-token",
         user: managerUser,
-        shouldPersistUser: false,
         shouldClearPersistedSession: false,
       })
       .mockResolvedValueOnce({
         authState: "authenticated",
+        accessToken: "refreshed-token",
         user: {
           ...managerUser,
           displayName: "Refreshed Manager",
         },
-        shouldPersistUser: true,
         shouldClearPersistedSession: true,
       });
     vi.mocked(authApi.logout).mockRejectedValue(new Error("offline"));
@@ -222,9 +232,8 @@ describe("SessionProvider", () => {
 
     await mobileFireEvent.click(screen.getByRole("button", { name: /Sign in action/i }));
     await waitFor(() => {
-      expect(authApi.exchange).toHaveBeenCalledWith("exchange-code");
       expect(setSessionSnapshot).toHaveBeenCalledWith({
-        accessToken: "exchange-token",
+        accessToken: "token-123",
         user: managerUser,
       });
     });
@@ -245,9 +254,12 @@ describe("SessionProvider", () => {
     await mobileFireEvent.click(screen.getByRole("button", { name: /Refresh action/i }));
     await waitFor(() => {
       expect(clearPersistedSession).toHaveBeenCalled();
-      expect(setPersistedSessionUser).toHaveBeenCalledWith({
-        ...managerUser,
-        displayName: "Refreshed Manager",
+      expect(setSessionSnapshot).toHaveBeenCalledWith({
+        accessToken: "refreshed-token",
+        user: {
+          ...managerUser,
+          displayName: "Refreshed Manager",
+        },
       });
       expect(screen.getByTestId("auth-user").textContent).toBe("Refreshed Manager");
     });

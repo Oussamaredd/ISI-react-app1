@@ -48,6 +48,8 @@ Managed Postgres local-testing note:
 - Keep `SUPABASE_SERVICE_ROLE_KEY` only in trusted shell or server-side env files when running the one-off `npm run db:auth:import:supabase --workspace=ecotrack-database` import script.
 - Keep `app/.env.local` frontend-only (`VITE_*` keys only).
 - Keep `mobile/.env.local` mobile-only (`EXPO_PUBLIC_*` keys only).
+- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `app/.env.local` for browser sign-in, signup, OAuth callback, and password reset flows.
+- Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `mobile/.env.local` for Expo/native sign-in, signup, and password reset flows.
 - Keep `infrastructure/environments/.env.docker` pointed at the local Docker Postgres sandbox unless you are deliberately changing the Docker workflow.
 
 ## Docker Setup
@@ -107,7 +109,11 @@ Cloudflare Pages build note:
 - `API_PORT`
 - `API_BASE_URL`
 - `VITE_API_BASE_URL`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `EXPO_PUBLIC_API_BASE_URL`
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 ## OAuth Callback Requirements
 

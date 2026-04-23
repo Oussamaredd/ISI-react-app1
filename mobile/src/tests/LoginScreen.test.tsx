@@ -74,7 +74,7 @@ describe("LoginScreen", () => {
     });
   });
 
-  it("redirects authenticated managers to their role home route", async () => {
+  it("redirects authenticated users to the neutral post-auth hub", async () => {
     vi.mocked(useSession).mockReturnValue({
       authState: "authenticated",
       isAuthenticated: true,
@@ -95,7 +95,7 @@ describe("LoginScreen", () => {
     renderMobileScreen(<LoginScreen />);
 
     await waitFor(() => {
-      expect(router.replace).toHaveBeenCalledWith("/(manager)");
+      expect(router.replace).toHaveBeenCalledWith("/");
     });
   });
 

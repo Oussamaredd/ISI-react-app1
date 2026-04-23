@@ -16,7 +16,8 @@ const mobileTestInclude = mobileTestSuite === "ui"
   ? mobileUiTestFiles
   : ["src/tests/**/*.test.ts", "src/tests/**/*.test.tsx"];
 const mobileTestExclude = mobileTestSuite === "fast" ? mobileUiTestFiles : [];
-const mobileUsesSharedSuiteContext = mobileTestSuite === "fast" || mobileTestSuite === "ui";
+const mobileUsesSharedSuiteContext = mobileTestSuite === "ui";
+const mobileTestPool = "forks";
 const resolveQualityOutputRoot = () => {
   const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
 
@@ -57,7 +58,7 @@ export default defineConfig({
     restoreMocks: true,
     unstubGlobals: true,
     unstubEnvs: true,
-    pool: "forks",
+    pool: mobileTestPool,
     isolate: !mobileUsesSharedSuiteContext,
     fileParallelism: false,
     maxWorkers: 1,

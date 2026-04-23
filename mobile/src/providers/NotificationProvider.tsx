@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { startTransition, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
-import { router } from "expo-router";
+import { router, useSegments } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { citizenApi, type CitizenNotificationItem } from "@api/modules/citizen";
@@ -38,16 +38,25 @@ const NotificationContext = createContext<NotificationProviderValue | null>(null
 export function NotificationProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
   const { authState } = useSession();
+  const segments = useSegments();
   const [permissionState, setPermissionState] = useState<NotificationPermissionState | null>(null);
   const [registrationState, setRegistrationState] = useState<NotificationProviderValue["registrationState"]>("idle");
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [lastNotification, setLastNotification] = useState<CitizenNotificationItem | null>(null);
   const isAuthenticated = authState === "authenticated";
+  const rootSegment = String(segments[0] ?? "index");
+  const isPassiveSessionRoute =
+    rootSegment === "index" ||
+    rootSegment === "login" ||
+    rootSegment === "signup" ||
+    rootSegment === "forgot-password" ||
+    rootSegment === "reset-password";
+  const shouldActivateNotifications = isAuthenticated && !isPassiveSessionRoute;
 
   const inboxQuery = useQuery({
     queryKey: queryKeys.citizenNotifications(20),
     queryFn: () => citizenApi.getNotifications(20),
-    enabled: isAuthenticated
+    enabled: shouldActivateNotifications
   });
 
   const refreshPermissionState = useCallback(async () => {
@@ -123,7 +132,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!shouldActivateNotifications) {
       setLastNotification(null);
       setRegistrationState("idle");
       setRegistrationError(null);
@@ -131,10 +140,10 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     }
 
     void refreshPermissionState();
-  }, [isAuthenticated, refreshPermissionState]);
+  }, [refreshPermissionState, shouldActivateNotifications]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!shouldActivateNotifications) {
       return;
     }
 
@@ -237,15 +246,19 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       receivedSubscription?.remove?.();
       responseSubscription?.remove?.();
     };
-  }, [inboxQuery.data?.notifications, isAuthenticated, markNotificationRead]);
+  }, [inboxQuery.data?.notifications, markNotificationRead, shouldActivateNotifications]);
 
   useEffect(() => {
-    if (!isAuthenticated || permissionState !== "granted" || registrationState === "registered") {
+    if (
+      !shouldActivateNotifications ||
+      permissionState !== "granted" ||
+      registrationState === "registered"
+    ) {
       return;
     }
 
     void requestRegistration();
-  }, [isAuthenticated, permissionState, registrationState, requestRegistration]);
+  }, [permissionState, registrationState, requestRegistration, shouldActivateNotifications]);
 
   const inbox = useMemo(() => inboxQuery.data?.notifications ?? [], [inboxQuery.data?.notifications]);
   const unreadCount = inbox.filter((notification) => notification.status !== "read").length;

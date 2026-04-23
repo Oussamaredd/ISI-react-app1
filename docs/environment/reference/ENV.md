@@ -81,6 +81,8 @@ Managed Postgres baseline note:
 - `LOGSTASH_HOST` for the log shipping target hostname
 - `LOGSTASH_PORT` for the log shipping target TCP port
 - `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
+- `VITE_SUPABASE_URL` for the browser Supabase project URL used by client-side auth flows
+- `VITE_SUPABASE_PUBLISHABLE_KEY` for the browser-safe Supabase publishable key used by client-side auth flows
 - `VITE_API_TELEMETRY_ENABLED` to allow or suppress frontend telemetry posts back into the API
 - `VITE_DASHBOARD_REFRESH_INTERVAL_MS` for dashboard polling when live push is inactive or suspended
 - `VITE_PLANNING_REFRESH_INTERVAL_MS` for planning/dashboard support polling and cache freshness
@@ -90,6 +92,8 @@ Managed Postgres baseline note:
 - `VITE_CITIZEN_CHALLENGES_ENABLED` to expose or defer the citizen challenges route in the web shell
 - `VITE_ADMIN_WORKSPACE_ENABLED` to expose or defer the admin workspace route in the web shell
 - `EXPO_PUBLIC_API_BASE_URL` for the native mobile API base URL (must resolve to a device/simulator reachable API origin)
+- `EXPO_PUBLIC_SUPABASE_URL` for the Expo/mobile Supabase project URL used by native auth flows
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the Expo/mobile-safe Supabase publishable key used by native auth flows
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
 - `VITE_MAP_TILE_ATTRIBUTION` for the frontend map attribution label
 - `VITE_SENTRY_DSN` and `EXPO_PUBLIC_SENTRY_DSN` for optional client-side Sentry issue capture on web and mobile
@@ -129,6 +133,8 @@ Agent tour mapping note:
 - Hosted runtimes may inject `PORT`; the API runtime treats it as a platform fallback only when `API_PORT` is not set.
 - `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
 - `EXPO_PUBLIC_API_BASE_URL` must resolve to the public API origin used by the native client, not to database/internal service hosts.
+- `VITE_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_URL` must point at the same Supabase project that backs `SUPABASE_URL` on the API side.
+- `VITE_SUPABASE_PUBLISHABLE_KEY` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are public-client keys only; never place `SUPABASE_SERVICE_ROLE_KEY` in browser or mobile env files.
 - When Cloudflare Pages fronts the SPA, keep `VITE_API_BASE_URL` on the frontend origin and enable the Pages edge proxy so browser traffic stays same-origin.
 
 ## Optional API Hardening Keys

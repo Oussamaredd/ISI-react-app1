@@ -172,31 +172,31 @@ Resolve them on the frontend origin defined in the Port Contract (`5173` for loc
 UX contract:
 
 - public routes such as `/` and `/login` render immediately while session discovery runs in the background
-- only protected `/app/**` routes wait on session confirmation
+- only protected `/app/**` routes wait on local Supabase session restoration
 - login starts auth requests immediately and does not preflight `/health`
+- browser/mobile auth bootstrap does not call `/api/auth/status` or `/api/me`
+- the shared `/app` role hub stays lightweight and does not auto-load citizen profile data on first paint
 
-Local auth contract:
+Client auth contract:
 
-- `POST /api/login` returns `{ code, accessToken, user }` for local sign-in; `code` remains available for callback compatibility
-- `POST /api/signup` returns `{ accessToken, user }`
-- frontend uses the direct local sign-in session when `accessToken` is present, and can still exchange login `code` via `POST /api/auth/exchange`
-- frontend stores `accessToken` in `localStorage`
+- web and mobile email/password sign-in, signup, Google OAuth, and password reset now use Supabase Auth directly
+- web requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
+- mobile requires `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- frontend/mobile store the current Supabase access token in their existing local session stores for API bearer auth
 - protected API requests use `Authorization: Bearer <token>`
 - when `SUPABASE_URL` is configured, protected API requests also accept Supabase Auth access tokens and resolve the app profile through `identity.users.auth_user_id`
+- auth itself no longer wakes the backend; the first backend wake happens when the user opens a live product workflow such as reporting, profile/history, dashboard, tours, or support
+- legacy backend auth endpoints remain available for compatibility, but they are no longer the primary client auth path
 - frontend clears stale local bearer state when protected API requests return `401`
-- reset endpoints are only `POST /api/forgot-password` and `POST /api/reset-password`
-- in production, forgot-password returns `204` with no token/url payload
+- legacy reset endpoints are compatibility-only; the active browser/mobile reset flow is the Supabase email/code flow
 
 ## OAuth Callback Setup
 
-- Local dev callback URI: `http://localhost:5173/api/auth/google/callback`
-- Docker dev callback URI: `http://localhost:3000/api/auth/google/callback`
-- Set `API_BASE_URL` and `GOOGLE_CALLBACK_URL` to the same public edge origin in active runtime env files.
-- In Google Cloud Console, **Authorized redirect URI** must exactly match runtime callback URI:
-  - same scheme (`http/https`)
-  - same host
-  - same port
-  - same path (`/api/auth/google/callback`)
+- Local dev browser callback route: `http://localhost:5173/auth/callback`
+- Docker dev browser callback route: `http://localhost:3000/auth/callback`
+- Set Supabase `Site URL` and redirect allowlist to the active frontend origins and callback routes.
+- In Google Cloud Console, **Authorized redirect URI** must exactly match the Supabase-hosted Google callback URI shown in the Supabase dashboard (`https://<project-ref>.supabase.co/auth/v1/callback`).
+- Keep the legacy backend Google callback URI only while a compatibility window still exists.
 
 Cloudflare Pages edge proxy:
 
@@ -228,6 +228,10 @@ Canonical keys:
 - `API_PORT`
 - `API_BASE_URL`
 - `VITE_API_BASE_URL`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 Deprecated aliases (temporary compatibility only):
 
