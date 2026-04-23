@@ -93,3 +93,6 @@ temp_dev_*
 # Local planning source artifacts
 docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx
 docs/specs/inputs/ECOTRACK_M2_DEV.xlsx
+
+# Supabase local CLI state
+supabase/.temp/
