@@ -8,6 +8,7 @@ import AppLayout from "../layouts/AppLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import PublicLayout from "../layouts/PublicLayout";
 import Dashboard from "../pages/Dashboard";
+import LandingPage from "../pages/landing/LandingPage";
 import LoginPage from "../pages/auth/LoginPage";
 import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
 import {
@@ -20,7 +21,6 @@ import {
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
 
-const LandingPage = lazy(() => import("../pages/landing/LandingPage"));
 const AppHomePage = lazy(() => import("../pages/AppHomePage"));
 const AgentTourPage = lazy(() => import("../pages/AgentTourPage"));
 const ManagerPlanningPage = lazy(() => import("../pages/ManagerPlanningPage"));

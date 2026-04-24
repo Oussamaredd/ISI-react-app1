@@ -89,15 +89,40 @@ const resolveSuiteFiles = () => {
   return readTestFiles(path.resolve(workspaceDir, "src/tests")).filter((filePath) => !excluded.has(filePath));
 };
 
+const isRetriableVitestWorkerError = (error) => {
+  const details = [error?.message, error?.stderr?.toString?.(), error?.stdout?.toString?.()]
+    .filter(Boolean)
+    .join("\n");
+
+  return (
+    details.includes("Failed to start forks worker") ||
+    details.includes("Timeout waiting for worker to respond")
+  );
+};
+
 const runBatch = (batchFiles) => {
   const env = { ...process.env };
   delete env.ECOTRACK_APP_TEST_SUITE;
+  const maxAttempts = 2;
 
-  execFileSync(process.execPath, [runVitestScript, ...forwardedArgs, ...batchFiles], {
-    cwd: workspaceDir,
-    stdio: "inherit",
-    env,
-  });
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      execFileSync(process.execPath, [runVitestScript, ...forwardedArgs, ...batchFiles], {
+        cwd: workspaceDir,
+        stdio: "inherit",
+        env,
+      });
+      return;
+    } catch (error) {
+      if (attempt >= maxAttempts || !isRetriableVitestWorkerError(error)) {
+        throw error;
+      }
+
+      console.warn(
+        `[ecotrack-app:test] retrying ${batchFiles.join(", ")} after worker startup timeout`,
+      );
+    }
+  }
 };
 
 if (includesRunFlag && (suite === "fast" || suite === "isolated" || suite === "ui")) {

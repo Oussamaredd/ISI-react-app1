@@ -259,9 +259,9 @@ Database name policy: committed self-managed connection-string templates target 
 - `npm run test:e2e` - key citizen/agent/manager journey tests; the app workspace enables the dedicated e2e spec only for this lane via `ECOTRACK_INCLUDE_APP_E2E=1`
 - `npm run test:coverage` - coverage-gated validation for app + mobile + api in the stable serial order; the app coverage lane re-enables the dedicated key-journey e2e spec so coverage matches the release gate
 - `npm run test:coverage:api` - backend coverage with a cached `ecotrack-database` build pre-step
-- `npm run typecheck` - app + mobile + api + database type checks in parallel with TypeScript incremental caches stored under `tmp/tsc/`
+- `npm run typecheck` - app + mobile + api + database type checks in parallel with TypeScript incremental caches stored under `tmp/tsc/` when that repo-local cache path is writable, otherwise falling back to the OS temp directory
 - `npm run typecheck --workspace=ecotrack-mobile` - mobile workspace type checks
-- `npm run lint` - lint + architecture boundaries in parallel with ESLint content caches stored under `tmp/eslint/`
+- `npm run lint` - lint + architecture boundaries in parallel with ESLint content caches stored under `tmp/eslint/` when that repo-local cache path is writable, otherwise falling back to the OS temp directory
 - `npm run lint --workspace=ecotrack-mobile` - mobile workspace lint
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
 - `npm run validate-env:all` - validate all committed env templates for local, Docker, and deploy workflows

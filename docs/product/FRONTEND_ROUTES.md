@@ -27,8 +27,8 @@ Special case:
 - The public landing route (`/`) redirects to `/app` only after the browser restores a valid Supabase session; the auth bootstrap no longer calls `/api/auth/status`.
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
-- Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; the landing page now loads lazily so the authenticated app shell is favored in the default route budget.
-- Direct-entry performance contract: `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first auth or dashboard paint.
+- Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; `/login` and the authenticated app routes keep that shared route-suspense contract, but `/` now eager-loads the landing shell so the hero can paint without an extra route-bundle fetch.
+- Direct-entry performance contract: `/`, `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first meaningful public/auth/dashboard paint. The landing page still defers below-the-fold marketing sections until browser idle so the hero remains the critical path.
 - Public marketing routes publish route-specific title, description, canonical, Open Graph, Twitter, and structured-data metadata aligned to EcoTrack as a citizen-first collection coordination prototype.
 - The public sign-in route (`/login`) publishes standard indexable metadata because it is part of the audited public entry surface.
 - Sensitive auth routes (`/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`) keep `noindex` metadata so recovery and callback flows stay available to users without becoming search landing pages.

@@ -21,10 +21,10 @@
     "test:watch:ui": "node ./scripts/run-vitest-suite.mjs ui --configLoader runner",
     "test:inspect": "node ./scripts/run-vitest.mjs --configLoader runner --ui",
     "test:coverage": "ECOTRACK_INCLUDE_APP_E2E=1 node ./scripts/run-vitest.mjs --configLoader runner --coverage",
-    "lint": "eslint . --cache --cache-strategy content --cache-location ../tmp/eslint/app --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && npm run lint:theme",
-    "lint:fix": "eslint . --cache --cache-strategy content --cache-location ../tmp/eslint/app --ext ts,tsx --fix",
+    "lint": "node ./scripts/run-eslint.mjs . --cache --cache-strategy content --cache-location ../tmp/eslint/app --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && npm run lint:theme",
+    "lint:fix": "node ./scripts/run-eslint.mjs . --cache --cache-strategy content --cache-location ../tmp/eslint/app --ext ts,tsx --fix",
     "lint:theme": "node ./scripts/validate-theme-contract.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ./scripts/run-tsc.mjs --noEmit",
     "check:bundle-size": "node ./scripts/check-bundle-size.mjs"
   },
   "dependencies": {

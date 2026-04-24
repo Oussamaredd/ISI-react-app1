@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import DocumentMetadata from "../../components/DocumentMetadata";
 import Navbar from "../../components/landing/Navbar";
 import GradientGlow from "../../components/landing/background/GradientGlow";
@@ -15,8 +15,15 @@ const FaqSection = lazy(() => import("../../components/landing/sections/FaqSecti
 const FinalCtaSection = lazy(() => import("../../components/landing/sections/FinalCtaSection"));
 const FooterSection = lazy(() => import("../../components/landing/sections/FooterSection"));
 
+type IdleCallbackCapableWindow = Window &
+  typeof globalThis & {
+    requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+    cancelIdleCallback?: (handle: number) => void;
+  };
+
 export default function LandingPage() {
   useLandingSectionScroll();
+  const [isBelowFoldContentReady, setIsBelowFoldContentReady] = useState(false);
   const description =
     "EcoTrack is a citizen-first waste reporting and collection coordination prototype for the Paris scenario, with citizen reports driving operations and simulated measurements supporting the workflow.";
   const siteRoot =
@@ -56,6 +63,21 @@ export default function LandingPage() {
           },
         ];
 
+  useEffect(() => {
+    const idleCapableWindow = window as IdleCallbackCapableWindow;
+    const revealBelowFoldContent = () => setIsBelowFoldContentReady(true);
+
+    if (typeof idleCapableWindow.requestIdleCallback === "function") {
+      const idleCallbackId = idleCapableWindow.requestIdleCallback(revealBelowFoldContent, {
+        timeout: 1200,
+      });
+      return () => idleCapableWindow.cancelIdleCallback?.(idleCallbackId);
+    }
+
+    const timeoutId = globalThis.setTimeout(revealBelowFoldContent, 250);
+    return () => globalThis.clearTimeout(timeoutId);
+  }, []);
+
   return (
     <div className="landing-root">
       <DocumentMetadata
@@ -73,19 +95,23 @@ export default function LandingPage() {
 
         <main>
           <HeroSection />
-          <Suspense fallback={null}>
-            <LogoMarqueeSection />
-            <FeaturesBentoSection />
-            <HowItWorksSection />
-            <PricingSection />
-            <FaqSection />
-            <FinalCtaSection />
-          </Suspense>
+          {isBelowFoldContentReady ? (
+            <Suspense fallback={null}>
+              <LogoMarqueeSection />
+              <FeaturesBentoSection />
+              <HowItWorksSection />
+              <PricingSection />
+              <FaqSection />
+              <FinalCtaSection />
+            </Suspense>
+          ) : null}
         </main>
 
-        <Suspense fallback={null}>
-          <FooterSection />
-        </Suspense>
+        {isBelowFoldContentReady ? (
+          <Suspense fallback={null}>
+            <FooterSection />
+          </Suspense>
+        ) : null}
       </div>
     </div>
   );
