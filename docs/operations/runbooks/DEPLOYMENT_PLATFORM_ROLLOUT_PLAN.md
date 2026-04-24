@@ -10,12 +10,12 @@ The target hosting split is:
 
 - Cloudflare Pages for the frontend SPA in `app`
 - Render Web Service for the single Node/Nest runtime in `api`
-- Neon managed Postgres for the deployment database
+- Supabase managed Postgres and Auth for the deployment database and browser authentication
 
 Terraform note for the current hosted baseline:
 
 - repo-owned Terraform scaffolding now lives in `infrastructure/tooling/terraform/`
-- the Terraform layout is split into standalone `cloudflare`, `render`, and `neon` stacks
+- the Terraform layout is split into standalone `cloudflare` and `render` stacks
 - those stacks are intended to model the current hosted resources and should import existing resources before first apply
 - app code, Drizzle migrations, runtime secrets, remote state backends, and multi-cloud modules remain outside this Terraform scope
 
@@ -48,7 +48,7 @@ Decisions captured in this phase:
 
 - the main app frontend will be hosted on Cloudflare Pages
 - the monolith backend will be hosted on Render as one web service
-- the deployment database will be hosted on Neon as managed Postgres
+- the deployment database will be hosted on Supabase as managed Postgres
 - GitHub Pages will no longer be used for the main app frontend
 - GitHub Pages may later be reused for docs only
 - Cloudflare Workers are not part of the current app runtime plan
@@ -96,44 +96,42 @@ Checklist:
 - [x] Record that GitHub Pages is reserved for docs-only follow-up work.
 - [x] Confirm no app OAuth or frontend links still point to GitHub Pages.
 
-## Phase 3 - Neon Managed Postgres Baseline
+## Phase 3 - Supabase Managed Postgres And Auth Baseline
 
 Description:
 
-This phase creates the managed deployment database baseline. EcoTrack already uses Postgres and Drizzle with a canonical `DATABASE_URL`, plus explicit migration and seed scripts. That makes Neon a straightforward fit because the deployment change is operational, not architectural.
+This phase creates the managed deployment database and browser auth baseline. EcoTrack already uses Postgres and Drizzle with a canonical `DATABASE_URL`, plus explicit migration and seed scripts. Supabase-hosted Postgres keeps that database contract while Supabase Auth owns the provider-managed `auth` schema.
 
 The local Docker Postgres container remains useful after this phase, but only as a development sandbox. It should not be treated as a peer deployment database and should not be continuously synchronized with the hosted database.
 
 The intended database discipline is:
 
 - local container for local development
-- managed Neon database for deployed environments
+- managed Supabase database for deployed environments
 - migrations for schema alignment
 - optional seed or one-time import for demo data
-- no live bidirectional sync between local Docker and Neon
+- no live bidirectional sync between local Docker and the hosted managed database
 
 Environment strategy for this phase:
 
-- start with one deployment-ready Neon project for the app
+- start with one deployment-ready Supabase project for the app
 - keep the canonical database name aligned with `ecotrack`
 - use branches or separate project boundaries for future environment separation
-- store the Neon connection string only in provider secrets and deployment envs
+- store Supabase connection strings and publishable keys only in provider secrets and deployment envs
 - implemented baseline:
-  - Neon project `ecotrack` in `aws-eu-central-1` (Frankfurt)
-  - one baseline branch: `main`
   - canonical managed database target: `ecotrack`
-  - repo Drizzle migrations and seed flow applied against the direct Neon connection string
-  - local API readiness verified against the managed database baseline
-  - see `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the exact validated state
+  - provider-owned `auth` schema reserved for Supabase Auth
+  - app-owned auth/profile tables live under the `identity` schema
+  - see `docs/operations/runbooks/SUPABASE_MANAGED_POSTGRES_BASELINE.md` for the exact baseline contract
 
 Checklist:
 
-- [x] Create the Neon project for EcoTrack.
+- [x] Create or select the Supabase project for EcoTrack.
 - [x] Create the deployment database with the canonical `ecotrack` naming.
 - [x] Capture the managed `DATABASE_URL` outside the repository.
 - [x] Define migration policy for deployment environments.
 - [x] Define whether demo data uses seed scripts or a one-time import.
-- [x] Document that local Docker Postgres is not continuously synced with Neon.
+- [x] Document that local Docker Postgres is not continuously synced with the hosted managed database.
 
 ## Phase 4 - Render Web Service Baseline
 
@@ -159,7 +157,7 @@ Completion definition:
 
 - Render can build and run the EcoTrack API reliably
 - health checks use the canonical readiness path
-- the service can connect to Neon and pass startup validation
+- the service can connect to Supabase-hosted Postgres and pass startup validation
 - implemented baseline:
   - Render web service `ecotrack-3ggh` is live at `https://ecotrack-3ggh.onrender.com`
   - repo-managed Postgres targets use the repo-root build command `npm run deploy:render:build`, which compiles `database`, applies Drizzle migrations against the direct `DATABASE_URL`, builds `api`, and validates runtime dependencies
@@ -261,7 +259,7 @@ This phase defines the release discipline for the first deployed environment. Th
 
 The release flow should be:
 
-1. deploy or prepare Neon
+1. deploy or prepare Supabase-managed Postgres
 2. apply migrations
 3. optionally seed demo data
 4. start or update the Render service
@@ -285,10 +283,10 @@ Implemented release discipline:
   4. let the Render backend build run `npm run deploy:render:build` for repo-managed DB targets, or `npm run deploy:render:build:managed-postgres` for already-bootstrapped managed-provider targets such as the Supabase cutover path
   5. run hosted smoke checks on frontend HTML, API readiness, optional OAuth redirect, and optional release-version assertions
   6. review the uploaded release artifacts and GitHub step summary before closing the release
-- migrations remain release-controlled through the backend deploy path and should continue targeting the direct Neon `DATABASE_URL`
+- migrations remain release-controlled through the backend deploy path and should continue targeting the direct managed Postgres `DATABASE_URL`
 - seed data is allowed only for local development and deliberate non-production demo resets; it is not part of the production release path
-- rollback after a failed deploy is not automatic: re-run `CD Deployment` from the previous known-good git ref and the same target environment, prefer a forward fix where possible, and use Neon restore/backup recovery before reopening traffic if schema or data reversal is required
-- first-release bootstrap path uses the tracked Drizzle migration chain against the direct Neon URL before the first hosted API deploy, with seed data remaining optional and non-production only
+- rollback after a failed deploy is not automatic: re-run `CD Deployment` from the previous known-good git ref and the same target environment, prefer a forward fix where possible, and use Supabase backup/restore recovery before reopening traffic if schema or data reversal is required
+- first-release bootstrap path uses the managed Postgres baseline SQL for blank Supabase targets, or the tracked Drizzle migration chain only for repo-managed historical targets, with seed data remaining optional and non-production only
 
 GitHub Actions automation baseline (2026-03-26):
 
@@ -444,7 +442,7 @@ When this phase begins later, it should be treated as a normal database change w
 Expected future work in that later phase:
 
 - confirm which geospatial use cases require PostGIS
-- confirm Neon extension support for the target environment
+- confirm Supabase extension support for the target environment
 - add the extension through migration or controlled database setup
 - add geometry columns and indexes only where the approved data scope requires them
 - validate storage, performance, and backup implications
@@ -463,7 +461,7 @@ The deployment rollout should be considered complete only when:
 - GitHub Pages no longer serves the EcoTrack app
 - Cloudflare Pages serves the frontend
 - Render serves the monolith backend
-- Neon serves the deployment database
+- Supabase serves the deployment database and browser auth provider
 - deployed env values follow the canonical repository rules
 - auth, API, and realtime validation pass after cutover
 - future docs-only hosting and future PostGIS work remain documented as separate follow-up phases

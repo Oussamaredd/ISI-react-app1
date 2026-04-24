@@ -1042,7 +1042,7 @@ Completed task IDs: `M4.1` to `M4.15` (monolith-adapted baseline)
 
 Description: Replace Kubernetes-first assumptions with a monolith deployment baseline built around Docker Compose, CI/CD, secret templates, backup and restore, and rollout runbooks.
 
-Progress: The monolith deployment baseline now includes Docker Compose workflows, CI/CD validation, managed Cloudflare Pages plus Render plus Neon rollout runbooks, secret-template guidance, rollback and restore documentation, and provider-scoped Terraform scaffolding for the current hosted platform.
+Progress: The monolith deployment baseline now includes Docker Compose workflows, CI/CD validation, managed Cloudflare Pages plus Render plus Supabase-managed Postgres/Auth rollout runbooks, secret-template guidance, rollback and restore documentation, and provider-scoped Terraform scaffolding for the current hosted platform.
 
 Checklist:
 - [x] Stabilize the monolith deployment baseline first.

@@ -180,7 +180,7 @@ UX contract:
 Client auth contract:
 
 - web and mobile email/password sign-in, signup, Google OAuth, and password reset now use Supabase Auth directly
-- web requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
+- web requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in the frontend build environment; missing values keep the app shell renderable but disable browser auth with a visible configuration error
 - mobile requires `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - frontend/mobile store the current Supabase access token in their existing local session stores for API bearer auth
 - protected API requests use `Authorization: Bearer <token>`
@@ -269,7 +269,7 @@ Database name policy: committed self-managed connection-string templates target 
 - `npm run validate:workspace-toolchain:api-deploy` - verify only the root, API, and database workspace toolchain packages for Render API deploy flows
 - `npm run validate-doc-sync` - validate that behavior, env, schema, workflow, and release changes update the required docs in the same change set
 - `npm run deploy:render:build` - canonical Render build for repo-managed Postgres targets that should apply the numbered Drizzle migration chain during deploy
-- `npm run deploy:render:build:managed-postgres` - Render build for already-bootstrapped managed Postgres targets such as the Supabase cutover path; installs dev deps, validates the API deploy toolchain, builds `database` if needed, builds `api`, validates runtime dependencies, and does not replay numbered Drizzle migrations
+- `npm run deploy:render:build:managed-postgres` - Render API build for already-bootstrapped managed Postgres targets such as the Supabase cutover path; installs dev deps, validates the API deploy toolchain, builds `database` if needed, builds `api`, validates runtime dependencies, and does not replay numbered Drizzle migrations. This command does not build the Vite frontend or inject `VITE_SUPABASE_*`; set those on the frontend static-site host.
 - `npm run deploy:render:verify-local:managed-postgres` - local verification for the managed-Postgres Render build path when you want the same API-only checks without re-running `npm ci`
 - `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
 - `npm run ci:release:manifest` - generate the release manifest consumed by `CD Deployment`

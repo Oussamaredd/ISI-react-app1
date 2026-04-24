@@ -56,8 +56,8 @@ Documentation is organized by document type and responsibility so architecture, 
 - `operations/runbooks/EXTENDED_QUALITY_GATES.md` - K6, Stryker, Percy, and Lighthouse execution paths
 - `operations/runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - explicit accessibility and responsive release checklist
 - `operations/runbooks/MOBILE_PRODUCT_READINESS.md` - mobile release-readiness lane and evidence map
-- `operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased Cloudflare Pages, Render, and Neon rollout plan
-- `operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current managed Postgres baseline
+- `operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased Cloudflare Pages, Render, and Supabase rollout plan
+- `operations/runbooks/SUPABASE_MANAGED_POSTGRES_BASELINE.md` - current managed Postgres and Auth baseline
 
 ## Specs And Inputs
 - `specs/README.md` - entry point for source specs and planning inputs

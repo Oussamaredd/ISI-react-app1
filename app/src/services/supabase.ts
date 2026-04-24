@@ -1,7 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const TEST_SUPABASE_URL = 'https://ecotrack.test.supabase.co';
 const TEST_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test_key';
+export const SUPABASE_BROWSER_AUTH_CONFIG_ERROR =
+  'Browser auth is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in the frontend build environment.';
 
 const trimEnvValue = (value: string | undefined) => {
   if (typeof value !== 'string') {
@@ -30,9 +32,7 @@ const resolveSupabaseConfig = () => {
     };
   }
 
-  throw new Error(
-    'VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are required for browser auth.',
-  );
+  return null;
 };
 
 const normalizeBasePath = (value: string | undefined) => {
@@ -64,19 +64,72 @@ const createTestStorageKey = () => {
   return `ecotrack.web.test.auth.${suffix}`;
 };
 
-const { supabaseUrl, supabasePublishableKey } = resolveSupabaseConfig();
+const createSupabaseConfigError = () => new Error(SUPABASE_BROWSER_AUTH_CONFIG_ERROR);
+
+const createDisabledSupabaseClient = () =>
+  ({
+    auth: {
+      exchangeCodeForSession: async () => ({
+        data: { session: null, user: null },
+        error: createSupabaseConfigError(),
+      }),
+      getSession: async () => ({
+        data: { session: null },
+        error: null,
+      }),
+      onAuthStateChange: () => ({
+        data: {
+          subscription: {
+            id: 'ecotrack-disabled-supabase-auth',
+            callback: () => undefined,
+            unsubscribe: () => undefined,
+          },
+        },
+      }),
+      resetPasswordForEmail: async () => ({
+        data: {},
+        error: createSupabaseConfigError(),
+      }),
+      signInWithOAuth: async () => ({
+        data: { provider: 'google', url: null },
+        error: createSupabaseConfigError(),
+      }),
+      signInWithPassword: async () => ({
+        data: { session: null, user: null },
+        error: createSupabaseConfigError(),
+      }),
+      signOut: async () => ({ error: null }),
+      signUp: async () => ({
+        data: { session: null, user: null },
+        error: createSupabaseConfigError(),
+      }),
+      updateUser: async () => ({
+        data: { user: null },
+        error: createSupabaseConfigError(),
+      }),
+    },
+  }) as unknown as SupabaseClient;
+
+const supabaseConfig = resolveSupabaseConfig();
+export const isSupabaseBrowserAuthConfigured = supabaseConfig !== null;
+export const getSupabaseBrowserConfigError = () =>
+  isSupabaseBrowserAuthConfigured ? null : SUPABASE_BROWSER_AUTH_CONFIG_ERROR;
+
 const supabaseStorageKey =
   import.meta.env.MODE === 'test'
     ? createTestStorageKey()
     : undefined;
 
-export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
-  auth: {
-    detectSessionInUrl: false,
-    flowType: 'pkce',
-    storageKey: supabaseStorageKey,
-  },
-});
+export const supabase =
+  supabaseConfig === null
+    ? createDisabledSupabaseClient()
+    : createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabasePublishableKey, {
+        auth: {
+          detectSessionInUrl: false,
+          flowType: 'pkce',
+          storageKey: supabaseStorageKey,
+        },
+      });
 
 export const buildSupabaseBrowserRedirectUrl = (pathname: string) => {
   if (typeof window === 'undefined') {

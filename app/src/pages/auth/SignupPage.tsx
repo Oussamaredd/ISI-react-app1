@@ -5,6 +5,10 @@ import BrandLogo from '../../components/branding/BrandLogo';
 import DocumentMetadata from '../../components/DocumentMetadata';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
+import {
+  getSupabaseBrowserConfigError,
+  isSupabaseBrowserAuthConfigured,
+} from '../../services/supabase';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -15,10 +19,17 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const authConfigError = getSupabaseBrowserConfigError();
+  const isAuthDisabled = isSubmitting || !isSupabaseBrowserAuthConfigured;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (authConfigError) {
+      setError(authConfigError);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -56,6 +67,11 @@ export default function SignupPage() {
       <div className="auth-authmode-card auth-login-card auth-compact-card">
         <h1 className="auth-login-title">Create your account</h1>
         <p className="auth-login-subtitle">Use email/password for local authentication.</p>
+        {authConfigError ? (
+          <p className="auth-error-banner" role="alert" aria-live="assertive">
+            {authConfigError}
+          </p>
+        ) : null}
         {error ? <p className="auth-error-banner">{error}</p> : null}
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -67,6 +83,7 @@ export default function SignupPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              disabled={isAuthDisabled}
               required
             />
           </label>
@@ -79,6 +96,7 @@ export default function SignupPage() {
               autoComplete="name"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
+              disabled={isAuthDisabled}
               minLength={2}
             />
           </label>
@@ -91,6 +109,7 @@ export default function SignupPage() {
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              disabled={isAuthDisabled}
               minLength={8}
               required
             />
@@ -104,12 +123,13 @@ export default function SignupPage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
+              disabled={isAuthDisabled}
               minLength={8}
               required
             />
           </label>
 
-          <button type="submit" disabled={isSubmitting}>
+          <button type="submit" disabled={isAuthDisabled}>
             {isSubmitting ? 'Creating account...' : 'Create account'}
           </button>
         </form>

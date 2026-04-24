@@ -25,13 +25,13 @@ Database package runtime note:
 - `ecotrack-database` runtime entrypoints (for example `db:seed`) fall back to root `/.env` when `DATABASE_URL` is not already present in process env.
 
 Managed Postgres baseline note:
-- Neon remains the current managed deployment Postgres baseline until the Supabase cutover is executed.
+- Supabase-hosted Postgres is the current managed deployment database baseline.
 - Local Docker Postgres remains a local-only sandbox and is not continuously synced with the managed deployment database.
 - For managed-database migration and seed operations, `DATABASE_URL` must be the direct Postgres connection string, not a pooled/provider proxy hostname.
 - `DATABASE_POOLER_URL`, when used, is for runtime traffic only and should point at a PgBouncer or provider pooler listener.
-- The repo now keeps app-owned auth data in the `identity` schema so provider-managed `auth` schemas, including Supabase Auth, stay available for future adoption.
+- The repo keeps app-owned auth data in the `identity` schema so the provider-managed Supabase Auth `auth` schema remains reserved.
 - Store managed connection strings only in local untracked env files or deployment/provider secret stores.
-- See `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the current baseline and migration-prep workflow.
+- See `docs/operations/runbooks/SUPABASE_MANAGED_POSTGRES_BASELINE.md` for the current baseline and migration-prep workflow.
 
 ## Canonical Keys
 

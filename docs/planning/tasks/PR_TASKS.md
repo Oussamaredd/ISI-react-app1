@@ -16,7 +16,7 @@ Current repo status: `PHASES 1 TO 9 COMPLETE, PHASE 10 DEFERRED`
 
 Completed in this documentation pass:
 
-- the target deployment stack is now documented as Cloudflare Pages for the frontend, Render for the monolith backend, and Neon for managed Postgres
+- the target deployment stack is now documented as Cloudflare Pages for the frontend, Render for the monolith backend, and Supabase for managed Postgres/Auth
 - the GitHub Pages app retirement path is now documented
 - future GitHub Pages reuse is now explicitly limited to docs-only follow-up work
 - future PostGIS enablement is now explicitly deferred and scoped as a separate phase
@@ -25,10 +25,10 @@ Completed in this documentation pass:
 - `.github/workflows/CD.yml` no longer deploys the app to GitHub Pages
 - the `github-pages` environment is no longer part of the app release path
 - repo deployment notes no longer describe GitHub Pages as an app target
-- Neon is now provisioned as the managed deployment database baseline in `aws-eu-central-1` (Frankfurt)
-- the canonical `ecotrack` managed database target is created on the single baseline branch
-- the repo Drizzle migration chain and existing seed strategy have been validated against Neon
-- local API readiness has been validated against the direct Neon connection string
+- Supabase-hosted Postgres is now the managed deployment database baseline
+- the canonical managed database baseline is bootstrapped through the managed Postgres baseline SQL for blank Supabase targets
+- the repo Drizzle migration chain and existing seed strategy remain validated for repo-managed historical targets
+- local API readiness validates against the active direct managed Postgres connection string
 - Cloudflare Pages now serves the frontend at `https://ecotrack-jmj.pages.dev`
 - the deployed Pages build uses the repo-root `npm run build:app` contract and publishes `app/dist`
 - deployed route refreshes for `/`, `/login`, and `/app/dashboard` return HTML successfully
@@ -66,7 +66,7 @@ This task confirms one canonical host per layer before any platform setup starts
 
 - [x] Decide that the live frontend host will be Cloudflare Pages.
 - [x] Decide that the monolith backend host will be Render.
-- [x] Decide that the deployment database host will be Neon.
+- [x] Decide that the deployment database host will be Supabase-hosted Postgres.
 - [x] Decide that GitHub Pages will not remain the live app host.
 - [ ] Record final team sign-off on the deployment ownership split if formal approval is required.
 
@@ -82,18 +82,18 @@ This task removes GitHub Pages from the main app release path while keeping futu
 - [x] Confirm no active frontend links, OAuth entries, or deployment notes still point at GitHub Pages for the app.
 - [x] Preserve GitHub Pages only as a later docs-hosting option.
 
-## Task 3 - Provision Neon Managed Postgres
+## Task 3 - Provision Supabase Managed Postgres And Auth
 
 Description:
 
 This task creates the deployment-ready managed Postgres baseline without changing the local Docker development database role.
 
-- [x] Create the Neon project for EcoTrack.
+- [x] Create or select the Supabase project for EcoTrack.
 - [x] Create the managed deployment database using the canonical `ecotrack` naming.
 - [x] Store the managed `DATABASE_URL` outside the repository.
 - [x] Define the migration policy for deployed environments.
 - [x] Define whether demo data uses seed scripts or a one-time import.
-- [x] Document that local Docker Postgres is a dev sandbox and not a live-synced peer of Neon.
+- [x] Document that local Docker Postgres is a dev sandbox and not a live-synced peer of the hosted managed database.
 
 ## Task 4 - Provision Render For The Monolith Backend
 
@@ -115,7 +115,7 @@ Validated implementation notes:
 - The API start command is `npm run deploy:render:start`.
 - The Render runtime binds through `API_PORT=10000`.
 - The readiness health check path is `/api/health/ready`.
-- On the Render free plan, database migrations are a manual release step: run `npm run db:migrate --workspace=ecotrack-database` against the direct Neon `DATABASE_URL` before deploys that include schema changes.
+- On the Render free plan, database migrations are a manual release step for repo-managed DB targets: run `npm run db:migrate --workspace=ecotrack-database` against the direct managed Postgres `DATABASE_URL` before deploys that include schema changes. Already-bootstrapped Supabase targets should use the managed baseline path and the `deploy:render:build:managed-postgres` API build command.
 - `npm ci --omit=dev` is outside the supported Render contract for this monorepo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, and verifies that API runtime dependencies such as `express` resolve from `api/dist/main.js` before deploy completes.
 - Local Windows verification should use `npm run deploy:render:verify-local` for the migration-running path, or `npm run deploy:render:verify-local:managed-postgres` for the already-bootstrapped managed-provider path, if native-module file locks make `npm ci` fail with `EPERM`.
 - Local recovery uses one repo-root install contract only: stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, run `npm run validate:workspace-toolchain`, then rerun Render verification. Do not use workspace-local `--prefix` installs.
@@ -169,7 +169,7 @@ Description:
 
 This task makes the deployment repeatable and reduces the risk of a first-release failure caused by unmanaged database changes.
 
-- [x] Define the release order across Neon, Render, and Cloudflare Pages.
+- [x] Define the release order across Supabase-managed Postgres, Render, and Cloudflare Pages.
 - [x] Decide whether migrations are automatic or explicitly triggered during release.
 - [x] Decide where seed data is allowed.
 - [x] Define rollback expectations after a failed deploy.
@@ -177,11 +177,11 @@ This task makes the deployment repeatable and reduces the risk of a first-releas
 
 Documented release discipline:
 
-- Release order: Neon direct connection validation -> `npm run db:migrate --workspace=ecotrack-database` -> optional `npm run db:seed --workspace=ecotrack-database` -> Render deploy/update -> Cloudflare Pages deploy/promote -> deployed smoke checks.
+- Release order: managed Postgres direct connection validation -> apply the managed baseline or run `npm run db:migrate --workspace=ecotrack-database` where appropriate -> optional non-production seed -> Render deploy/update -> Cloudflare Pages deploy/promote -> deployed smoke checks.
 - Migrations remain an explicit manual release step on the current Render free plan.
 - Seed data is allowed only for local development and deliberate non-production demo resets.
-- Rollback is not automatic after a failed migration. Prefer a forward fix and redeploy, and use Neon restore/backup recovery before reopening traffic if schema or data reversal is required.
-- The first-release bootstrap path uses the tracked migration chain against the direct Neon URL before the first hosted API deploy.
+- Rollback is not automatic after a failed migration. Prefer a forward fix and redeploy, and use Supabase backup/restore recovery before reopening traffic if schema or data reversal is required.
+- The first-release bootstrap path uses the managed baseline SQL for blank Supabase targets, or the tracked migration chain only for repo-managed historical targets.
 
 ## Task 8 - Execute Cutover Validation
 
@@ -244,6 +244,6 @@ This task is intentionally deferred until Development and Data scope require it.
 - [x] The docs include a dedicated markdown plan for the rollout.
 - [x] `docs/planning/tasks/PR_TASKS.md` reflects completed planning work versus open implementation work.
 - [x] The docs index includes the new rollout plan and the active PR task tracker.
-- [x] Platform configuration has been implemented for the Phase 3 Neon baseline.
+- [x] Platform configuration has been implemented for the Phase 3 Supabase-managed Postgres/Auth baseline.
 - [x] GitHub Pages has been retired as the app host.
 - [x] Cloudflare Pages and Render have been provisioned and validated.

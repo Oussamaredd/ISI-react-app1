@@ -20,19 +20,31 @@ const appUiTestFiles = [
   "src/tests/CitizenChallengesPage.test.tsx",
   "src/tests/CitizenProfilePage.test.tsx",
   "src/tests/CitizenReportPage.test.tsx",
+  "src/tests/Components.test.tsx",
   "src/tests/CreateTicket.test.tsx",
+  "src/tests/Dashboard.realtimeTransport.test.tsx",
   "src/tests/Dashboard.test.tsx",
+  "src/tests/errorHandling.test.tsx",
+  "src/tests/HeroSection.test.tsx",
+  "src/tests/LandingBranding.test.tsx",
   "src/tests/LoginPage.test.tsx",
   "src/tests/ManagerPlanningPage.test.tsx",
   "src/tests/ManagerReportsPage.test.tsx",
   "src/tests/ManagerToursPage.test.tsx",
+  "src/tests/registerMapServiceWorker.test.tsx",
   "src/tests/ResetPasswordPage.test.tsx",
   "src/tests/Routing.test.tsx",
+  "src/tests/scrollPageToTop.test.ts",
   "src/tests/SettingsPage.test.tsx",
   "src/tests/SystemSettings.test.tsx",
   "src/tests/TicketDetails.test.tsx",
   "src/tests/TicketList.test.tsx",
+  "src/tests/TicketsContext.test.tsx",
   "src/tests/UserCreateModal.test.tsx",
+  "src/tests/useAgentTours.test.tsx",
+  "src/tests/useApiReady.test.tsx",
+  "src/tests/usePlanningRealtimeSocket.test.tsx",
+  "src/tests/usePlanningRealtimeStream.test.tsx",
 ];
 const appIsolatedTestFiles = [
   "src/tests/useAuth.localStorage.test.tsx",
@@ -54,7 +66,7 @@ const appSuiteExcludes = [
 const appTestPool = "forks";
 const appTestFileParallelism = false;
 const appTestMaxWorkers = 1;
-const appUsesSharedSuiteContext = appTestSuite === "ui";
+const appUsesSharedSuiteContext = appTestSuite === "ui" || appTestSuite === "isolated";
 const resolveQualityOutputRoot = () => {
   const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
 
@@ -285,9 +297,9 @@ export default defineConfig(({ mode }) => {
       restoreMocks: true,
       unstubGlobals: true,
       unstubEnvs: true,
-      // Keep the browser-heavy UI lane on a shared jsdom context, while fast
-      // and isolated lanes stay per-file isolated to avoid startup hangs and
-      // cross-test state bleed on WSL/CI.
+      // Keep browser-heavy lanes on a shared jsdom context; setup.tsx clears
+      // mocks and DOM state between files, and avoiding repeated jsdom worker
+      // boots keeps WSL/CI stable.
       pool: appTestPool,
       isolate: !appUsesSharedSuiteContext,
       fileParallelism: appTestFileParallelism,

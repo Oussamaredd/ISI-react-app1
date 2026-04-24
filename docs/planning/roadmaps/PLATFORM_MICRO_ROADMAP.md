@@ -47,7 +47,7 @@ Typical examples:
 
 - GitHub Environments and approval rules
 - provider secrets and deploy hooks
-- Cloudflare, Render, and Neon project setup
+- Cloudflare, Render, and Supabase project setup
 - DNS, certificates, and domain routing
 - monitoring SaaS accounts and alert receivers
 - PagerDuty, Slack, and email routing
@@ -82,7 +82,7 @@ Typical examples:
 - Treat `DONE` in the main roadmap as "baseline exists"; this file then defines what maintenance or external operationalization still matters.
 - Treat `DEFERRED_PLATFORM` as "development-owned, but do only if the hosted monolith outgrows the current platform model."
 - Treat `HANDOFF_SECURITY` and `HANDOFF_DATA` as explicit non-platform ownership.
-- Prefer the hosted monolith baseline first: Cloudflare Pages + Render + Neon + GitHub Actions.
+- Prefer the hosted monolith baseline first: Cloudflare Pages + Render + Supabase-managed Postgres/Auth + GitHub Actions.
 - Add Kubernetes, Helm, ArgoCD, broad Terraform, or Ansible only when the supported runtime actually needs them.
 
 ## M1 - Design Inputs and Platform Preconditions
@@ -396,7 +396,7 @@ Platform-code focus:
 
 Platform-external focus:
 
-- maintain Neon projects, branches, backups, and restore procedures
+- maintain Supabase projects, database backups, auth configuration, and restore procedures
 
 ### M4.6 - Advanced Rollout Strategy
 
@@ -1096,7 +1096,7 @@ Platform-code focus:
 ### Long-Term Platform Expansion
 
 - revisit `M4` and `M9` deferred IaC, Ansible, Kubernetes, Helm, and ArgoCD work only if the hosted monolith no longer fits
-- avoid implementing these as checklist theater while Cloudflare Pages + Render + Neon still meet the product need
+- avoid implementing these as checklist theater while Cloudflare Pages + Render + Supabase-managed Postgres/Auth still meet the product need
 
 ### Explicit Non-Goals For This Scope
 

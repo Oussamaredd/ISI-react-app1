@@ -11,6 +11,10 @@ import {
   resolveRequestedAuthRedirect,
   storePendingAuthRedirect,
 } from '../../services/authRedirect';
+import {
+  getSupabaseBrowserConfigError,
+  isSupabaseBrowserAuthConfigured,
+} from '../../services/supabase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -25,8 +29,15 @@ export default function LoginPage() {
 
   const redirectTarget = useMemo(() => resolveRequestedAuthRedirect(location.search), [location.search]);
   const oauthError = useMemo(() => new URLSearchParams(location.search).get('error'), [location.search]);
-  const isAuthDisabled = isSigningIn;
-  const authErrorId = oauthError ? 'login-oauth-error' : error ? 'login-form-error' : undefined;
+  const authConfigError = getSupabaseBrowserConfigError();
+  const isAuthDisabled = isSigningIn || !isSupabaseBrowserAuthConfigured;
+  const authErrorId = authConfigError
+    ? 'login-config-error'
+    : oauthError
+      ? 'login-oauth-error'
+      : error
+        ? 'login-form-error'
+        : undefined;
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -146,6 +157,11 @@ export default function LoginPage() {
         {oauthError ? (
           <p id="login-oauth-error" className="auth-error-banner" role="alert" aria-live="assertive">
             {oauthError}
+          </p>
+        ) : null}
+        {authConfigError ? (
+          <p id="login-config-error" className="auth-error-banner" role="alert" aria-live="assertive">
+            {authConfigError}
           </p>
         ) : null}
         {error ? (

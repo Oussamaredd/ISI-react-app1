@@ -812,7 +812,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
-- Deferral note: Current scope now includes repo-owned Terraform scaffolding for the existing Cloudflare Pages, Render, and Neon resources in `infrastructure/tooling/terraform/`, but the broader multi-cloud module/workspace/backend rollout remains deferred. The supported deployment path still stays Cloudflare Pages + Render + Neon instead of repo-managed AWS/Azure platform fleets.
+- Deferral note: Current scope now includes repo-owned Terraform scaffolding for the existing Cloudflare Pages and Render resources in `infrastructure/tooling/terraform/`, with Supabase-managed Postgres/Auth handled through provider configuration and secret injection. The broader multi-cloud module/workspace/backend rollout remains deferred. The supported deployment path still stays Cloudflare Pages + Render + Supabase-managed Postgres/Auth instead of repo-managed AWS/Azure platform fleets.
 
 ### M9.3 - Configuration Management Ansible Automation
 
@@ -821,7 +821,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
-- Deferral note: The current hosted monolith baseline does not use repo-managed server fleets, so Ansible automation is intentionally deferred until configuration-management ownership is needed beyond Cloudflare, Render, and Neon.
+- Deferral note: The current hosted monolith baseline does not use repo-managed server fleets, so Ansible automation is intentionally deferred until configuration-management ownership is needed beyond Cloudflare, Render, and Supabase.
 
 ### M9.4 - Docker Multi-Stage Builds Optimisation Images
 
@@ -839,7 +839,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
-- Deferral note: Kubernetes manifests are not part of the current supported deployment path. EcoTrack currently deploys as one hosted monolith via Cloudflare Pages + Render + Neon, and cluster rollout remains an explicit later platform expansion.
+- Deferral note: Kubernetes manifests are not part of the current supported deployment path. EcoTrack currently deploys as one hosted monolith via Cloudflare Pages + Render + Supabase-managed Postgres/Auth, and cluster rollout remains an explicit later platform expansion.
 
 ### M9.6 - Helm Charts Packaging Applications Kubernetes
 

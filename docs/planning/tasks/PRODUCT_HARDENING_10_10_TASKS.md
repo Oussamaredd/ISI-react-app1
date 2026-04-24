@@ -9,7 +9,7 @@ This task tracker turns EcoTrack from "feature-complete and stable" into a repo 
 ## Scope Guardrails
 
 - Stay inside `Development` specialty only.
-- Keep the current hosted monolith baseline: Cloudflare Pages + Render + Neon + GitHub Actions.
+- Keep the current hosted monolith baseline: Cloudflare Pages + Render + Supabase-managed Postgres/Auth + GitHub Actions.
 - Do not activate `DEFERRED_PLATFORM` items such as broad Terraform, Ansible, Kubernetes manifests, Helm, or ArgoCD.
 - Do not pull in Cyber-Security or Data-Science workstreams beyond current Development-owned baselines and tests.
 - Prefer strengthening what already exists before adding new surface area.
